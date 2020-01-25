@@ -1,104 +1,72 @@
-{-# LANGUAGE RecordWildCards, TupleSections, DuplicateRecordFields #-}
+{-# LANGUAGE DeriveDataTypeable, RecordWildCards, TupleSections, DuplicateRecordFields #-}
 module Main where
 
 import Text.HTML.TagSoup
-import System.FilePath
 import Data.Monoid
 import Data.Char (isSpace)
-import Data.List (stripPrefix, break)
+import Data.List (stripPrefix, break, isPrefixOf, isSuffixOf)
 import Data.Maybe (fromMaybe)
 import qualified Data.Map.Strict as Map
+import System.Console.CmdArgs
+import System.Directory
+import System.FilePath
+import System.IO
+import Control.Monad
+import PinMode
+import PinSpec
+import Family
 
-data PinMode = PinMode
-    { pinName   :: String
-    , signals   :: [AltFun]
-    }
-    deriving (Show)
+data Options = Options
+    { modeFile  :: Maybe FilePath
+    , files     :: [FilePath]
+    } deriving (Show, Eq, Data, Typeable)
 
-data AltFun = AltFun
-    { signalName    :: String
-    , altFunction   :: Int
-    , peripheral    :: String
-    }
-    deriving (Show)
-
-pinModeFromTags :: [Tag String] -> PinMode
-pinModeFromTags (t:ts) = PinMode{..}
-    where pinName = fromAttrib "Name" t
-          signals = map altFun
-                  $ partitions (~=="<PinSignal>")
-                  $ dropWhile (~/="<PinSignal>") ts
-
-altFun :: [Tag String] -> AltFun
-altFun (t:ts) = AltFun{..}
-    where signalName = fromAttrib "Name" t
-          (altFunction, peripheral) | Just r <- stripPrefix "GPIO_AF" s
-                                    , (u, '_':v) <- break (=='_') r = (read u, v)
-                                    | otherwise = error "failed to extract alternate function"
-                 where s = filter (not . isSpace) $ innerText ts
-
-pinModeMap :: String -> Map.Map String [AltFun]
-pinModeMap xml = Map.fromList [ (pinName, signals) | PinMode{..} <- xs ]
-    where xs = map pinModeFromTags
-             $ partitions (~=="<GPIO_Pin>")
-             $ dropWhile (~/="<GPIO_Pin>")
-             $ parseTags xml
-
-data Pin
-    = PowerPin
-    { pinName   :: String
-    , position  :: Int
-    }
-    | ResetPin
-    { pinName   :: String
-    , position  :: Int
-    }
-    | IOPin
-    { pinName   :: String
-    , position  :: Int
-    , signals   :: [Signal]
-    }
-    deriving (Show)
-
-data Signal
-    = AlternateFunction
-    { signalName        :: String
-    , alternateFunction :: Int
-    }
-    | AdditionalFunction
-    { signalName        :: String
-    }
-    deriving (Show)
-
-pinFromTags :: Map.Map String [AltFun] -> [Tag String] -> Pin
-pinFromTags pmm (t:ts) = case fromAttrib "Type" t of
-    "Power"   -> PowerPin{..}
-    "Reset"   -> ResetPin{..}
-    "I/O"     -> let altFuns = fromMaybe [] $ Map.lookup pinName pmm
-                     altMap = Map.fromList [ (signalName, altFunction) | AltFun{..} <- altFuns ]
-                     signals = map (f altMap) $ filter (~=="<Signal>") ts
-                  in IOPin{..}
-    where pinName = fromAttrib "Name" t
-          position = read $ fromAttrib "Position" t
-          f altMap t | (Just alternateFunction) <- Map.lookup signalName altMap = AlternateFunction{..}
-                     | otherwise = AdditionalFunction{..}
-                     where signalName = fromAttrib "Name" t
-
-pinSpecs :: Map.Map String [AltFun] -> String -> [Pin]
-pinSpecs pmm
-    = map (pinFromTags pmm)
-    . partitions (~=="<Pin>")
-    . dropWhile (~/="<Pin>")
-    . parseTags
+options :: Main.Options
+options = Main.Options
+    { modeFile = def &= help "pin-mode file for MCU (required)"
+    , files = def &= args &= typ "FILES"
+    } &=
+    verbosity &=
+    help "Generate pin descriptions from STM32CubeMX xml files" &=
+    summary "STM32Data v0.0.0, (c) Bengt Marten Agren 2020" &=
+    details [ "STM32Data generate device header files for STM32"
+            , "MCUs based on vendor XML files from SMT32CubeMX."
+            ]
 
 stm32CubeMX = "c:/Program Files (x86)/STMicroelectronics/STM32Cube/STM32CubeMX"
 dbDir = "db/mcu"
+familiesXML = "families.xml"
 modesXML = "IP/GPIO-STM32L43x_gpio_v1_0_Modes"
 mcuXML = "STM32L433R(B-C)Tx"
 
 main :: IO ()
 main = do
-    pmm <- pinModeMap <$> readFile (stm32CubeMX </> dbDir </> modesXML <.> "xml")
-    pins <- pinSpecs pmm <$> readFile (stm32CubeMX </> dbDir </> mcuXML <.> "xml")
-    mapM_ print pins
+    opts@Options{..} <- cmdArgs options
+    hSetNewlineMode stdout noNewlineTranslation
+    families <- parseFamilies <$> readFile (stm32CubeMX </> dbDir </> familiesXML)
+    forM_ families $ \(name, subFamilies) -> do
+        putStrLn $ replicate 80 '='
+        putStrLn name
+        putStrLn $ replicate 80 '='
+        forM_ subFamilies $ \(name, mcus) -> do
+            putStrLn $ replicate 80 '-'
+            putStrLn $ "    " <> name
+            putStrLn $ replicate 80 '-'
+            forM_ mcus $ \MCU{..} -> do
+                putStrLn $ "        " <> unwords [ name, package, refName, rpn, show flash <> "/" <> show ram ]
+ 
+
+
+    {-
+    let pred s = "STM32" `isPrefixOf` s && ".xml" `isSuffixOf` s
+    xs <- filter pred <$> listDirectory (stm32CubeMX </> dbDir)
+    forM_ xs $ \x -> do
+        putStrLn x
+    -}
+    {-
+    pmm <- pinModeMap <$> readFile (fromMaybe (error "--mode-file requied") modeFile)
+    forM_ files $ \file -> do
+        pins <- pinSpecs pmm <$> readFile file
+        mapM_ print pins
+        -}
 

@@ -24,6 +24,8 @@ dependencies:
 - tagsoup
 - filepath
 - containers
+- cmdargs
+- directory
 
 library:
   source-dirs: src
