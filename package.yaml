@@ -26,6 +26,7 @@ dependencies:
 - containers
 - cmdargs
 - directory
+- extra
 
 library:
   source-dirs: src
