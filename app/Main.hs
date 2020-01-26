@@ -16,14 +16,32 @@ import PinMode
 import PinSpec
 import Family
 
+mcuList :: [Family] -> IO ()
+mcuList families = 
+    forM_ families $ \(name, subFamilies) -> do
+        putStrLn $ replicate 80 '='
+        putStrLn name
+        forM_ subFamilies $ \(name, mcus) -> do
+            putStrLn $ replicate 80 '-'
+            putStrLn $ "    " <> name
+            putStrLn $ replicate 80 '-'
+            forM_ mcus $ \MCU{..} -> do
+                putStrLn $ "        " <> unwords [ name, package, refName, rpn, show flash <> "/" <> show ram ]
+
 data Options = Options
-    { modeFile  :: Maybe FilePath
-    , files     :: [FilePath]
+    { list_mcus     :: Bool
+    , family        :: [String]
+    , sub_family    :: [String]
+    , package       :: [String]
+    , files         :: [FilePath]
     } deriving (Show, Eq, Data, Typeable)
 
 options :: Main.Options
 options = Main.Options
-    { modeFile = def &= help "pin-mode file for MCU (required)"
+    { list_mcus = def &= help "list available MCUs by family"
+    , family = def &= help "filter on family"
+    , sub_family = def &= help "filter on sub-family"
+    , package = def &= help "filter on package"
     , files = def &= args &= typ "FILES"
     } &=
     verbosity &=
@@ -43,18 +61,9 @@ main :: IO ()
 main = do
     opts@Options{..} <- cmdArgs options
     hSetNewlineMode stdout noNewlineTranslation
-    families <- parseFamilies <$> readFile (stm32CubeMX </> dbDir </> familiesXML)
-    forM_ families $ \(name, subFamilies) -> do
-        putStrLn $ replicate 80 '='
-        putStrLn name
-        putStrLn $ replicate 80 '='
-        forM_ subFamilies $ \(name, mcus) -> do
-            putStrLn $ replicate 80 '-'
-            putStrLn $ "    " <> name
-            putStrLn $ replicate 80 '-'
-            forM_ mcus $ \MCU{..} -> do
-                putStrLn $ "        " <> unwords [ name, package, refName, rpn, show flash <> "/" <> show ram ]
- 
+    let fs = map Family family ++ map SubFamily sub_family ++ map Package package
+    families <- prune fs . parseFamilies <$> readFile (stm32CubeMX </> dbDir </> familiesXML)
+    when list_mcus $ mcuList families
 
 
     {-

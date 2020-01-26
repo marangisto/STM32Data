@@ -1,13 +1,13 @@
 {-# LANGUAGE RecordWildCards, TupleSections, DuplicateRecordFields #-}
-module Family (Family, SubFamily, MCU(..), parseFamilies) where
+module Family (Family, SubFamily, MCU(..), Filter(..), parseFamilies, prune) where
 
 import Text.HTML.TagSoup
 import Data.Monoid
 import Data.Char (isSpace)
 import Data.Maybe (mapMaybe)
 import qualified Data.Map.Strict as Map
+import Control.Arrow
 import PinMode
-
 
 type Family = (String, [SubFamily])
 
@@ -28,6 +28,11 @@ data MCU = MCU
     deriving (Show)
 
 type Peripheral = String
+
+data Filter
+    = Family String
+    | SubFamily String
+    | Package String
 
 elementText :: String -> [Tag String] -> String
 elementText s ts
@@ -68,4 +73,24 @@ parseFamilies
     . partitions (~=="<Family>")
     . dropWhile (~/="<Family>")
     . parseTags
+
+prune :: [Filter] -> [Family] -> [Family]
+prune fs
+    = filter (not . null . snd)
+    . map (second $ filter (not . null . snd))
+    . map (second $ map (second $ filter (mcuPred fs)))
+    . map (second $ filter (subFamilyPred fs))
+    . filter (familyPred fs)
+
+familyPred :: [Filter] -> Family -> Bool
+familyPred fs (name, _) = null xs || name `elem` xs
+    where xs = [ x | Family x <- fs ]
+
+subFamilyPred :: [Filter] -> SubFamily -> Bool
+subFamilyPred fs (name, _) = null xs || name `elem` xs
+    where xs = [ x | SubFamily x <- fs ]
+
+mcuPred :: [Filter] -> MCU -> Bool
+mcuPred fs MCU{..} = null xs || package `elem` xs
+    where xs = [ x | Package x <- fs ]
 
