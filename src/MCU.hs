@@ -1,5 +1,12 @@
 {-# LANGUAGE RecordWildCards, TupleSections, DuplicateRecordFields #-}
-module MCU (MCU(..), Pin(..), Signal(..), parseMCU, resolveFunctions) where
+module MCU
+    ( MCU(..)
+    , Pin(..)
+    , Signal(..)
+    , parseMCU
+    , resolveFunctions
+    , alternateFunctions
+    ) where
 
 import Text.HTML.TagSoup
 import Text.Read (readMaybe)
@@ -104,4 +111,11 @@ getConfig name ts
     | (t:_) <- filter p ts = fromAttrib "Version" t
     | otherwise = error $ "failed to get config for " <> name
     where p t = t ~=="<IP>" && fromAttrib "Name" t == name
+
+alternateFunctions :: [Pin] -> [(String, String, Int)]
+alternateFunctions pins =
+    [ (pinName, signalName, alternateFunction)
+    | IOPin{..} <- pins
+    , AlternateFunction{..} <- signals
+    ]
 
