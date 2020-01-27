@@ -6,14 +6,15 @@ module MCU
     , parseMCU
     , resolveFunctions
     , alternateFunctions
-    , cleanName
+    , cleanPin
+    , cleanSignal
     ) where
 
 import Text.HTML.TagSoup
 import Text.Read (readMaybe)
 import Data.Monoid
-import Data.List (sort, isInfixOf)
-import Data.Char (isSpace)
+import Data.List (sort, isInfixOf, break)
+import Data.Char (isSpace, isAlphaNum)
 import Data.Maybe (fromMaybe, mapMaybe)
 import qualified Data.Map.Strict as Map
 
@@ -72,7 +73,7 @@ data Signal
     deriving (Show)
 
 signalFromTag :: Tag String -> Maybe Signal
-signalFromTag t = Unresolved . cleanName <$> case fromAttrib "Name" t of
+signalFromTag t = Unresolved . cleanSignal <$> case fromAttrib "Name" t of
     "GPIO" -> if "EVENTOUT" `isInfixOf` fromAttrib "IOModes" t
                   then Just "EVENTOUT"
                   else Nothing
@@ -87,11 +88,14 @@ pinFromTags (t:ts) = case fromAttrib "Type" t of
     "MonoIO"  -> MonoIOPin{..}
     "NC"      -> NCPin{..}
     _         -> error $ "unexpected: " <> show t
-    where pinName = cleanName $ fromAttrib "Name" t
+    where pinName = cleanPin $ fromAttrib "Name" t
           position = readPosition $ fromAttrib "Position" t
 
-cleanName :: String -> String
-cleanName = map (\c -> if c == '-' then '_' else c)
+cleanPin :: String -> String
+cleanPin = fst . break (not . isAlphaNum)   -- FIXME: capture what we throw away in another field?
+
+cleanSignal :: String -> String
+cleanSignal = map (\c -> if c == '-' then '_' else c)
 
 readPosition :: String -> Position
 readPosition s = maybe (Left s) Right $ readMaybe s
