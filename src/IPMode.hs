@@ -6,6 +6,7 @@ import Data.Monoid
 import Data.Char (isSpace)
 import Data.List (stripPrefix, break)
 import qualified Data.Map.Strict as Map
+import MCU (cleanName)
 
 data IPMode = IPMode
     { pinName   :: String
@@ -22,14 +23,14 @@ data AltFun = AltFun
 
 pinModeFromTags :: [Tag String] -> IPMode
 pinModeFromTags (t:ts) = IPMode{..}
-    where pinName = fromAttrib "Name" t
+    where pinName = cleanName $ fromAttrib "Name" t
           signals = map altFun
                   $ partitions (~=="<PinSignal>")
                   $ dropWhile (~/="<PinSignal>") ts
 
 altFun :: [Tag String] -> AltFun
 altFun (t:ts) = AltFun{..}
-    where signalName = fromAttrib "Name" t
+    where signalName = cleanName $ fromAttrib "Name" t
           (altFunction, peripheral) | Just r <- stripPrefix "GPIO_AF" s
                                     , (u, '_':v) <- break (=='_') r = (read u, v)
                                     | otherwise = error $ "unexpected: '" <> s <> "'"
