@@ -12,9 +12,9 @@ module MCU
 import Text.HTML.TagSoup
 import Text.Read (readMaybe)
 import Data.Monoid
-import Data.List (sort)
+import Data.List (sort, isInfixOf)
 import Data.Char (isSpace)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import qualified Data.Map.Strict as Map
 
 data MCU = MCU
@@ -71,14 +71,19 @@ data Signal
     }
     deriving (Show)
 
+signalFromTag :: Tag String -> Maybe Signal
+signalFromTag t = Unresolved . cleanName <$> case fromAttrib "Name" t of
+    "GPIO" -> if "EVENTOUT" `isInfixOf` fromAttrib "IOModes" t
+                  then Just "EVENTOUT"
+                  else Nothing
+    name   -> Just name
+
 pinFromTags :: [Tag String] -> Pin
 pinFromTags (t:ts) = case fromAttrib "Type" t of
     "Power"   -> PowerPin{..}
     "Reset"   -> ResetPin{..}
     "Boot"    -> BootPin{..}
-    "I/O"     -> let signals = map (Unresolved . cleanName . fromAttrib "Name")
-                             $ filter (~=="<Signal>") ts
-                  in IOPin{..}
+    "I/O"     -> let signals = mapMaybe signalFromTag $ filter (~=="<Signal>") ts in IOPin{..}
     "MonoIO"  -> MonoIOPin{..}
     "NC"      -> NCPin{..}
     _         -> error $ "unexpected: " <> show t

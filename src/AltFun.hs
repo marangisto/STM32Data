@@ -54,7 +54,7 @@ preAmble uniqName F.MCU{..} =
 funDecl :: Int -> [String]
 funDecl n = concat
     [ [ "enum alt_fun_t" ]
-    , [ s <> "AF" <> show i | (s, i) <- zip ("    { " : repeat "    , ") [0..n-1] ]
+    , [ s <> "AF" <> show i | (s, i) <- zip ("    { " : repeat "    , ") [0..n] ]
     , [ "    };" ]
     ]
 
@@ -84,3 +84,4 @@ traitSpec (p, s, i) = mconcat
     , show i
     , "; };"
     ]
+
