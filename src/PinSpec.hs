@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards, TupleSections, DuplicateRecordFields #-}
-module PinSpec (Pin(..), Signal(..), pinSpecs) where
+module PinSpec (MCU(..), Pin(..), Signal(..), parseMCU, resolveFunctions) where
 
 import Text.HTML.TagSoup
 import Text.Read (readMaybe)
@@ -8,6 +8,17 @@ import Data.Char (isSpace)
 import Data.Maybe (fromMaybe)
 import qualified Data.Map.Strict as Map
 import PinMode
+
+data MCU = MCU
+    { refName       :: String
+    , clockTree     :: String
+    , family        :: String
+    , line          :: String
+    , package       :: String
+    , powerPad      :: Bool
+    , gpioConfig    :: String
+    , pins          :: [Pin]
+    } deriving (Show)
 
 type Position = Either String Int
 
@@ -40,7 +51,10 @@ data Pin
     deriving (Show)
 
 data Signal
-    = AlternateFunction
+    = Unresolved
+    { signalName        :: String
+    }
+    | AlternateFunction
     { signalName        :: String
     , alternateFunction :: Int
     }
@@ -49,31 +63,45 @@ data Signal
     }
     deriving (Show)
 
-pinFromTags :: Map.Map String [AltFun] -> [Tag String] -> Pin
-pinFromTags pmm (t:ts) = case fromAttrib "Type" t of
+pinFromTags :: [Tag String] -> Pin
+pinFromTags (t:ts) = case fromAttrib "Type" t of
     "Power"   -> PowerPin{..}
     "Reset"   -> ResetPin{..}
     "Boot"    -> BootPin{..}
-    "I/O"     -> let altFuns = fromMaybe [] $ Map.lookup pinName pmm
-                     altMap = Map.fromList [ (signalName, altFunction) | AltFun{..} <- altFuns ]
-                     signals = map (f altMap) $ filter (~=="<Signal>") ts
+    "I/O"     -> let signals = map (Unresolved . fromAttrib "Name")
+                             $ filter (~=="<Signal>") ts
                   in IOPin{..}
     "MonoIO"  -> MonoIOPin{..}
     "NC"      -> NCPin{..}
     _         -> error $ "unexpected: " <> show t
     where pinName = fromAttrib "Name" t
           position = readPosition $ fromAttrib "Position" t
-          f altMap t | (Just alternateFunction) <- Map.lookup signalName altMap = AlternateFunction{..}
-                     | otherwise = AdditionalFunction{..}
-                     where signalName = fromAttrib "Name" t
 
 readPosition :: String -> Position
 readPosition s = maybe (Left s) Right $ readMaybe s
 
-pinSpecs :: Map.Map String [AltFun] -> String -> [Pin]
-pinSpecs pmm
-    = map (pinFromTags pmm)
-    . partitions (~=="<Pin>")
-    . dropWhile (~/="<Pin>")
-    . parseTags
+resolveFunctions :: Map.Map (String, String) Int -> Pin -> Pin
+resolveFunctions af p@IOPin{..} = p { signals = map f signals }
+    where f Unresolved{..}
+              | (Just alternateFunction) <- Map.lookup (pinName, signalName) af = AlternateFunction{..}
+              | otherwise = AdditionalFunction{..}
+resolveFunctions _ p = p
+
+parseMCU :: String -> MCU
+parseMCU xml = MCU{..}
+    where refName = fromAttrib "RefName" t
+          clockTree = fromAttrib "ClockTree" t
+          family = fromAttrib "Family" t
+          line = fromAttrib "Line" t
+          package = fromAttrib "Package" t
+          powerPad = fromAttrib "HasPowerPad" t == "true"
+          gpioConfig = getConfig "GPIO" ts
+          pins = map pinFromTags . partitions (~=="<Pin>") $ dropWhile (~/="<Pin>") ts
+          (t:ts) = dropWhile (~/="<Mcu>") $ parseTags xml
+
+getConfig :: String -> [Tag String] -> String
+getConfig name ts
+    | (t:_) <- filter p ts = fromAttrib "Version" t
+    | otherwise = error $ "failed to get config for " <> name
+    where p t = t ~=="<IP>" && fromAttrib "Name" t == name
 

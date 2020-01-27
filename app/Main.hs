@@ -15,7 +15,7 @@ import Control.Monad
 import Control.Monad.Extra
 import PinMode
 import PinSpec
-import Family
+import Family as F
 import AltFun as AltFun
 
 mcuList :: [Family] -> IO ()
@@ -27,7 +27,7 @@ mcuList families =
             putStrLn $ replicate 80 '-'
             putStrLn $ "    " <> name
             putStrLn $ replicate 80 '-'
-            forM_ mcus $ \MCU{..} -> do
+            forM_ mcus $ \F.MCU{..} -> do
                 putStrLn $ "        " <> unwords [ name, package, refName, rpn, show flash <> "/" <> show ram ]
 
 data Options = Options
@@ -67,9 +67,13 @@ main = do
     hSetNewlineMode stdout noNewlineTranslation
     let dbDir = stm32CubeMX </> stm32DbDir
         fs = map Family family ++ map SubFamily sub_family ++ map Package package
+    --mcu <- parseMCU <$> readFile (dbDir </> mcuXML <.> "xml")
+    --print mcu
+
     families <- prune fs . parseFamilies <$> readFile (dbDir </> familiesXML)
     when list_mcus $ mcuList families
     whenJust alt_fun $ \outputDir -> mapM_ (AltFun.pretty dbDir outputDir) $ concatMap snd $ concatMap snd families
+
 
 {-
     let pred s = "STM32" `isPrefixOf` s && ".xml" `isSuffixOf` s

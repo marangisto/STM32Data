@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards, TupleSections, DuplicateRecordFields #-}
-module PinMode (AltFun(..), pinModeMap) where
+module PinMode (AltFun(..), altFunMap) where
 
 import Text.HTML.TagSoup
 import Data.Monoid
@@ -32,11 +32,15 @@ altFun (t:ts) = AltFun{..}
     where signalName = fromAttrib "Name" t
           (altFunction, peripheral) | Just r <- stripPrefix "GPIO_AF" s
                                     , (u, '_':v) <- break (=='_') r = (read u, v)
-                                    | otherwise = error "failed to extract alternate function"
+                                    | otherwise = error $ "unexpected: '" <> s <> "'"
                  where s = filter (not . isSpace) $ innerText ts
 
-pinModeMap :: String -> Map.Map String [AltFun]
-pinModeMap xml = Map.fromList [ (pinName, signals) | PinMode{..} <- xs ]
+altFunMap :: String -> Map.Map (String, String) Int
+altFunMap xml = Map.fromList
+    [ ((pinName, signalName), altFunction)
+    | PinMode{..} <- xs
+    , AltFun{..} <- signals
+    ]
     where xs = map pinModeFromTags
              $ partitions (~=="<GPIO_Pin>")
              $ dropWhile (~/="<GPIO_Pin>")
