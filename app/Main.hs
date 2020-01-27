@@ -18,18 +18,6 @@ import MCU
 import Family as F
 import AltFun as AltFun
 
-mcuList :: [Family] -> IO ()
-mcuList families = 
-    forM_ families $ \(name, subFamilies) -> do
-        putStrLn $ replicate 80 '='
-        putStrLn name
-        forM_ subFamilies $ \(name, mcus) -> do
-            putStrLn $ replicate 80 '-'
-            putStrLn $ "    " <> name
-            putStrLn $ replicate 80 '-'
-            forM_ mcus $ \F.MCU{..} -> do
-                putStrLn $ "        " <> unwords [ name, package, refName, rpn, show flash <> "/" <> show ram ]
-
 data Options = Options
     { list_mcus     :: Bool
     , alt_fun       :: Maybe FilePath
@@ -58,8 +46,6 @@ options = Main.Options
 stm32CubeMX = "c:/Program Files (x86)/STMicroelectronics/STM32Cube/STM32CubeMX"
 stm32DbDir = "db/mcu"
 familiesXML = "families.xml"
-modesXML = "IP/GPIO-STM32L43x_gpio_v1_0_Modes"
-mcuXML = "STM32L433R(B-C)Tx"
 
 main :: IO ()
 main = do
@@ -67,24 +53,7 @@ main = do
     hSetNewlineMode stdout noNewlineTranslation
     let dbDir = stm32CubeMX </> stm32DbDir
         fs = map Family family ++ map SubFamily sub_family ++ map Package package
-    --mcu <- parseMCU <$> readFile (dbDir </> mcuXML <.> "xml")
-    --print mcu
-
     families <- prune fs . parseFamilies <$> readFile (dbDir </> familiesXML)
     when list_mcus $ mcuList families
     whenJust alt_fun $ \outputDir -> mapM_ (AltFun.pretty dbDir outputDir) $ concatMap snd $ concatMap snd families
-
-
-{-
-    let pred s = "STM32" `isPrefixOf` s && ".xml" `isSuffixOf` s
-    xs <- map takeBaseName . filter pred <$> listDirectory (stm32CubeMX </> dbDir)
-    forM_ xs $ \x -> do
-        putStrLn x
--}
-    {-
-    pmm <- pinModeMap <$> readFile (fromMaybe (error "--mode-file requied") modeFile)
-    forM_ files $ \file -> do
-        pins <- pinSpecs pmm <$> readFile file
-        mapM_ print pins
-        -}
 

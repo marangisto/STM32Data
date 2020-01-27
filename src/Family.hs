@@ -1,11 +1,12 @@
 {-# LANGUAGE RecordWildCards, TupleSections, DuplicateRecordFields #-}
-module Family (Family, SubFamily, MCU(..), Filter(..), parseFamilies, prune) where
+module Family (Family, SubFamily, MCU(..), Filter(..), parseFamilies, prune, mcuList) where
 
 import Text.HTML.TagSoup
 import Data.Monoid
 import Data.Char (isSpace)
 import Data.Maybe (mapMaybe)
 import qualified Data.Map.Strict as Map
+import Control.Monad
 import Control.Arrow
 import IPMode
 
@@ -93,4 +94,16 @@ subFamilyPred fs (name, _) = null xs || name `elem` xs
 mcuPred :: [Filter] -> MCU -> Bool
 mcuPred fs MCU{..} = null xs || package `elem` xs
     where xs = [ x | Package x <- fs ]
+
+mcuList :: [Family] -> IO ()
+mcuList families = 
+    forM_ families $ \(name, subFamilies) -> do
+        putStrLn $ replicate 80 '='
+        putStrLn name
+        forM_ subFamilies $ \(name, mcus) -> do
+            putStrLn $ replicate 80 '-'
+            putStrLn $ "    " <> name
+            putStrLn $ replicate 80 '-'
+            forM_ mcus $ \MCU{..} -> do
+                putStrLn $ "        " <> unwords [ name, package, refName, rpn, show flash <> "/" <> show ram ]
 
