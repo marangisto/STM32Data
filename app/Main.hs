@@ -13,8 +13,8 @@ import System.FilePath
 import System.IO
 import Control.Monad
 import Control.Monad.Extra
-import PinMode
-import PinSpec
+import IPMode
+import MCU
 import Family as F
 import AltFun as AltFun
 

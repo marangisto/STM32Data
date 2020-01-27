@@ -7,7 +7,7 @@ import Data.Char (isSpace)
 import Data.Maybe (mapMaybe)
 import qualified Data.Map.Strict as Map
 import Control.Arrow
-import PinMode
+import IPMode
 
 type Family = (String, [SubFamily])
 

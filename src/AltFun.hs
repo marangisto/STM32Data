@@ -3,8 +3,8 @@ module AltFun (pretty) where
 
 import System.FilePath
 import Family as F
-import PinMode
-import PinSpec as M
+import IPMode
+import MCU as M
 
 pretty :: FilePath -> FilePath -> F.MCU -> IO ()
 pretty dbDir outputDir mcu = do

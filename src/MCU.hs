@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards, TupleSections, DuplicateRecordFields #-}
-module PinSpec (MCU(..), Pin(..), Signal(..), parseMCU, resolveFunctions) where
+module MCU (MCU(..), Pin(..), Signal(..), parseMCU, resolveFunctions) where
 
 import Text.HTML.TagSoup
 import Text.Read (readMaybe)
@@ -7,7 +7,7 @@ import Data.Monoid
 import Data.Char (isSpace)
 import Data.Maybe (fromMaybe)
 import qualified Data.Map.Strict as Map
-import PinMode
+import IPMode
 
 data MCU = MCU
     { refName       :: String

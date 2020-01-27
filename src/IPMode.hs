@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards, TupleSections, DuplicateRecordFields #-}
-module PinMode (AltFun(..), altFunMap) where
+module IPMode (AltFun(..), altFunMap) where
 
 import Text.HTML.TagSoup
 import Data.Monoid
@@ -7,7 +7,7 @@ import Data.Char (isSpace)
 import Data.List (stripPrefix, break)
 import qualified Data.Map.Strict as Map
 
-data PinMode = PinMode
+data IPMode = IPMode
     { pinName   :: String
     , signals   :: [AltFun]
     }
@@ -20,8 +20,8 @@ data AltFun = AltFun
     }
     deriving (Show)
 
-pinModeFromTags :: [Tag String] -> PinMode
-pinModeFromTags (t:ts) = PinMode{..}
+pinModeFromTags :: [Tag String] -> IPMode
+pinModeFromTags (t:ts) = IPMode{..}
     where pinName = fromAttrib "Name" t
           signals = map altFun
                   $ partitions (~=="<PinSignal>")
@@ -38,7 +38,7 @@ altFun (t:ts) = AltFun{..}
 altFunMap :: String -> Map.Map (String, String) Int
 altFunMap xml = Map.fromList
     [ ((pinName, signalName), altFunction)
-    | PinMode{..} <- xs
+    | IPMode{..} <- xs
     , AltFun{..} <- signals
     ]
     where xs = map pinModeFromTags
