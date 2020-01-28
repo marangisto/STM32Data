@@ -5,6 +5,7 @@ import Text.HTML.TagSoup
 import Data.Monoid
 import Data.Char (isSpace)
 import Data.List (stripPrefix, break)
+import Data.Maybe (mapMaybe)
 import qualified Data.Map.Strict as Map
 import MCU (cleanPin, cleanSignal)
 
@@ -24,17 +25,24 @@ data AltFun = AltFun
 pinModeFromTags :: [Tag String] -> IPMode
 pinModeFromTags (t:ts) = IPMode{..}
     where pinName = cleanPin $ fromAttrib "Name" t
-          signals = map altFun
+          signals = mapMaybe altFun
                   $ partitions (~=="<PinSignal>")
                   $ dropWhile (~/="<PinSignal>") ts
 
-altFun :: [Tag String] -> AltFun
-altFun (t:ts) = AltFun{..}
+altFun :: [Tag String] -> Maybe AltFun
+altFun (t:ts)
+    | Just r <- stripPrefix "GPIO_AF" s
+    , (u, '_':peripheral) <- break (=='_') r
+    = let altFunction = read u
+       in Just AltFun{..}
+    | (u:_) <- filter (~=="<RemapBlock>") ts
+    , fromAttrib "DefaultRemap" u == "true"
+    = let altFunction = 0
+          peripheral = fromAttrib "Name" u  -- FIXME: do we even care about snd?
+       in Just AltFun{..}
+    | otherwise = Nothing                   -- FIXME: remapping not yet supported
     where signalName = cleanSignal $ fromAttrib "Name" t
-          (altFunction, peripheral) | Just r <- stripPrefix "GPIO_AF" s
-                                    , (u, '_':v) <- break (=='_') r = (read u, v)
-                                    | otherwise = error $ "unexpected: '" <> s <> "'"
-                 where s = filter (not . isSpace) $ innerText ts
+          s = filter (not . isSpace) $ innerText ts
 
 altFunMap :: String -> Map.Map (String, String) Int
 altFunMap xml = Map.fromList
