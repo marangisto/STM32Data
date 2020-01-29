@@ -1,10 +1,20 @@
 {-# LANGUAGE RecordWildCards, TupleSections, DuplicateRecordFields #-}
-module Family (Family, SubFamily, MCU(..), Filter(..), parseFamilies, prune, mcuList) where
+module Family
+    ( Family
+    , SubFamily
+    , MCU(..)
+    , Filter(..)
+    , parseFamilies
+    , prune
+    , mcuList
+    , buildRules
+    ) where
 
 import Text.HTML.TagSoup
 import Data.Monoid
-import Data.Char (isSpace)
+import Data.Char (isSpace, toLower)
 import Data.Maybe (mapMaybe)
+import Data.List (stripPrefix, break, nub, sort)
 import qualified Data.Map.Strict as Map
 import Control.Monad
 import Control.Arrow
@@ -106,4 +116,39 @@ mcuList families =
             putStrLn $ replicate 80 '-'
             forM_ mcus $ \MCU{..} -> do
                 putStrLn $ "        " <> unwords [ name, package, refName, rpn, show flash <> "/" <> show ram ]
+
+buildRules :: [Family] -> [String]
+buildRules families =
+    [ "module STM32MCUs (MCU(..), mcuList) where"
+    , ""
+    , "data MCU = MCU"
+    , "    { name   :: String"
+    , "    , family :: Family"
+    , "    , core   :: String"
+    , "    , flash  :: Int"
+    , "    , ram    :: Int"
+    , "    } deriving (Eq, Ord, Show)"
+    , ""
+    , "mcuList :: [MCU]"
+    , "mcuList ="
+    ] ++
+    zipWith (\x s -> "    " <> s <> " " <> x) xs ("[" : repeat ",") ++
+    [ "    ]"
+    , ""
+    ]
+    where xs = nub $ sort
+               [ unwords
+                    [ "MCU"
+                    , show refName
+                    , show family
+                    , show $ cleanCore core
+                    , show flash
+                    , show ram
+                    ]
+               | (family, subFamilies) <- families
+               , (subFamily, mcus) <- subFamilies
+               , MCU{..} <- mcus
+               ]
+          cleanCore s | Just r <- stripPrefix "arm " $ map toLower s = r
+                      | otherwise = error $ "unexpeced core format: " <> s
 

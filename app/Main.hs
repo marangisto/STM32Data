@@ -21,6 +21,7 @@ import AltFun as AltFun
 data Options = Options
     { list_mcus     :: Bool
     , alt_fun       :: Maybe FilePath
+    , build_rules   :: Bool
     , family        :: [String]
     , sub_family    :: [String]
     , package       :: [String]
@@ -31,6 +32,7 @@ options :: Main.Options
 options = Main.Options
     { list_mcus = def &= help "list available MCUs by family"
     , alt_fun = def &= help "generate alternate function header(s)"
+    , build_rules = def &= help "generate source for build rules"
     , family = def &= help "filter on family"
     , sub_family = def &= help "filter on sub-family"
     , package = def &= help "filter on package"
@@ -56,4 +58,5 @@ main = do
     families <- prune fs . parseFamilies <$> readFile (dbDir </> familiesXML)
     when list_mcus $ mcuList families
     whenJust alt_fun $ \outputDir -> mapM_ (AltFun.pretty dbDir outputDir) $ concatMap snd $ concatMap snd families
+    when build_rules $ mapM_ putStrLn $ buildRules families
 
