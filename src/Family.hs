@@ -2,11 +2,12 @@
 module Family
     ( Family
     , SubFamily
-    , MCU(..)
+    , Controller(..)
     , Filter(..)
     , parseFamilies
     , prune
     , mcuList
+    , preAmble
     , buildRules
     ) where
 
@@ -22,9 +23,9 @@ import IPMode
 
 type Family = (String, [SubFamily])
 
-type SubFamily = (String, [MCU])
+type SubFamily = (String, [Controller])
 
-data MCU = MCU
+data Controller = Controller
     { name          :: String
     , package       :: String
     , refName       :: String
@@ -53,10 +54,10 @@ elementText s ts
 peripheralFromTag :: Tag String -> (String, Int)
 peripheralFromTag t = (fromAttrib "Type" t, read $ fromAttrib "MaxOccurs" t)
 
-mcuFromTags :: [Tag String] -> Maybe MCU
+mcuFromTags :: [Tag String] -> Maybe Controller
 mcuFromTags (t:ts)
     | fromAttrib "Visible" t == "false" = Nothing
-    | otherwise = Just MCU{..}
+    | otherwise = Just Controller{..}
     where name = fromAttrib "Name" t
           package = fromAttrib "PackageName" t
           refName = fromAttrib "RefName" t
@@ -101,8 +102,8 @@ subFamilyPred :: [Filter] -> SubFamily -> Bool
 subFamilyPred fs (name, _) = null xs || name `elem` xs
     where xs = [ x | SubFamily x <- fs ]
 
-mcuPred :: [Filter] -> MCU -> Bool
-mcuPred fs MCU{..} = null xs || package `elem` xs
+mcuPred :: [Filter] -> Controller -> Bool
+mcuPred fs Controller{..} = null xs || package `elem` xs
     where xs = [ x | Package x <- fs ]
 
 mcuList :: [Family] -> IO ()
@@ -114,8 +115,31 @@ mcuList families =
             putStrLn $ replicate 80 '-'
             putStrLn $ "    " <> name
             putStrLn $ replicate 80 '-'
-            forM_ mcus $ \MCU{..} -> do
+            forM_ mcus $ \Controller{..} -> do
                 putStrLn $ "        " <> unwords [ name, package, refName, rpn, show flash <> "/" <> show ram ]
+
+preAmble :: Controller -> [String]
+preAmble Controller{..} =
+    [ "#pragma once"
+    , ""
+    , "###"
+    , "#"
+    , "#        " <> refName
+    , "#"
+    ] ++ map fmt
+    [ ("core", core)
+    , ("package", package)
+    , ("frequency", show frequency)
+    , ("flash", show flash <> "kB")
+    , ("ram", show ram <> "kB")
+    , ("IO count", show numIO)
+    ] ++ map (fmt . second show) peripherals ++
+    [ "#"
+    , "###"
+    , ""
+    ]
+    where fmt :: (String, String) -> String
+          fmt (l, s) = "#        "<> l <> replicate (12 - length l) ' ' <> ": " <> s
 
 buildRules :: [Family] -> [String]
 buildRules families =
@@ -147,7 +171,7 @@ buildRules families =
                     ]
                | (family, subFamilies) <- families
                , (subFamily, mcus) <- subFamilies
-               , MCU{..} <- mcus
+               , Controller{..} <- mcus
                ]
           cleanCore s | Just r <- stripPrefix "arm " $ map toLower s = r
                       | otherwise = error $ "unexpeced core format: " <> s

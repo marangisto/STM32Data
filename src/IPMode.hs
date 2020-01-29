@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards, TupleSections, DuplicateRecordFields #-}
-module IPMode (AltFun(..), altFunMap) where
+module IPMode (AltFun(..), loadMCU) where
 
 import Text.HTML.TagSoup
 import Data.Monoid
@@ -7,7 +7,8 @@ import Data.Char (isSpace)
 import Data.List (stripPrefix, break)
 import Data.Maybe (mapMaybe)
 import qualified Data.Map.Strict as Map
-import MCU (cleanPin, cleanSignal)
+import System.FilePath
+import MCU
 
 data IPMode = IPMode
     { pinName   :: String
@@ -54,4 +55,10 @@ altFunMap xml = Map.fromList
              $ partitions (~=="<GPIO_Pin>")
              $ dropWhile (~/="<GPIO_Pin>")
              $ parseTags xml
+
+loadMCU :: FilePath -> String -> IO MCU
+loadMCU dbDir name = do
+    mcu@MCU{..} <- parseMCU <$> readFile (dbDir </> name <.> "xml")
+    afmap <- altFunMap <$> readFile (dbDir </> "IP" </> "GPIO-" <> gpioConfig <> "_Modes" <.> "xml")
+    return $ mcu { pins = map (resolveFunctions afmap) pins }
 

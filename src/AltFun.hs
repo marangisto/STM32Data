@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
-module AltFun (pretty) where
+module AltFun (altFunDecl) where
 
 import System.IO
 import System.FilePath
@@ -9,16 +9,14 @@ import Data.List (nub, sort)
 import Data.Char (toLower)
 import Family as F
 import IPMode
-import MCU as M
+import MCU
 
-pretty :: FilePath -> FilePath -> F.MCU -> IO ()
-pretty dbDir outputDir fmcu = do
-    let uniqName = init $ F.refName fmcu
-    mcu@M.MCU{..} <- parseMCU <$> readFile (dbDir </> name fmcu <.> "xml")
-    afmap <- altFunMap <$> readFile (dbDir </> "IP" </> "GPIO-" <> gpioConfig <> "_Modes" <.> "xml")
-    mcu@M.MCU{..} <- return $ mcu { pins = map (resolveFunctions afmap) pins }
-    let afs = alternateFunctions pins
-        dir = outputDir </> map toLower family
+
+genAltFun :: FilePath -> FilePath -> Controller -> IO ()
+genAltFun dbDir outputDir controller = do
+    let uniqName = init $ F.refName controller
+    mcu <- loadMCU dbDir $ name controller
+    let dir = outputDir </> map toLower (family mcu)
         outputFile = dir </> map toLower uniqName <.> "h"
     putStrLn $ uniqName <> " -> " <> outputFile
     hFlush stdout
@@ -26,39 +24,23 @@ pretty dbDir outputDir fmcu = do
     withFile outputFile WriteMode $ \h -> do
         hSetNewlineMode h noNewlineTranslation
         hPutStr h $ unlines $ concat
-            [ preAmble uniqName fmcu
-            , funDecl $ maximum $ map (\(_, _, i) -> i) afs
-            , [ "" ]
-            , enumDecl . nub . sort $ map (\(_, s, _) -> s) afs
-            , [ "" ]
-            , traitDecl
-            , [ "" ]
-            , map traitSpec afs
-            , [ "" ]
+            [ preAmble controller
+            , altFunDecl mcu
             ]
 
-preAmble :: String -> F.MCU -> [String]
-preAmble uniqName F.MCU{..} =
-    [ "#pragma once"
-    , ""
-    , "###"
-    , "#"
-    , "#        " <> uniqName
-    , "#"
-    ] ++ map fmt
-    [ ("core", core)
-    , ("package", package)
-    , ("frequency", show frequency)
-    , ("flash", show flash <> "kB")
-    , ("ram", show ram <> "kB")
-    , ("IO count", show numIO)
-    ] ++ map (fmt . second show) peripherals ++
-    [ "#"
-    , "###"
-    , ""
+
+altFunDecl :: MCU -> [String]
+altFunDecl MCU{..} = concat
+    [ funDecl $ maximum $ map (\(_, _, i) -> i) afs
+    , [ "" ]
+    , enumDecl . nub . sort $ map (\(_, s, _) -> s) afs
+    , [ "" ]
+    , traitDecl
+    , [ "" ]
+    , map traitSpec afs
+    , [ "" ]
     ]
-    where fmt :: (String, String) -> String
-          fmt (l, s) = "#        "<> l <> replicate (12 - length l) ' ' <> ": " <> s
+    where afs = alternateFunctions pins
 
 funDecl :: Int -> [String]
 funDecl n = concat

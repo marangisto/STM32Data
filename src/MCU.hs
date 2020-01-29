@@ -27,7 +27,7 @@ data MCU = MCU
     , powerPad      :: Bool
     , gpioConfig    :: String
     , pins          :: [Pin]
-    } deriving (Show)
+    } deriving (Eq, Ord, Show)
 
 type Position = Either String Int
 
@@ -57,7 +57,7 @@ data Pin
     { pinName   :: String
     , position  :: Position
     }
-    deriving (Show)
+    deriving (Eq, Ord, Show)
 
 data Signal
     = Unresolved
@@ -70,7 +70,7 @@ data Signal
     | AdditionalFunction
     { signalName        :: String
     }
-    deriving (Show)
+    deriving (Eq, Ord, Show)
 
 signalFromTag :: Tag String -> Maybe Signal
 signalFromTag t = Unresolved . cleanSignal <$> case fromAttrib "Name" t of
