@@ -19,56 +19,56 @@ import Data.Maybe (fromMaybe, mapMaybe)
 import qualified Data.Map.Strict as Map
 
 data MCU = MCU
-    { refName       :: String
-    , clockTree     :: String
-    , family        :: String
-    , line          :: String
-    , package       :: String
-    , powerPad      :: Bool
-    , gpioConfig    :: String
-    , pins          :: [Pin]
+    { refName       :: !String
+    , clockTree     :: !String
+    , family        :: !String
+    , line          :: !String
+    , package       :: !String
+    , powerPad      :: !Bool
+    , gpioConfig    :: !String
+    , pins          :: ![Pin]
     } deriving (Eq, Ord, Show)
 
 type Position = Either String Int
 
 data Pin
     = PowerPin
-    { pinName   :: String
-    , position  :: Position
+    { pinName   :: !String
+    , position  :: !Position
     }
     | ResetPin
-    { pinName   :: String
-    , position  :: Position
+    { pinName   :: !String
+    , position  :: !Position
     }
     | BootPin
-    { pinName   :: String
-    , position  :: Position
+    { pinName   :: !String
+    , position  :: !Position
     }
     | IOPin
-    { pinName   :: String
-    , position  :: Position
-    , signals   :: [Signal]
+    { pinName   :: !String
+    , position  :: !Position
+    , signals   :: ![Signal]
     }
     | MonoIOPin
-    { pinName   :: String
-    , position  :: Position
+    { pinName   :: !String
+    , position  :: !Position
     }
     | NCPin
-    { pinName   :: String
-    , position  :: Position
+    { pinName   :: !String
+    , position  :: !Position
     }
     deriving (Eq, Ord, Show)
 
 data Signal
     = Unresolved
-    { signalName        :: String
+    { signalName        :: !String
     }
     | AlternateFunction
-    { signalName        :: String
-    , alternateFunction :: Int
+    { signalName        :: !String
+    , alternateFunction :: !Int
     }
     | AdditionalFunction
-    { signalName        :: String
+    { signalName        :: !String
     }
     deriving (Eq, Ord, Show)
 

@@ -6,15 +6,17 @@ module Family
     , Filter(..)
     , parseFamilies
     , prune
+    , flatten
     , mcuList
     , preAmble
     , buildRules
     ) where
 
 import Text.HTML.TagSoup
+import Text.Read (readMaybe)
 import Data.Monoid
 import Data.Char (isSpace, toLower)
-import Data.Maybe (mapMaybe)
+import Data.Maybe (mapMaybe, fromMaybe)
 import Data.List (stripPrefix, break, nub, sort)
 import qualified Data.Map.Strict as Map
 import Control.Monad
@@ -26,16 +28,16 @@ type Family = (String, [SubFamily])
 type SubFamily = (String, [Controller])
 
 data Controller = Controller
-    { name          :: String
-    , package       :: String
-    , refName       :: String
-    , rpn           :: String
-    , core          :: String
-    , frequency     :: Int
-    , flash         :: Int
-    , ram           :: Int
-    , numIO         :: Int
-    , peripherals   :: [(Peripheral, Int)]
+    { name          :: !String
+    , package       :: !String
+    , refName       :: !String
+    , rpn           :: !String
+    , core          :: !String
+    , frequency     :: !Int
+    , flash         :: !Int
+    , ram           :: !Int
+    , numIO         :: !Int
+    , peripherals   :: ![(Peripheral, Int)]
     }
     deriving (Show)
 
@@ -63,7 +65,7 @@ mcuFromTags (t:ts)
           refName = fromAttrib "RefName" t
           rpn = fromAttrib "RPN" t  -- this seems to be the 'real' name
           core = elementText "<Core>" ts
-          frequency = read $ elementText "<Frequency>" ts
+          frequency = fromMaybe 0 $ readMaybe $ elementText "<Frequency>" ts
           flash = read $ elementText "<Flash>" ts
           ram = read $ elementText "<Ram>" ts
           numIO = read $ elementText "<IONb>" ts
@@ -105,6 +107,14 @@ subFamilyPred fs (name, _) = null xs || name `elem` xs
 mcuPred :: [Filter] -> Controller -> Bool
 mcuPred fs Controller{..} = null xs || package `elem` xs
     where xs = [ x | Package x <- fs ]
+
+flatten :: [Family] -> [(String, String, Controller)]
+flatten families = 
+    [ (family, subFamily, controller)
+    | (family, subFamilies) <- families
+    , (subFamily, controllers) <- subFamilies
+    , controller <- controllers
+    ]
 
 mcuList :: [Family] -> IO ()
 mcuList families = 

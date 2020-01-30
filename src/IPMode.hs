@@ -11,15 +11,15 @@ import System.FilePath
 import MCU
 
 data IPMode = IPMode
-    { pinName   :: String
-    , signals   :: [AltFun]
+    { pinName   :: !String
+    , signals   :: ![AltFun]
     }
     deriving (Show)
 
 data AltFun = AltFun
-    { signalName    :: String
-    , altFunction   :: Int
-    , peripheral    :: String
+    { signalName    :: !String
+    , altFunction   :: !Int
+    , peripheral    :: !String
     }
     deriving (Show)
 
