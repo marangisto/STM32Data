@@ -9,6 +9,8 @@ import Data.Maybe (fromMaybe)
 import qualified Data.ByteString.Char8 as B
 import qualified Data.Map.Strict as Map
 import qualified Data.HashMap.Strict as H
+import qualified Data.Text as T
+import qualified Data.Text.IO as T
 import System.Console.CmdArgs hiding (name)
 import System.Directory
 import System.FilePath
@@ -19,6 +21,8 @@ import Family as F
 import IPMode
 import AltFun
 import MCU as M
+
+type Text = T.Text
 
 data Options = Options
     { list_mcus     :: Bool
@@ -58,50 +62,50 @@ main = do
     opts@Options{..} <- cmdArgs options
     hSetNewlineMode stdout noNewlineTranslation
     let dbDir = stm32CubeMX </> stm32DbDir
-        fs = map Family family ++ map SubFamily sub_family ++ map Package package
-    families <- prune fs . parseFamilies <$> readFile (dbDir </> familiesXML)
+        fs = map (Family . T.pack) family ++ map (SubFamily . T.pack) sub_family ++ map (Package . T.pack) package
+    families <- prune fs . parseFamilies <$> T.readFile (dbDir </> familiesXML)
     when list_mcus $ mcuList families
     whenJust alt_fun $ \outputDir -> mapM_ (genAltFun dbDir outputDir) $ flatten families
-    when build_rules $ mapM_ putStrLn $ buildRules families
+    when build_rules $ mapM_ (putStrLn . T.unpack) $ buildRules families
     when normalize $ forM_ families $ \(family, subFamilies) -> do
         let outputDir = "c:/tmp/afnorm"
         xs <- forM [ c | (_, controllers) <- subFamilies, c <- controllers ] $ \controller -> do
             mcu@MCU{..} <- loadMCU dbDir $ name controller
-            putStrLn $ refName
+            putStrLn $ T.unpack refName
             hFlush stdout
-            let hdr = B.pack $ unlines $ altFunDecl mcu
+            let hdr = T.unlines $ altFunDecl mcu
             return $! seq hdr (hdr, [controller])
         print $ length xs
         let h = H.fromListWith (++) xs
         print $ length $ H.keys h
         forM_ (H.toList h) $ \(hdr, cs@(controller:_)) -> do
-            let uniqName = init $ F.refName controller
+            let uniqName = init $ T.unpack $ F.refName controller
             mcu <- loadMCU dbDir $ name controller
-            let dir = outputDir </> map toLower family
+            let dir = outputDir </> map toLower (T.unpack family)
                 outputFile = dir </> map toLower uniqName <.> "h"
             putStrLn $ uniqName <> " -> " <> outputFile
             hFlush stdout
             createDirectoryIfMissing True dir
             withFile outputFile WriteMode $ \h -> do
                 hSetNewlineMode h noNewlineTranslation
-                hPutStr h $ unlines $ concat
+                T.hPutStr h $ T.unlines $ concat
                     [ map F.refName cs
                     , preAmble controller
                     , altFunDecl mcu
                     ]
 
-genAltFun :: FilePath -> FilePath -> (String, String, Controller) -> IO ()
+genAltFun :: FilePath -> FilePath -> (Text, Text, Controller) -> IO ()
 genAltFun dbDir outputDir (family, subFamily, controller) = do
-    let uniqName = init $ F.refName controller
+    let uniqName = init $ T.unpack $ F.refName controller
     mcu <- loadMCU dbDir $ name controller
-    let dir = outputDir </> map toLower family
+    let dir = outputDir </> map toLower (T.unpack family)
         outputFile = dir </> map toLower uniqName <.> "h"
     putStrLn $ uniqName <> " -> " <> outputFile
     hFlush stdout
     createDirectoryIfMissing True dir
     withFile outputFile WriteMode $ \h -> do
         hSetNewlineMode h noNewlineTranslation
-        hPutStr h $ unlines $ concat
+        T.hPutStr h $ T.unlines $ concat
             [ preAmble controller
             , altFunDecl mcu
             ]

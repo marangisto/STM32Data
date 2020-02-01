@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards, TupleSections, DuplicateRecordFields #-}
+{-# LANGUAGE RecordWildCards, TupleSections, DuplicateRecordFields, OverloadedStrings #-}
 module Family
     ( Family
     , SubFamily
@@ -12,27 +12,28 @@ module Family
     , buildRules
     ) where
 
-import Text.HTML.TagSoup
 import Text.Read (readMaybe)
 import Data.Monoid
 import Data.Char (isSpace, toLower)
 import Data.Maybe (mapMaybe, fromMaybe)
-import Data.List (stripPrefix, break, nub, sort)
+import Data.List (break, nub, sort)
+import qualified Data.Text as T
 import qualified Data.Map.Strict as Map
 import Control.Monad
 import Control.Arrow
+import TagSoup
 import IPMode
 
-type Family = (String, [SubFamily])
+type Family = (Text, [SubFamily])
 
-type SubFamily = (String, [Controller])
+type SubFamily = (Text, [Controller])
 
 data Controller = Controller
-    { name          :: !String
-    , package       :: !String
-    , refName       :: !String
-    , rpn           :: !String
-    , core          :: !String
+    { name          :: !Text
+    , package       :: !Text
+    , refName       :: !Text
+    , rpn           :: !Text
+    , core          :: !Text
     , frequency     :: !Int
     , flash         :: !Int
     , ram           :: !Int
@@ -41,22 +42,22 @@ data Controller = Controller
     }
     deriving (Show)
 
-type Peripheral = String
+type Peripheral = Text
 
 data Filter
-    = Family String
-    | SubFamily String
-    | Package String
+    = Family Text
+    | SubFamily Text
+    | Package Text
 
-elementText :: String -> [Tag String] -> String
+elementText :: String -> [Tag Text] -> Text
 elementText s ts
     | (_:y:_) <- dropWhile (~/=s) ts = fromTagText y
     | otherwise = ""
 
-peripheralFromTag :: Tag String -> (String, Int)
-peripheralFromTag t = (fromAttrib "Type" t, read $ fromAttrib "MaxOccurs" t)
+peripheralFromTag :: Tag Text -> (Text, Int)
+peripheralFromTag t = (fromAttrib "Type" t, read $ T.unpack $ fromAttrib "MaxOccurs" t)
 
-mcuFromTags :: [Tag String] -> Maybe Controller
+mcuFromTags :: [Tag Text] -> Maybe Controller
 mcuFromTags (t:ts)
     | fromAttrib "Visible" t == "false" = Nothing
     | otherwise = Just Controller{..}
@@ -65,23 +66,23 @@ mcuFromTags (t:ts)
           refName = fromAttrib "RefName" t
           rpn = fromAttrib "RPN" t  -- this seems to be the 'real' name
           core = elementText "<Core>" ts
-          frequency = fromMaybe 0 $ readMaybe $ elementText "<Frequency>" ts
-          flash = read $ elementText "<Flash>" ts
-          ram = read $ elementText "<Ram>" ts
-          numIO = read $ elementText "<IONb>" ts
+          frequency = fromMaybe 0 $ readMaybe $ T.unpack $ elementText "<Frequency>" ts
+          flash = read $ T.unpack $ elementText "<Flash>" ts
+          ram = read $ T.unpack $ elementText "<Ram>" ts
+          numIO = read $ T.unpack $ elementText "<IONb>" ts
           peripherals = map peripheralFromTag $ filter (~=="<Peripheral>") ts
 
-subFamilyFromTags :: [Tag String] -> SubFamily
+subFamilyFromTags :: [Tag Text] -> SubFamily
 subFamilyFromTags (t:ts) = (fromAttrib "Name" t, xs)
     where xs = mapMaybe mcuFromTags
              $ partitions (~=="<Mcu>") ts
 
-familyFromTags :: [Tag String] -> Family
+familyFromTags :: [Tag Text] -> Family
 familyFromTags (t:ts) = (fromAttrib "Name" t, xs)
     where xs = map subFamilyFromTags
              $ partitions (~=="<SubFamily>") ts
 
-parseFamilies :: String -> [Family]
+parseFamilies :: Text -> [Family]
 parseFamilies
     = map familyFromTags
     . partitions (~=="<Family>")
@@ -108,7 +109,7 @@ mcuPred :: [Filter] -> Controller -> Bool
 mcuPred fs Controller{..} = null xs || package `elem` xs
     where xs = [ x | Package x <- fs ]
 
-flatten :: [Family] -> [(String, String, Controller)]
+flatten :: [Family] -> [(Text, Text, Controller)]
 flatten families = 
     [ (family, subFamily, controller)
     | (family, subFamilies) <- families
@@ -120,15 +121,21 @@ mcuList :: [Family] -> IO ()
 mcuList families = 
     forM_ families $ \(name, subFamilies) -> do
         putStrLn $ replicate 80 '='
-        putStrLn name
+        putStrLn $ T.unpack name
         forM_ subFamilies $ \(name, mcus) -> do
             putStrLn $ replicate 80 '-'
-            putStrLn $ "    " <> name
+            putStrLn $ "    " <> T.unpack name
             putStrLn $ replicate 80 '-'
             forM_ mcus $ \Controller{..} -> do
-                putStrLn $ "        " <> unwords [ name, package, refName, rpn, show flash <> "/" <> show ram ]
+                putStrLn $ "        " <> unwords
+                    [ T.unpack name
+                    , T.unpack package
+                    , T.unpack refName
+                    , T.unpack rpn
+                    , show flash <> "/" <> show ram
+                    ]
 
-preAmble :: Controller -> [String]
+preAmble :: Controller -> [Text]
 preAmble Controller{..} =
     [ "#pragma once"
     , ""
@@ -139,19 +146,19 @@ preAmble Controller{..} =
     ] ++ map fmt
     [ ("core", core)
     , ("package", package)
-    , ("frequency", show frequency)
-    , ("flash", show flash <> "kB")
-    , ("ram", show ram <> "kB")
-    , ("IO count", show numIO)
-    ] ++ map (fmt . second show) peripherals ++
+    , ("frequency", T.pack $ show frequency)
+    , ("flash", T.pack $ show flash <> "kB")
+    , ("ram", T.pack $ show ram <> "kB")
+    , ("IO count", T.pack $ show numIO)
+    ] ++ map (fmt . second (T.pack . show)) peripherals ++
     [ "#"
     , "###"
     , ""
     ]
-    where fmt :: (String, String) -> String
-          fmt (l, s) = "#        "<> l <> replicate (12 - length l) ' ' <> ": " <> s
+    where fmt :: (Text, Text) -> Text
+          fmt (l, s) = "#        "<> l <> T.pack (replicate (12 - T.length l) ' ') <> ": " <> s
 
-buildRules :: [Family] -> [String]
+buildRules :: [Family] -> [Text]
 buildRules families =
     [ "module STM32MCUs (MCU(..), mcuList) where"
     , ""
@@ -171,7 +178,7 @@ buildRules families =
     , ""
     ]
     where xs = nub $ sort
-               [ unwords
+               [ T.pack $ unwords
                     [ "MCU"
                     , show refName
                     , show family
@@ -183,6 +190,6 @@ buildRules families =
                , (subFamily, mcus) <- subFamilies
                , Controller{..} <- mcus
                ]
-          cleanCore s | Just r <- stripPrefix "arm " $ map toLower s = r
-                      | otherwise = error $ "unexpeced core format: " <> s
+          cleanCore s | Just r <- T.stripPrefix "arm " $ T.map toLower s = r
+                      | otherwise = error $ T.unpack $ "unexpected core format: " <> s
 

@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards, TupleSections, DuplicateRecordFields #-}
+{-# LANGUAGE RecordWildCards, TupleSections, DuplicateRecordFields, OverloadedStrings #-}
 module MCU
     ( MCU(..)
     , Pin(..)
@@ -10,76 +10,77 @@ module MCU
     , cleanSignal
     ) where
 
-import Text.HTML.TagSoup
 import Text.Read (readMaybe)
 import Data.Monoid
-import Data.List (sort, isInfixOf, break)
+import Data.List (sort, break)
 import Data.Char (isSpace, isAlphaNum)
 import Data.Maybe (fromMaybe, mapMaybe)
 import qualified Data.Map.Strict as Map
+import qualified Data.Text as T
+import TagSoup
 
 data MCU = MCU
-    { refName       :: !String
-    , clockTree     :: !String
-    , family        :: !String
-    , line          :: !String
-    , package       :: !String
+    { refName       :: !Text
+    , clockTree     :: !Text
+    , family        :: !Text
+    , line          :: !Text
+    , package       :: !Text
     , powerPad      :: !Bool
-    , gpioConfig    :: !String
+    , gpioConfig    :: !Text
     , pins          :: ![Pin]
     } deriving (Eq, Ord, Show)
 
-type Position = Either String Int
+type Position = Either Text Int
 
 data Pin
     = PowerPin
-    { pinName   :: !String
+    { pinName   :: !Text
     , position  :: !Position
     }
     | ResetPin
-    { pinName   :: !String
+    { pinName   :: !Text
     , position  :: !Position
     }
     | BootPin
-    { pinName   :: !String
+    { pinName   :: !Text
     , position  :: !Position
     }
     | IOPin
-    { pinName   :: !String
+    { pinName   :: !Text
     , position  :: !Position
     , signals   :: ![Signal]
     }
     | MonoIOPin
-    { pinName   :: !String
+    { pinName   :: !Text
     , position  :: !Position
     }
     | NCPin
-    { pinName   :: !String
+    { pinName   :: !Text
     , position  :: !Position
     }
     deriving (Eq, Ord, Show)
 
 data Signal
     = Unresolved
-    { signalName        :: !String
+    { signalName        :: !Text
     }
     | AlternateFunction
-    { signalName        :: !String
+    { signalName        :: !Text
     , alternateFunction :: !Int
     }
     | AdditionalFunction
-    { signalName        :: !String
+    { signalName        :: !Text
     }
     deriving (Eq, Ord, Show)
 
-signalFromTag :: Tag String -> Maybe Signal
+signalFromTag :: Tag Text -> Maybe Signal
 signalFromTag t = Unresolved . cleanSignal <$> case fromAttrib "Name" t of
-    "GPIO" -> if "EVENTOUT" `isInfixOf` fromAttrib "IOModes" t
+    "GPIO" -> if "EVENTOUT" `T.isInfixOf` fromAttrib "IOModes" t
                   then Just "EVENTOUT"
                   else Nothing
     name   -> Just name
 
-pinFromTags :: [Tag String] -> Pin
+pinFromTags :: [Tag Text] -> Pin
 pinFromTags (t:ts) = case fromAttrib "Type" t of
     "Power"   -> PowerPin{..}
     "Reset"   -> ResetPin{..}
@@ -91,23 +92,23 @@ pinFromTags (t:ts) = case fromAttrib "Type" t of
     where pinName = cleanPin $ fromAttrib "Name" t
           position = readPosition $ fromAttrib "Position" t
 
-cleanPin :: String -> String
-cleanPin = fst . break (not . isAlphaNum)   -- FIXME: capture what we throw away in another field?
+cleanPin :: Text -> Text
+cleanPin = T.pack . fst . break (not . isAlphaNum) . T.unpack -- FIXME: capture what we throw away in another field?
 
-cleanSignal :: String -> String
-cleanSignal = map (\c -> if c == '-' then '_' else c)
+cleanSignal :: Text -> Text
+cleanSignal = T.pack . map (\c -> if c == '-' then '_' else c) . T.unpack
 
-readPosition :: String -> Position
-readPosition s = maybe (Left s) Right $ readMaybe s
+readPosition :: Text -> Position
+readPosition s = maybe (Left s) Right $ readMaybe (T.unpack s)
 
-resolveFunctions :: Map.Map (String, String) Int -> Pin -> Pin
+resolveFunctions :: Map.Map (Text, Text) Int -> Pin -> Pin
 resolveFunctions af p@IOPin{..} = p { signals = map f signals }
     where f Unresolved{..}
               | (Just alternateFunction) <- Map.lookup (pinName, signalName) af = AlternateFunction{..}
               | otherwise = AdditionalFunction{..}
 resolveFunctions _ p = p
 
-parseMCU :: String -> MCU
+parseMCU :: Text -> MCU
 parseMCU xml = MCU{..}
     where refName = fromAttrib "RefName" t
           clockTree = fromAttrib "ClockTree" t
@@ -119,13 +120,13 @@ parseMCU xml = MCU{..}
           pins = map pinFromTags . partitions (~=="<Pin>") $ dropWhile (~/="<Pin>") ts
           (t:ts) = dropWhile (~/="<Mcu>") $ parseTags xml
 
-getConfig :: String -> [Tag String] -> String
+getConfig :: Text -> [Tag Text] -> Text
 getConfig name ts
     | (t:_) <- filter p ts = fromAttrib "Version" t
-    | otherwise = error $ "failed to get config for " <> name
+    | otherwise = error $ "failed to get config for " <> T.unpack name
     where p t = t ~=="<IP>" && fromAttrib "Name" t == name
 
-alternateFunctions :: [Pin] -> [(String, String, Int)]
+alternateFunctions :: [Pin] -> [(Text, Text, Int)]
 alternateFunctions pins = sort
     [ (pinName, signalName, alternateFunction)
     | IOPin{..} <- pins

@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE RecordWildCards, OverloadedStrings #-}
 module AltFun (altFunDecl) where
 
 import System.IO
@@ -7,29 +7,30 @@ import System.Directory
 import Control.Arrow
 import Data.List (nub, sort)
 import Data.Char (toLower)
+import qualified Data.Text as T
+import qualified Data.Text.IO as T
+import TagSoup
 import Family as F
 import IPMode
 import MCU
 
-
 genAltFun :: FilePath -> FilePath -> Controller -> IO ()
 genAltFun dbDir outputDir controller = do
-    let uniqName = init $ F.refName controller
+    let uniqName = init $ T.unpack $ F.refName controller
     mcu <- loadMCU dbDir $ name controller
-    let dir = outputDir </> map toLower (family mcu)
+    let dir = outputDir </> map toLower (T.unpack $ family mcu)
         outputFile = dir </> map toLower uniqName <.> "h"
     putStrLn $ uniqName <> " -> " <> outputFile
     hFlush stdout
     createDirectoryIfMissing True dir
     withFile outputFile WriteMode $ \h -> do
         hSetNewlineMode h noNewlineTranslation
-        hPutStr h $ unlines $ concat
+        T.hPutStr h $ T.unlines $ concat
             [ preAmble controller
             , altFunDecl mcu
             ]
 
-
-altFunDecl :: MCU -> [String]
+altFunDecl :: MCU -> [Text]
 altFunDecl MCU{..} = concat
     [ funDecl $ maximum $ map (\(_, _, i) -> i) afs
     , [ "" ]
@@ -42,21 +43,21 @@ altFunDecl MCU{..} = concat
     ]
     where afs = alternateFunctions pins
 
-funDecl :: Int -> [String]
+funDecl :: Int -> [Text]
 funDecl n = concat
     [ [ "enum alt_fun_t" ]
-    , [ s <> "AF" <> show i | (s, i) <- zip ("    { " : repeat "    , ") [0..n] ]
+    , [ s <> "AF" <> T.pack (show i) | (s, i) <- zip ("    { " : repeat "    , ") [0..n] ]
     , [ "    };" ]
     ]
 
-enumDecl :: [String] -> [String]
+enumDecl :: [Text] -> [Text]
 enumDecl xs = concat
     [ [ "enum alternate_function_t" ]
     , [ s <> x | (s, x) <- zip ("    { " : repeat "    , ") xs ]
     , [ "    };" ]
     ]
 
-traitDecl :: [String]
+traitDecl :: [Text]
 traitDecl =
     [ "template<gpio_pin_t PIN, alternate_function_t ALT>"
     , "struct alt_fun_traits"
@@ -65,14 +66,14 @@ traitDecl =
     , "};"
     ]
 
-traitSpec :: (String, String, Int) -> String
+traitSpec :: (Text, Text, Int) -> Text
 traitSpec (p, s, i) = mconcat
     [ "template<> struct alt_fun_traits<"
     , p
     , ", "
     , s
     , "> { static const alt_fun_t AF = AF"
-    , show i
+    , T.pack $ show i
     , "; };"
     ]
 

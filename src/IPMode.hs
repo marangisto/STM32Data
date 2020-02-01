@@ -1,40 +1,41 @@
-{-# LANGUAGE RecordWildCards, TupleSections, DuplicateRecordFields #-}
+{-# LANGUAGE RecordWildCards, TupleSections, DuplicateRecordFields, OverloadedStrings #-}
 module IPMode (AltFun(..), loadMCU) where
 
-import Text.HTML.TagSoup
+import System.FilePath
 import Data.Monoid
-import Data.Char (isSpace)
-import Data.List (stripPrefix, break)
 import Data.Maybe (mapMaybe)
 import qualified Data.Map.Strict as Map
-import System.FilePath
+import qualified Data.Text as T
+import qualified Data.Text.IO as T
+import Control.Arrow
+import TagSoup
 import MCU
 
 data IPMode = IPMode
-    { pinName   :: !String
+    { pinName   :: !Text
     , signals   :: ![AltFun]
     }
     deriving (Show)
 
 data AltFun = AltFun
-    { signalName    :: !String
+    { signalName    :: !Text
     , altFunction   :: !Int
-    , peripheral    :: !String
+    , peripheral    :: !Text
     }
     deriving (Show)
 
-pinModeFromTags :: [Tag String] -> IPMode
+pinModeFromTags :: [Tag Text] -> IPMode
 pinModeFromTags (t:ts) = IPMode{..}
     where pinName = cleanPin $ fromAttrib "Name" t
           signals = mapMaybe altFun
                   $ partitions (~=="<PinSignal>")
                   $ dropWhile (~/="<PinSignal>") ts
 
-altFun :: [Tag String] -> Maybe AltFun
+altFun :: [Tag Text] -> Maybe AltFun
 altFun (t:ts)
-    | Just r <- stripPrefix "GPIO_AF" s
-    , (u, '_':peripheral) <- break (=='_') r
-    = let altFunction = read u
+    | Just r <- T.stripPrefix "GPIO_AF" s
+    , (u, peripheral) <- second (T.drop 1) $ T.breakOn "_" r
+    = let altFunction = read $ T.unpack u
        in Just AltFun{..}
     | (u:_) <- filter (~=="<RemapBlock>") ts
     , fromAttrib "DefaultRemap" u == "true"
@@ -43,9 +44,9 @@ altFun (t:ts)
        in Just AltFun{..}
     | otherwise = Nothing                   -- FIXME: remapping not yet supported
     where signalName = cleanSignal $ fromAttrib "Name" t
-          s = filter (not . isSpace) $ innerText ts
+          s = T.strip $ innerText ts
 
-altFunMap :: String -> Map.Map (String, String) Int
+altFunMap :: Text -> Map.Map (Text, Text) Int
 altFunMap xml = Map.fromList
     [ ((pinName, signalName), altFunction)
     | IPMode{..} <- xs
@@ -56,9 +57,9 @@ altFunMap xml = Map.fromList
              $ dropWhile (~/="<GPIO_Pin>")
              $ parseTags xml
 
-loadMCU :: FilePath -> String -> IO MCU
+loadMCU :: FilePath -> Text -> IO MCU
 loadMCU dbDir name = do
-    mcu@MCU{..} <- parseMCU <$> readFile (dbDir </> name <.> "xml")
-    afmap <- altFunMap <$> readFile (dbDir </> "IP" </> "GPIO-" <> gpioConfig <> "_Modes" <.> "xml")
+    mcu@MCU{..} <- parseMCU <$> T.readFile (dbDir </> T.unpack name <.> "xml")
+    afmap <- altFunMap <$> T.readFile (dbDir </> "IP" </> "GPIO-" <> T.unpack gpioConfig <> "_Modes" <.> "xml")
     return $ mcu { pins = map (resolveFunctions afmap) pins }
 
