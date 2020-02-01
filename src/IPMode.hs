@@ -12,15 +12,15 @@ import TagSoup
 import MCU
 
 data IPMode = IPMode
-    { pinName   :: !Text
-    , signals   :: ![AltFun]
+    { pinName   :: Text
+    , signals   :: [AltFun]
     }
     deriving (Show)
 
 data AltFun = AltFun
-    { signalName    :: !Text
-    , altFunction   :: !Int
-    , peripheral    :: !Text
+    { signalName    :: Text
+    , altFunction   :: Int
+    , peripheral    :: Text
     }
     deriving (Show)
 

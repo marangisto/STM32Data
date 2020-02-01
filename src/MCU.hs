@@ -20,56 +20,56 @@ import qualified Data.Text as T
 import TagSoup
 
 data MCU = MCU
-    { refName       :: !Text
-    , clockTree     :: !Text
-    , family        :: !Text
-    , line          :: !Text
-    , package       :: !Text
-    , powerPad      :: !Bool
-    , gpioConfig    :: !Text
-    , pins          :: ![Pin]
+    { refName       :: Text
+    , clockTree     :: Text
+    , family        :: Text
+    , line          :: Text
+    , package       :: Text
+    , powerPad      :: Bool
+    , gpioConfig    :: Text
+    , pins          :: [Pin]
     } deriving (Eq, Ord, Show)
 
 type Position = Either Text Int
 
 data Pin
     = PowerPin
-    { pinName   :: !Text
-    , position  :: !Position
+    { pinName   :: Text
+    , position  :: Position
     }
     | ResetPin
-    { pinName   :: !Text
-    , position  :: !Position
+    { pinName   :: Text
+    , position  :: Position
     }
     | BootPin
-    { pinName   :: !Text
-    , position  :: !Position
+    { pinName   :: Text
+    , position  :: Position
     }
     | IOPin
-    { pinName   :: !Text
-    , position  :: !Position
-    , signals   :: ![Signal]
+    { pinName   :: Text
+    , position  :: Position
+    , signals   :: [Signal]
     }
     | MonoIOPin
-    { pinName   :: !Text
-    , position  :: !Position
+    { pinName   :: Text
+    , position  :: Position
     }
     | NCPin
-    { pinName   :: !Text
-    , position  :: !Position
+    { pinName   :: Text
+    , position  :: Position
     }
     deriving (Eq, Ord, Show)
 
 data Signal
     = Unresolved
-    { signalName        :: !Text
+    { signalName        :: Text
     }
     | AlternateFunction
-    { signalName        :: !Text
-    , alternateFunction :: !Int
+    { signalName        :: Text
+    , alternateFunction :: Int
     }
     | AdditionalFunction
-    { signalName        :: !Text
+    { signalName        :: Text
     }
     deriving (Eq, Ord, Show)
 

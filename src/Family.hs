@@ -29,16 +29,16 @@ type Family = (Text, [SubFamily])
 type SubFamily = (Text, [Controller])
 
 data Controller = Controller
-    { name          :: !Text
-    , package       :: !Text
-    , refName       :: !Text
-    , rpn           :: !Text
-    , core          :: !Text
-    , frequency     :: !Int
-    , flash         :: !Int
-    , ram           :: !Int
-    , numIO         :: !Int
-    , peripherals   :: ![(Peripheral, Int)]
+    { name          :: Text
+    , package       :: Text
+    , refName       :: Text
+    , rpn           :: Text
+    , core          :: Text
+    , frequency     :: Int
+    , flash         :: Int
+    , ram           :: Int
+    , numIO         :: Int
+    , peripherals   :: [(Peripheral, Int)]
     }
     deriving (Show)
 
