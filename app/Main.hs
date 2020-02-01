@@ -74,7 +74,7 @@ main = do
         print $ length xs
         let h = H.fromListWith (++) xs
         print $ length $ H.keys h
-        forM_ (H.toList h) $ \(hdr, (controller:_)) -> do
+        forM_ (H.toList h) $ \(hdr, cs@(controller:_)) -> do
             let uniqName = init $ F.refName controller
             mcu <- loadMCU dbDir $ name controller
             let dir = outputDir </> map toLower family
@@ -85,7 +85,8 @@ main = do
             withFile outputFile WriteMode $ \h -> do
                 hSetNewlineMode h noNewlineTranslation
                 hPutStr h $ unlines $ concat
-                    [ preAmble controller
+                    [ map F.refName cs
+                    , preAmble controller
                     , altFunDecl mcu
                     ]
 
