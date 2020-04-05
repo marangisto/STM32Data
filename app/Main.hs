@@ -30,6 +30,7 @@ data Options = Options
     , alt_fun       :: Maybe FilePath
     , build_rules   :: Bool
     , normalize     :: Bool
+    , minimize      :: Bool
     , family        :: [String]
     , sub_family    :: [String]
     , package       :: [String]
@@ -42,6 +43,7 @@ options = Main.Options
     , alt_fun = def &= help "generate alternate function header(s)"
     , build_rules = def &= help "generate source for build rules"
     , normalize = def &= help "normalize pins to determine minimal headers"
+    , minimize = def &= help "minimize alternate function definitions"
     , family = def &= help "filter on family"
     , sub_family = def &= help "filter on sub-family"
     , package = def &= help "filter on package"
@@ -136,6 +138,10 @@ main = do
                     , altFunDecl mcu
                     ]
 -}
+    when minimize $ forM_ families $ \(family, subFamilies) -> do
+        putStrLn $ T.unpack family
+        xs <- gpioConfigs dbDir family
+        mapM_ (putStrLn . ("    "++) . T.unpack) xs
 
 identFromRefName :: String -> String
 identFromRefName s

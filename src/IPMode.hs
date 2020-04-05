@@ -1,12 +1,14 @@
 {-# LANGUAGE RecordWildCards, TupleSections, DuplicateRecordFields, OverloadedStrings #-}
-module IPMode (AltFun(..), loadMCU) where
+module IPMode (AltFun(..), loadMCU, gpioConfigMap, gpioConfigs) where
 
 import System.FilePath
+import System.Directory
 import Data.Monoid
 import Data.Maybe (mapMaybe)
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
+import Data.List (stripPrefix, isPrefixOf, break)
 import Control.Arrow
 import TagSoup
 import MCU
@@ -62,4 +64,26 @@ loadMCU dbDir name = do
     mcu@MCU{..} <- parseMCU <$> T.readFile (dbDir </> T.unpack name <.> "xml")
     afmap <- altFunMap <$> T.readFile (dbDir </> "IP" </> "GPIO-" <> T.unpack gpioConfig <> "_Modes" <.> "xml")
     return $ mcu { pins = map (resolveFunctions afmap) pins }
+
+gpioConfigMap :: FilePath -> Text -> IO (Map.Map (Text, Text) Int)
+gpioConfigMap dbDir gpioConfig = altFunMap <$> T.readFile (dbDir </> "IP" </> "GPIO-" <> T.unpack gpioConfig <> "_Modes" <.> "xml")
+
+gpioConfigs :: FilePath -> Text -> IO [Text]
+gpioConfigs dbDir family' = do
+    map T.pack . mapMaybe (extractGpioConfig $ T.unpack family') <$> getDirectoryContents (dbDir </> "IP")
+
+extractGpioConfig :: String -> FilePath -> Maybe String
+extractGpioConfig family s0
+    | Just s1 <- extractGpioConfig' s0 = case family of
+          "STM32L4" | family `isPrefixOf` s1 && s1 /= "STM32L4P" -> Just s1
+          "STM32L4+" | s1 == "STM32L4P" -> Just s1
+          "STM32MP1" | s1 == "STM32MPU" -> Just s1
+          _ -> if family `isPrefixOf` s1 then Just s1 else Nothing
+    | otherwise = Nothing
+
+extractGpioConfig' :: FilePath -> Maybe String
+extractGpioConfig' s0
+    | Just s1 <- stripPrefix "GPIO-" s0
+    , (s2, _) <- break (=='_') s1 = Just s2
+    | otherwise = Nothing
 
