@@ -1,7 +1,7 @@
 {-# LANGUAGE RecordWildCards, TupleSections, DuplicateRecordFields, OverloadedStrings, GeneralizedNewtypeDeriving #-}
 module IPMode
     ( AltFun(..)
-    , MC(..)
+    , GPIOConf(..)
     , PIN(..)
     , AF(..)
     , loadMCU
@@ -22,7 +22,7 @@ import Control.Arrow
 import TagSoup
 import MCU
 
-newtype MC = MC { unMC :: Text } deriving (Eq, Ord, Show)
+newtype GPIOConf = GPIOConf { unGPIOConf :: Text } deriving (Eq, Ord, Show)
 newtype PIN = PIN { unPIN :: Text } deriving (Eq, Ord, Show)
 newtype AF = AF { unAF :: Text } deriving (Eq, Ord, Show)
 

@@ -25,31 +25,31 @@ familyHeader ys = concat $
       , "#include <type_traits>"
       ]
     , mcuEnumDecl mcus
-    , [ "", "static constexpr mcu_t MCU = " <> unMC (head mcus) <> ";" ]
+    , [ "", "static constexpr gpio_conf_t GPIOConf = " <> unGPIOConf (head mcus) <> ";" ]
     , funDecl $ maximum $ [ v | (_, xs) <- ss, (_, v) <- [ xs ] ]
     , afEnumDecl $ nub $ sort [ af | ((_, af), _) <- ss ]
     , traitsDecl
     , map (gpioConfigTraitDecl mcus) $ groupSort ss
     ]
-    where mcus = map (cleanMCU . fst) ys
-          ss = [ (p, (cleanMCU conf, v))
+    where mcus = map (cleanGPIOConf . fst) ys
+          ss = [ (p, (cleanGPIOConf conf, v))
                | (conf, s) <- ys
                , (p, v) <- Set.toList s
                ]
 
-cleanMCU :: Text -> MC
-cleanMCU = MC . fst . T.breakOn "_"
+cleanGPIOConf :: Text -> GPIOConf
+cleanGPIOConf = GPIOConf . fst . T.breakOn "_"
 
-mcuEnumDecl :: [MC] -> [Text]
+mcuEnumDecl :: [GPIOConf] -> [Text]
 mcuEnumDecl xs = concat
-    [ [ "", "enum mcu_t" ]
-    , [ s <> unMC x <> " = 0x" <> T.pack (showHex (2^i) "")
+    [ [ "", "enum gpio_conf_t" ]
+    , [ s <> unGPIOConf x <> " = 0x" <> T.pack (showHex (2^i) "")
       | (s, x, i) <- zip3 ("    { " : repeat "    , ") (sort xs) [0..]
       ]
     , [ "    };" ]
     ]
 
-gpioConfigTraitDecl :: [MC] -> ((PIN, AF), [(MC, Int)]) -> Text
+gpioConfigTraitDecl :: [GPIOConf] -> ((PIN, AF), [(GPIOConf, Int)]) -> Text
 gpioConfigTraitDecl mcus ((pin, altfun), mcuVals) = T.concat
     [ ""
     , "template<> struct alt_fun_traits<"
@@ -70,7 +70,7 @@ gpioConfigTraitDecl mcus ((pin, altfun), mcuVals) = T.concat
           valMcus = groupSort [ (v, m) | (m, v) <- mcuVals ]
           ms = map fst mcuVals
 
-value :: (Int, [MC]) -> Maybe (Int, [MC]) -> Text
+value :: (Int, [GPIOConf]) -> Maybe (Int, [GPIOConf]) -> Text
 value p@(v, _) Nothing = "AF" <> T.pack (show v)
 value p@(v, xs) (Just q@(u, ys))
     | length xs > length ys = value q $ Just p
@@ -83,10 +83,10 @@ value p@(v, xs) (Just q@(u, ys))
         , T.pack (show u)
         ]
 
-constraint :: [MC] -> Text
+constraint :: [GPIOConf] -> Text
 constraint [] = "true"
-constraint [x] = "MCU & " <> unMC x
-constraint xs = "MCU & (" <> T.intercalate "|" (map unMC xs) <> ")"
+constraint [x] = "GPIOConf & " <> unGPIOConf x
+constraint xs = "GPIOConf & (" <> T.intercalate "|" (map unGPIOConf xs) <> ")"
 
 funDecl :: Int -> [Text]
 funDecl n = concat
