@@ -21,10 +21,15 @@ type Text = T.Text
 
 familyHeader :: [(Text, Set.Set ((PIN, AF), Int))] -> [Text]
 familyHeader ys = concat $
-    [ [ "#pragma once" ]
+    [ [ "#pragma once"
+      , ""
+      , "#include <type_traits>"
+      ]
     , mcuEnumDecl mcus
+    , [ "", "static constexpr mcu_t MCU = " <> unMC (head mcus) <> ";" ]
     , funDecl $ maximum $ [ v | (_, xs) <- ss, (_, v) <- [ xs ] ]
     , afEnumDecl $ nub $ sort [ af | ((_, af), _) <- ss ]
+    , traitsDecl
     , map (gpioConfigTraitDecl mcus) $ groupSort ss
     ]
     where mcus = map (cleanMCU . fst) ys
@@ -38,7 +43,7 @@ cleanMCU = MC . fst . T.breakOn "_"
 
 mcuEnumDecl :: [MC] -> [Text]
 mcuEnumDecl xs = concat
-    [ [ "", "enum gpio_config_t" ]
+    [ [ "", "enum mcu_t" ]
     , [ s <> unMC x <> " = 0x" <> T.pack (showHex (2^i) "")
       | (s, x, i) <- zip3 ("    { " : repeat "    , ") (sort xs) [0..]
       ]
@@ -97,4 +102,39 @@ afEnumDecl xs = concat
     , [ s <> unAF x | (s, x) <- zip ("    { " : repeat "    , ") xs ]
     , [ "    };" ]
     ]
+
+traitsDecl :: [Text]
+traitsDecl =
+   [ ""
+   , "template<gpio_pin_t PIN, alternate_function_t ALT>"
+   , "struct alt_fun_traits"
+   , "{"
+   , "    static constexpr alt_fun_t AF = AF0;"
+   , ""
+   , "    static_assert"
+   , "        ( always_false_i<PIN>::value"
+   , "        , \"alternate function not available on pin!\""
+   , "        );"
+   , "};"
+   , ""
+   , "template<bool AVAIL>"
+   , "struct available_alt_fun_t"
+   , "{"
+   , "    typedef alt_fun_t type;"
+   , ""
+   , "    static_assert"
+   , "        ( always_false_i<AVAIL>::value"
+   , "        , \"alternate function not available on pin for target mcu!\""
+   , "        );"
+   , "};"
+   , ""
+   , "template<>"
+   , "struct available_alt_fun_t<true>"
+   , "{"
+   , "    typedef alt_fun_t type;"
+   , "};"
+   , ""
+   , "template<bool AVAIL>"
+   , "using alt_fun = typename available_alt_fun_t<AVAIL>::type;"
+   ]
 
