@@ -3,8 +3,9 @@ module Pretty
     ( familyHeader
     ) where
 
+import Numeric (showHex)
 import Data.Char (toLower)
-import Data.List (stripPrefix, break)
+import Data.List (stripPrefix, break, nub, sort)
 import Data.List.Extra (groupSort)
 import qualified Data.Set as Set
 import qualified Data.Text as T
@@ -22,6 +23,8 @@ familyHeader :: [(Text, Set.Set ((PIN, AF), Int))] -> [Text]
 familyHeader ys = concat $
     [ [ "#pragma once" ]
     , mcuEnumDecl mcus
+    , funDecl $ maximum $ [ v | (_, xs) <- ss, (_, v) <- [ xs ] ]
+    , afEnumDecl $ nub $ sort [ af | ((_, af), _) <- ss ]
     , map (gpioConfigTraitDecl mcus) $ groupSort ss
     ]
     where mcus = map (cleanMCU . fst) ys
@@ -35,27 +38,28 @@ cleanMCU = MC . fst . T.breakOn "_"
 
 mcuEnumDecl :: [MC] -> [Text]
 mcuEnumDecl xs = concat
-    [ [ "enum gpio_config_t" ]
-    , [ s <> unMC x <> " = (1 << " <> T.pack (show i) <> ")"
-      | (s, x, i) <- zip3 ("    { " : repeat "    , ") xs [0..]
+    [ [ "", "enum gpio_config_t" ]
+    , [ s <> unMC x <> " = 0x" <> T.pack (showHex (2^i) "")
+      | (s, x, i) <- zip3 ("    { " : repeat "    , ") (sort xs) [0..]
       ]
     , [ "    };" ]
     ]
 
 gpioConfigTraitDecl :: [MC] -> ((PIN, AF), [(MC, Int)]) -> Text
 gpioConfigTraitDecl mcus ((pin, altfun), mcuVals) = T.concat
-    [ "template<> struct alt_fun_traits<"
+    [ ""
+    , "template<> struct alt_fun_traits<"
     , unPIN pin
     , ", "
     , unAF altfun
-    , "> { static const alt_fun<"
-    , c
-    , "> AF = "
+    , "> { static const "
+    , t
+    , " AF = "
     , v
     , "; };"
     ]
-    where c | all (`elem` map fst mcuVals) mcus = constraint []
-            | otherwise = constraint ms
+    where t | all (`elem` map fst mcuVals) mcus = "alt_fun_t"
+            | otherwise = "alt_fun<" <> constraint ms <> ">"
           v | [ p ] <- valMcus = value p Nothing
             | [ p, q ] <- valMcus = value p $ Just q
             | otherwise = error "too complex"
@@ -79,4 +83,18 @@ constraint :: [MC] -> Text
 constraint [] = "true"
 constraint [x] = "MCU & " <> unMC x
 constraint xs = "MCU & (" <> T.intercalate "|" (map unMC xs) <> ")"
+
+funDecl :: Int -> [Text]
+funDecl n = concat
+    [ [ "", "enum alt_fun_t" ]
+    , [ s <> "AF" <> T.pack (show i) | (s, i) <- zip ("    { " : repeat "    , ") [0..n] ]
+    , [ "    };" ]
+    ]
+
+afEnumDecl :: [AF] -> [Text]
+afEnumDecl xs = concat
+    [ [ "", "enum alternate_function_t" ]
+    , [ s <> unAF x | (s, x) <- zip ("    { " : repeat "    , ") xs ]
+    , [ "    };" ]
+    ]
 
