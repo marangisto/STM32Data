@@ -13,16 +13,13 @@ module Family
     ) where
 
 import Text.Read (readMaybe)
-import Data.Monoid
-import Data.Char (isSpace, toLower)
+import Data.Char (toLower)
 import Data.Maybe (mapMaybe, fromMaybe)
-import Data.List (break, nub, sort)
+import Data.List (nub, sort)
 import qualified Data.Text as T
-import qualified Data.Map.Strict as Map
 import Control.Monad
 import Control.Arrow
 import TagSoup
-import IPMode
 
 type Family = (Text, [SubFamily])
 

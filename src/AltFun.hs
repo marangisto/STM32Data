@@ -4,7 +4,6 @@ module AltFun (altFunDecl) where
 import System.IO
 import System.FilePath
 import System.Directory
-import Control.Arrow
 import Data.List (nub, sort)
 import Data.Char (toLower)
 import qualified Data.Text as T

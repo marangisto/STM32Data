@@ -1,15 +1,10 @@
 {-# LANGUAGE DeriveDataTypeable, RecordWildCards, TupleSections, DuplicateRecordFields #-}
 module Main where
 
-import Text.HTML.TagSoup
-import Data.Monoid
-import Data.Char (isSpace, toLower)
-import Data.List (nub, sort, stripPrefix)
-import Data.List.Extra (groupSort)
-import Data.Maybe (fromMaybe)
-import qualified Data.ByteString.Char8 as B
+import Data.Char (toLower)
+import Data.List (stripPrefix)
 import qualified Data.Map.Strict as Map
-import qualified Data.HashMap.Strict as H
+import qualified Data.Set as Set
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import System.Console.CmdArgs hiding (name)
@@ -21,7 +16,7 @@ import Control.Monad.Extra
 import Family as F
 import IPMode
 import AltFun
-import MCU as M
+import Pretty
 
 type Text = T.Text
 
@@ -29,8 +24,7 @@ data Options = Options
     { list_mcus     :: Bool
     , alt_fun       :: Maybe FilePath
     , build_rules   :: Bool
-    , normalize     :: Bool
-    , minimize      :: Bool
+    , family_header :: Bool
     , family        :: [String]
     , sub_family    :: [String]
     , package       :: [String]
@@ -42,8 +36,7 @@ options = Main.Options
     { list_mcus = def &= help "list available MCUs by family"
     , alt_fun = def &= help "generate alternate function header(s)"
     , build_rules = def &= help "generate source for build rules"
-    , normalize = def &= help "normalize pins to determine minimal headers"
-    , minimize = def &= help "minimize alternate function definitions"
+    , family_header = def &= help "generate family header"
     , family = def &= help "filter on family"
     , sub_family = def &= help "filter on sub-family"
     , package = def &= help "filter on package"
@@ -70,78 +63,10 @@ main = do
     when list_mcus $ mcuList families
     whenJust alt_fun $ \outputDir -> mapM_ (genAltFun dbDir outputDir) $ flatten families
     when build_rules $ mapM_ (putStrLn . T.unpack) $ buildRules families
-    when normalize $ forM_ families $ \(family, subFamilies) -> do
-        let outputDir = "c:/tmp/afnorm"
-        xs <- forM [ c | (_, controllers) <- subFamilies, c <- controllers ] $ \controller -> do
-            mcu@MCU{..} <- loadMCU dbDir $ name controller
-            let ident = identFromRefName $ T.unpack $ F.refName controller
-            putStrLn ident
-            hFlush stdout
-            return $! map (,components ident) $ alternateFunctions pins
-        let ys = groupSort $ concat xs
-        mapM_ print ys
-        print $ length ys
-        let zs = nub $ sort $ map (nub . sort . snd) ys
-        mapM_ print zs
-        print $ length zs
-        forM_ (zip zs [0..]) $ \(xs, i) -> do
-            putStrLn $ "group-" <> show i
-            --forM_ xs $ \(a, b, c, d) -> putStrLn [ a, ' ', b, ' ', c, ' ', d ]
-                
-{-
-            let hdr = T.unlines $ altFunDecl mcu
-            return $! seq hdr (hdr, [controller])
-        print $ length xs
-        let h = H.fromListWith (++) xs
-        print $ length $ H.keys h
-        forM_ (H.toList h) $ \(hdr, cs@(controller:_)) -> do
-            let uniqName = init $ T.unpack $ F.refName controller
-            mcu <- loadMCU dbDir $ name controller
-            let dir = outputDir </> map toLower (T.unpack family)
-                outputFile = dir </> map toLower uniqName <.> "h"
-            putStrLn $ uniqName <> " -> " <> outputFile
-            hFlush stdout
-            createDirectoryIfMissing True dir
-            withFile outputFile WriteMode $ \h -> do
-                hSetNewlineMode h noNewlineTranslation
-                T.hPutStr h $ T.unlines $ concat
-                    [ map F.refName cs
-                    , preAmble controller
-                    , altFunDecl mcu
-                    ]
--}
-{-
-    when normalize $ forM_ families $ \(family, subFamilies) -> do
-        let outputDir = "c:/tmp/afnorm"
-        xs <- forM [ c | (_, controllers) <- subFamilies, c <- controllers ] $ \controller -> do
-            mcu@MCU{..} <- loadMCU dbDir $ name controller
-            putStrLn $ T.unpack refName
-            hFlush stdout
-            let hdr = T.unlines $ altFunDecl mcu
-            return $! seq hdr (hdr, [controller])
-        print $ length xs
-        let h = H.fromListWith (++) xs
-        print $ length $ H.keys h
-        forM_ (H.toList h) $ \(hdr, cs@(controller:_)) -> do
-            let uniqName = init $ T.unpack $ F.refName controller
-            mcu <- loadMCU dbDir $ name controller
-            let dir = outputDir </> map toLower (T.unpack family)
-                outputFile = dir </> map toLower uniqName <.> "h"
-            putStrLn $ uniqName <> " -> " <> outputFile
-            hFlush stdout
-            createDirectoryIfMissing True dir
-            withFile outputFile WriteMode $ \h -> do
-                hSetNewlineMode h noNewlineTranslation
-                T.hPutStr h $ T.unlines $ concat
-                    [ map F.refName cs
-                    , preAmble controller
-                    , altFunDecl mcu
-                    ]
--}
-    when minimize $ forM_ families $ \(family, subFamilies) -> do
-        putStrLn $ T.unpack family
+    when family_header $ forM_ families $ \(family, subFamilies) -> do
         xs <- gpioConfigs dbDir family
-        mapM_ (putStrLn . ("    "++) . T.unpack) xs
+        ys <- forM xs $ \x -> (x,) . Set.fromList . Map.toList <$> gpioConfigMap dbDir x
+        familyHeader ys
 
 identFromRefName :: String -> String
 identFromRefName s

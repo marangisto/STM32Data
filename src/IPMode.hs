@@ -3,12 +3,12 @@ module IPMode (AltFun(..), loadMCU, gpioConfigMap, gpioConfigs) where
 
 import System.FilePath
 import System.Directory
-import Data.Monoid
 import Data.Maybe (mapMaybe)
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import Data.List (stripPrefix, isPrefixOf, break)
+import Data.List.Extra (stripSuffix)
 import Control.Arrow
 import TagSoup
 import MCU
@@ -74,16 +74,17 @@ gpioConfigs dbDir family' = do
 
 extractGpioConfig :: String -> FilePath -> Maybe String
 extractGpioConfig family s0
-    | Just s1 <- extractGpioConfig' s0 = case family of
-          "STM32L4" | family `isPrefixOf` s1 && s1 /= "STM32L4P" -> Just s1
-          "STM32L4+" | s1 == "STM32L4P" -> Just s1
-          "STM32MP1" | s1 == "STM32MPU" -> Just s1
-          _ -> if family `isPrefixOf` s1 then Just s1 else Nothing
+    | Just (s1, s2) <- extractGpioConfig' s0 = case family of
+          "STM32L4" | family `isPrefixOf` s1 -> if s1 /= "STM32L4P" then Just s2 else Nothing
+          "STM32L4+" | s1 == "STM32L4P" -> Just s2
+          "STM32MP1" | s1 == "STM32MPU" -> Just s2
+          _ -> if family `isPrefixOf` s1 then Just s2 else Nothing
     | otherwise = Nothing
 
-extractGpioConfig' :: FilePath -> Maybe String
+extractGpioConfig' :: FilePath -> Maybe (String, String)
 extractGpioConfig' s0
     | Just s1 <- stripPrefix "GPIO-" s0
-    , (s2, _) <- break (=='_') s1 = Just s2
+    , (s2, _) <- break (=='_') s1
+    , Just s3 <- stripSuffix "_Modes.xml" s1 = Just (s2, s3)
     | otherwise = Nothing
 

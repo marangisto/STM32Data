@@ -11,10 +11,9 @@ module MCU
     ) where
 
 import Text.Read (readMaybe)
-import Data.Monoid
 import Data.List (sort, break)
-import Data.Char (isSpace, isAlphaNum)
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Char (isAlphaNum)
+import Data.Maybe (mapMaybe)
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
 import TagSoup
