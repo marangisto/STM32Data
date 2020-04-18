@@ -3,7 +3,6 @@ module Main where
 
 import Data.Char (toLower)
 import Data.List (stripPrefix)
-import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -65,8 +64,8 @@ main = do
     when build_rules $ mapM_ (putStrLn . T.unpack) $ buildRules families
     when family_header $ forM_ families $ \(family, subFamilies) -> do
         xs <- gpioConfigs dbDir family
-        ys <- forM xs $ \x -> (x,) . Set.fromList . Map.toList <$> gpioConfigMap dbDir x
-        familyHeader ys
+        ys <- forM xs $ \x -> (x,) <$> gpioConfigSet dbDir x
+        mapM_ (putStrLn . T.unpack) $ familyHeader ys
 
 identFromRefName :: String -> String
 identFromRefName s

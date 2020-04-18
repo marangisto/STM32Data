@@ -1,9 +1,18 @@
-{-# LANGUAGE RecordWildCards, TupleSections, DuplicateRecordFields, OverloadedStrings #-}
-module IPMode (AltFun(..), loadMCU, gpioConfigMap, gpioConfigs) where
+{-# LANGUAGE RecordWildCards, TupleSections, DuplicateRecordFields, OverloadedStrings, GeneralizedNewtypeDeriving #-}
+module IPMode
+    ( AltFun(..)
+    , MC(..)
+    , PIN(..)
+    , AF(..)
+    , loadMCU
+    , gpioConfigSet
+    , gpioConfigs
+    ) where
 
 import System.FilePath
 import System.Directory
 import Data.Maybe (mapMaybe)
+import qualified Data.Set as Set
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -12,6 +21,10 @@ import Data.List.Extra (stripSuffix)
 import Control.Arrow
 import TagSoup
 import MCU
+
+newtype MC = MC { unMC :: Text } deriving (Eq, Ord, Show)
+newtype PIN = PIN { unPIN :: Text } deriving (Eq, Ord, Show)
+newtype AF = AF { unAF :: Text } deriving (Eq, Ord, Show)
 
 data IPMode = IPMode
     { pinName   :: Text
@@ -48,6 +61,17 @@ altFun (t:ts)
     where signalName = cleanSignal $ fromAttrib "Name" t
           s = T.strip $ innerText ts
 
+altFunSet :: Text -> Set.Set ((PIN, AF), Int)
+altFunSet xml = Set.fromList
+    [ ((PIN pinName, AF signalName), altFunction)
+    | IPMode{..} <- xs
+    , AltFun{..} <- signals
+    ]
+    where xs = map pinModeFromTags
+             $ partitions (~=="<GPIO_Pin>")
+             $ dropWhile (~/="<GPIO_Pin>")
+             $ parseTags xml
+
 altFunMap :: Text -> Map.Map (Text, Text) Int
 altFunMap xml = Map.fromList
     [ ((pinName, signalName), altFunction)
@@ -64,6 +88,9 @@ loadMCU dbDir name = do
     mcu@MCU{..} <- parseMCU <$> T.readFile (dbDir </> T.unpack name <.> "xml")
     afmap <- altFunMap <$> T.readFile (dbDir </> "IP" </> "GPIO-" <> T.unpack gpioConfig <> "_Modes" <.> "xml")
     return $ mcu { pins = map (resolveFunctions afmap) pins }
+
+gpioConfigSet :: FilePath -> Text -> IO (Set.Set ((PIN, AF), Int))
+gpioConfigSet dbDir gpioConfig = altFunSet <$> T.readFile (dbDir </> "IP" </> "GPIO-" <> T.unpack gpioConfig <> "_Modes" <.> "xml")
 
 gpioConfigMap :: FilePath -> Text -> IO (Map.Map (Text, Text) Int)
 gpioConfigMap dbDir gpioConfig = altFunMap <$> T.readFile (dbDir </> "IP" </> "GPIO-" <> T.unpack gpioConfig <> "_Modes" <.> "xml")
