@@ -15,7 +15,6 @@ import System.FilePath
 import System.IO
 import Family as F
 import IPMode
-import AltFun
 
 type Text = T.Text
 

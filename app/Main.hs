@@ -14,7 +14,6 @@ import Control.Monad
 import Control.Monad.Extra
 import Family as F
 import IPMode
-import AltFun
 import Pretty
 
 type Text = T.Text
@@ -60,12 +59,12 @@ main = do
         fs = map (Family . T.pack) family ++ map (SubFamily . T.pack) sub_family ++ map (Package . T.pack) package
     families <- prune fs . parseFamilies <$> T.readFile (dbDir </> familiesXML)
     when list_mcus $ mcuList families
-    whenJust alt_fun $ \outputDir -> mapM_ (genAltFun dbDir outputDir) $ flatten families
     when build_rules $ mapM_ (putStrLn . T.unpack) $ buildRules families
     when family_header $ forM_ families $ \(family, subFamilies) -> do
         xs <- gpioConfigs dbDir family
         ys <- forM xs $ \x -> (x,) <$> gpioConfigSet dbDir x
         mapM_ (putStrLn . T.unpack) $ familyHeader ys
+    --whenJust alt_fun $ \outputDir -> mapM_ (genAltFun dbDir outputDir) $ flatten families
 
 identFromRefName :: String -> String
 identFromRefName s
@@ -79,20 +78,4 @@ components s
     , [ _, _, c1, c2, c3, 'x', c4 ] <- rest
     = (c1, c2, c3, c4)
     | otherwise = error $ "unrecognized name format: '" <> s <> "'"
-
-genAltFun :: FilePath -> FilePath -> (Text, Text, Controller) -> IO ()
-genAltFun dbDir outputDir (family, subFamily, controller) = do
-    let uniqName = init $ T.unpack $ F.refName controller
-    mcu <- loadMCU dbDir $ name controller
-    let dir = outputDir </> map toLower (T.unpack family)
-        outputFile = dir </> map toLower uniqName <.> "h"
-    putStrLn $ uniqName <> " -> " <> outputFile
-    hFlush stdout
-    createDirectoryIfMissing True dir
-    withFile outputFile WriteMode $ \h -> do
-        hSetNewlineMode h noNewlineTranslation
-        T.hPutStr h $ T.unlines $ concat
-            [ preAmble controller
-            , altFunDecl mcu
-            ]
 
