@@ -62,25 +62,7 @@ main = do
     when list_mcus $ mcuList families
     when build_rules $ mapM_ (putStrLn . T.unpack) $ buildRules families
     when family_header $ forM_ families $ \(family, subFamilies) -> do
-        let cs = controllers subFamilies
-        mapM_ (putStrLn . T.unpack) $ familyHeader $ map refName cs
-        forM_ cs $ \c -> do
-            mcu@MCU{..} <- loadMCU dbDir c
-            print mcu{pins = []}-- gpioConfig
-        xs <- gpioConfigs dbDir family
-        ys <- forM xs $ \x -> (x,) <$> gpioConfigSet dbDir x
-        mapM_ (putStrLn . T.unpack) $ gpioConfigHeader ys
-
-identFromRefName :: String -> String
-identFromRefName s
-    | ('x' : p : _ : rest) <- reverse s = reverse $ p : 'x' : rest
-    | (_ : 'x' : p : _ : rest) <- reverse s = reverse $ p : 'x' : rest
-    | otherwise = error $ "unrecognized name format: '" <> s <> "'"
-
-components :: String -> (Char, Char, Char, Char)
-components s
-    | (Just rest) <- stripPrefix "STM32" s
-    , [ _, _, c1, c2, c3, 'x', c4 ] <- rest
-    = (c1, c2, c3, c4)
-    | otherwise = error $ "unrecognized name format: '" <> s <> "'"
+        mcus <- mapM (loadMCU dbDir) $ controllers subFamilies
+        gss <- mapM (\x -> (x,) <$> gpioConfigSet dbDir x) =<< gpioConfigs dbDir family
+        mapM_ (putStrLn . T.unpack) $ familyHeader mcus gss
 

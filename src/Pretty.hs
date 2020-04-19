@@ -1,7 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Pretty
     ( familyHeader
-    , gpioConfigHeader
     ) where
 
 import Numeric (showHex)
@@ -14,23 +13,19 @@ import qualified Data.Text.IO as T
 import System.Directory
 import System.FilePath
 import System.IO
-import Family as F
 import IPMode
+import MCU
 
 type Text = T.Text
 
-familyHeader :: [Text] -> [Text]
-familyHeader xs = concat $
+familyHeader :: [MCU] -> [(Text, Set.Set ((PIN, AF), Int))] -> [Text]
+familyHeader mcus ys = concat $
     [ [ "#pragma once"
       , ""
       , "#include <type_traits>"
       ]
-    , enumDecl False "mcu_t" xs
-    ]
-
-gpioConfigHeader :: [(Text, Set.Set ((PIN, AF), Int))] -> [Text]
-gpioConfigHeader ys = concat $
-    [ enumDecl True "gpio_conf_t" $ map unGPIOConf confs
+    , enumDecl False "mcu_t" $ map name mcus
+    , enumDecl True "gpio_conf_t" $ map unGPIOConf confs
     , [ "", "static constexpr gpio_conf_t GPIOConf = " <> unGPIOConf (head confs) <> ";" ]
     , funDecl $ maximum $ [ v | (_, xs) <- ss, (_, v) <- [ xs ] ]
     , afEnumDecl $ nub $ sort [ af | ((_, af), _) <- ss ]
