@@ -33,7 +33,7 @@ familyHeader family mcus ys = concat $
     , mcuTraitsDecl mcus
     , [ ""
       , "static constexpr mcu_t target = MCU;"
-      , "static constexpr gpio_conf_t GPIOConf = mcu_traits<target>::gpio_conf;"
+      , "static constexpr gpio_conf_t gpio_conf = mcu_traits<target>::gpio_conf;"
       ]
     , funDecl $ maximum $ [ v | (_, xs) <- ss, (_, v) <- [ xs ] ]
     , afEnumDecl $ nub $ sort [ af | ((_, af), _) <- ss ]
@@ -94,8 +94,8 @@ value p@(v, xs) (Just q@(u, ys))
 
 constraint :: [GPIOConf] -> Text
 constraint [] = "true"
-constraint [x] = "GPIOConf & " <> unGPIOConf x
-constraint xs = "GPIOConf & (" <> T.intercalate "|" (map unGPIOConf xs) <> ")"
+constraint [x] = "gpio_conf & " <> unGPIOConf x
+constraint xs = "gpio_conf & (" <> T.intercalate "|" (map unGPIOConf xs) <> ")"
 
 funDecl :: Int -> [Text]
 funDecl n = concat
