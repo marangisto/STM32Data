@@ -2,12 +2,14 @@
 module Family
     ( Family
     , SubFamily
+    , Peripheral
     , Controller(..)
     , Filter(..)
     , parseFamilies
     , prune
     , flatten
     , mcuList
+    , controllers
     , preAmble
     , buildRules
     ) where
@@ -131,6 +133,9 @@ mcuList families =
                     , T.unpack rpn
                     , show flash <> "/" <> show ram
                     ]
+
+controllers :: [SubFamily] -> [Controller]
+controllers subFamilies = [ c | (_, cs) <- subFamilies, c <- cs ]
 
 preAmble :: Controller -> [Text]
 preAmble Controller{..} =

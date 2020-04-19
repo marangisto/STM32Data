@@ -20,6 +20,7 @@ import Data.List (stripPrefix, isPrefixOf, break)
 import Data.List.Extra (stripSuffix)
 import Control.Arrow
 import TagSoup
+import Family
 import MCU
 
 newtype GPIOConf = GPIOConf { unGPIOConf :: Text } deriving (Eq, Ord, Show)
@@ -83,9 +84,9 @@ altFunMap xml = Map.fromList
              $ dropWhile (~/="<GPIO_Pin>")
              $ parseTags xml
 
-loadMCU :: FilePath -> Text -> IO MCU
-loadMCU dbDir name = do
-    mcu@MCU{..} <- parseMCU <$> T.readFile (dbDir </> T.unpack name <.> "xml")
+loadMCU :: FilePath -> Controller -> IO MCU
+loadMCU dbDir c@Controller{..} = do
+    mcu@MCU{..} <- parseMCU c <$> T.readFile (dbDir </> T.unpack name <.> "xml")
     afmap <- altFunMap <$> T.readFile (dbDir </> "IP" </> "GPIO-" <> T.unpack gpioConfig <> "_Modes" <.> "xml")
     return $ mcu { pins = map (resolveFunctions afmap) pins }
 

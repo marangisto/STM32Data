@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Pretty
     ( familyHeader
+    , gpioConfigHeader
     ) where
 
 import Numeric (showHex)
@@ -18,20 +19,25 @@ import IPMode
 
 type Text = T.Text
 
-familyHeader :: [(Text, Set.Set ((PIN, AF), Int))] -> [Text]
-familyHeader ys = concat $
+familyHeader :: [Text] -> [Text]
+familyHeader xs = concat $
     [ [ "#pragma once"
       , ""
       , "#include <type_traits>"
       ]
-    , mcuEnumDecl mcus
-    , [ "", "static constexpr gpio_conf_t GPIOConf = " <> unGPIOConf (head mcus) <> ";" ]
+    , enumDecl False "mcu_t" xs
+    ]
+
+gpioConfigHeader :: [(Text, Set.Set ((PIN, AF), Int))] -> [Text]
+gpioConfigHeader ys = concat $
+    [ enumDecl True "gpio_conf_t" $ map unGPIOConf confs
+    , [ "", "static constexpr gpio_conf_t GPIOConf = " <> unGPIOConf (head confs) <> ";" ]
     , funDecl $ maximum $ [ v | (_, xs) <- ss, (_, v) <- [ xs ] ]
     , afEnumDecl $ nub $ sort [ af | ((_, af), _) <- ss ]
     , traitsDecl
-    , map (gpioConfigTraitDecl mcus) $ groupSort ss
+    , map (gpioConfigTraitDecl confs) $ groupSort ss
     ]
-    where mcus = map (cleanGPIOConf . fst) ys
+    where confs = map (cleanGPIOConf . fst) ys
           ss = [ (p, (cleanGPIOConf conf, v))
                | (conf, s) <- ys
                , (p, v) <- Set.toList s
@@ -40,17 +46,17 @@ familyHeader ys = concat $
 cleanGPIOConf :: Text -> GPIOConf
 cleanGPIOConf = GPIOConf . fst . T.breakOn "_"
 
-mcuEnumDecl :: [GPIOConf] -> [Text]
-mcuEnumDecl xs = concat
-    [ [ "", "enum gpio_conf_t" ]
-    , [ s <> unGPIOConf x <> " = 0x" <> T.pack (showHex (2^i) "")
+enumDecl :: Bool -> Text -> [Text] -> [Text]
+enumDecl bits name xs = concat
+    [ [ "", "enum " <> name ]
+    , [ s <> x <> if bits then " = 0x" <> T.pack (showHex (2^i) "") else ""
       | (s, x, i) <- zip3 ("    { " : repeat "    , ") (sort xs) [0..]
       ]
     , [ "    };" ]
     ]
 
 gpioConfigTraitDecl :: [GPIOConf] -> ((PIN, AF), [(GPIOConf, Int)]) -> Text
-gpioConfigTraitDecl mcus ((pin, altfun), mcuVals) = T.concat
+gpioConfigTraitDecl confs ((pin, altfun), confVals) = T.concat
     [ ""
     , "template<> struct alt_fun_traits<"
     , unPIN pin
@@ -62,13 +68,13 @@ gpioConfigTraitDecl mcus ((pin, altfun), mcuVals) = T.concat
     , v
     , "; };"
     ]
-    where t | all (`elem` map fst mcuVals) mcus = "alt_fun_t"
+    where t | all (`elem` map fst confVals) confs = "alt_fun_t"
             | otherwise = "alt_fun<" <> constraint ms <> ">"
-          v | [ p ] <- valMcus = value p Nothing
-            | [ p, q ] <- valMcus = value p $ Just q
+          v | [ p ] <- valConfs = value p Nothing
+            | [ p, q ] <- valConfs = value p $ Just q
             | otherwise = error "too complex"
-          valMcus = groupSort [ (v, m) | (m, v) <- mcuVals ]
-          ms = map fst mcuVals
+          valConfs = groupSort [ (v, m) | (m, v) <- confVals ]
+          ms = map fst confVals
 
 value :: (Int, [GPIOConf]) -> Maybe (Int, [GPIOConf]) -> Text
 value p@(v, _) Nothing = "AF" <> T.pack (show v)

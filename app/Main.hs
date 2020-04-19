@@ -14,6 +14,7 @@ import Control.Monad
 import Control.Monad.Extra
 import Family as F
 import IPMode
+import MCU
 import Pretty
 
 type Text = T.Text
@@ -61,10 +62,14 @@ main = do
     when list_mcus $ mcuList families
     when build_rules $ mapM_ (putStrLn . T.unpack) $ buildRules families
     when family_header $ forM_ families $ \(family, subFamilies) -> do
+        let cs = controllers subFamilies
+        mapM_ (putStrLn . T.unpack) $ familyHeader $ map refName cs
+        forM_ cs $ \c -> do
+            mcu@MCU{..} <- loadMCU dbDir c
+            print mcu{pins = []}-- gpioConfig
         xs <- gpioConfigs dbDir family
         ys <- forM xs $ \x -> (x,) <$> gpioConfigSet dbDir x
-        mapM_ (putStrLn . T.unpack) $ familyHeader ys
-    --whenJust alt_fun $ \outputDir -> mapM_ (genAltFun dbDir outputDir) $ flatten families
+        mapM_ (putStrLn . T.unpack) $ gpioConfigHeader ys
 
 identFromRefName :: String -> String
 identFromRefName s

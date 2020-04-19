@@ -10,6 +10,7 @@ module MCU
     , cleanSignal
     ) where
 
+import Family
 import Text.Read (readMaybe)
 import Data.List (sort, break)
 import Data.Char (isAlphaNum)
@@ -19,7 +20,13 @@ import qualified Data.Text as T
 import TagSoup
 
 data MCU = MCU
-    { refName       :: Text
+    { name          :: Text                 -- from Controller
+    , core          :: Text                 -- from Controller
+    , frequency     :: Int                  -- from Controller
+    , flash         :: Int                  -- from Controller
+    , ram           :: Int                  -- from Controller
+    , numIO         :: Int                  -- from Controller
+    , peripherals   :: [(Peripheral, Int)]  -- from Controller
     , clockTree     :: Text
     , family        :: Text
     , line          :: Text
@@ -107,9 +114,9 @@ resolveFunctions af p@IOPin{..} = p { signals = map f signals }
               | otherwise = AdditionalFunction{..}
 resolveFunctions _ p = p
 
-parseMCU :: Text -> MCU
-parseMCU xml = MCU{..}
-    where refName = fromAttrib "RefName" t
+parseMCU :: Controller -> Text -> MCU
+parseMCU Controller{..} xml = MCU{..}
+    where name = refName -- from family file
           clockTree = fromAttrib "ClockTree" t
           family = fromAttrib "Family" t
           line = fromAttrib "Line" t
