@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, RecordWildCards #-}
 module Pretty
     ( familyHeader
     ) where
@@ -18,18 +18,26 @@ import MCU
 
 type Text = T.Text
 
-familyHeader :: [MCU] -> [(Text, Set.Set ((PIN, AF), Int))] -> [Text]
-familyHeader mcus ys = concat $
+familyHeader :: Text -> [MCU] -> [(Text, Set.Set ((PIN, AF), Int))] -> [Text]
+familyHeader family mcus ys = concat $
     [ [ "#pragma once"
       , ""
-      , "#include <type_traits>"
+      , "////"
+      , "//"
+      , "//      " <> family
+      , "//"
+      , "////"
       ]
     , enumDecl False "mcu_t" $ map name mcus
     , enumDecl True "gpio_conf_t" $ map unGPIOConf confs
-    , [ "", "static constexpr gpio_conf_t GPIOConf = " <> unGPIOConf (head confs) <> ";" ]
+    , mcuTraitsDecl mcus
+    , [ ""
+      , "static constexpr mcu_t target = MCU;"
+      , "static constexpr gpio_conf_t GPIOConf = mcu_traits<target>::gpio_conf;"
+      ]
     , funDecl $ maximum $ [ v | (_, xs) <- ss, (_, v) <- [ xs ] ]
     , afEnumDecl $ nub $ sort [ af | ((_, af), _) <- ss ]
-    , traitsDecl
+    , gpioTraitsDecl
     , map (gpioConfigTraitDecl confs) $ groupSort ss
     ]
     where confs = map (cleanGPIOConf . fst) ys
@@ -103,8 +111,22 @@ afEnumDecl xs = concat
     , [ "    };" ]
     ]
 
-traitsDecl :: [Text]
-traitsDecl =
+mcuTraitsDecl :: [MCU] -> [Text]
+mcuTraitsDecl mcus =
+    [ ""
+    , "template<mcu_t MCU> struct mcu_traits {};"
+    ] ++ concatMap f mcus
+    where f MCU{..} =
+            [ ""
+            , "template<> struct mcu_traits<" <> name <> ">"
+            , "{"
+            , "    static constexpr gpio_conf_t gpio_conf = " <> gc <> ";"
+            , "};"
+            ]
+            where gc = unGPIOConf $ cleanGPIOConf gpioConfig
+
+gpioTraitsDecl :: [Text]
+gpioTraitsDecl =
    [ ""
    , "template<gpio_pin_t PIN, alternate_function_t ALT>"
    , "struct alt_fun_traits"

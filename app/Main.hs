@@ -57,12 +57,16 @@ main = do
     opts@Options{..} <- cmdArgs options
     hSetNewlineMode stdout noNewlineTranslation
     let dbDir = stm32CubeMX </> stm32DbDir
-        fs = map (Family . T.pack) family ++ map (SubFamily . T.pack) sub_family ++ map (Package . T.pack) package
+        fs = concat
+            [ map (Family . T.pack) family
+            , map (SubFamily . T.pack) sub_family
+            , map (Package . T.pack) package
+            ]
     families <- prune fs . parseFamilies <$> T.readFile (dbDir </> familiesXML)
     when list_mcus $ mcuList families
     when build_rules $ mapM_ (putStrLn . T.unpack) $ buildRules families
     when family_header $ forM_ families $ \(family, subFamilies) -> do
         mcus <- mapM (loadMCU dbDir) $ controllers subFamilies
         gss <- mapM (\x -> (x,) <$> gpioConfigSet dbDir x) =<< gpioConfigs dbDir family
-        mapM_ (putStrLn . T.unpack) $ familyHeader mcus gss
+        mapM_ (putStrLn . T.unpack) $ familyHeader family mcus gss
 
