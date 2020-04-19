@@ -21,9 +21,8 @@ type Text = T.Text
 
 data Options = Options
     { list_mcus     :: Bool
-    , alt_fun       :: Maybe FilePath
     , build_rules   :: Bool
-    , family_header :: Bool
+    , family_header :: Maybe FilePath
     , family        :: [String]
     , sub_family    :: [String]
     , package       :: [String]
@@ -33,9 +32,8 @@ data Options = Options
 options :: Main.Options
 options = Main.Options
     { list_mcus = def &= help "list available MCUs by family"
-    , alt_fun = def &= help "generate alternate function header(s)"
     , build_rules = def &= help "generate source for build rules"
-    , family_header = def &= help "generate family header"
+    , family_header = def &= help "generate family header (to directory)"
     , family = def &= help "filter on family"
     , sub_family = def &= help "filter on sub-family"
     , package = def &= help "filter on package"
@@ -43,7 +41,7 @@ options = Main.Options
     } &=
     verbosity &=
     help "Generate pin descriptions from STM32CubeMX xml files" &=
-    summary "STM32Data v0.0.0, (c) Bengt Marten Agren 2020" &=
+    summary "STM32Data v0.1.0, (c) Bengt Marten Agren 2020" &=
     details [ "STM32Data generate device header files for STM32"
             , "MCUs based on vendor XML files from SMT32CubeMX."
             ]
@@ -65,8 +63,10 @@ main = do
     families <- prune fs . parseFamilies <$> T.readFile (dbDir </> familiesXML)
     when list_mcus $ mcuList families
     when build_rules $ mapM_ (putStrLn . T.unpack) $ buildRules families
-    when family_header $ forM_ families $ \(family, subFamilies) -> do
+    whenJust family_header $ \dir -> forM_ families $ \(family, subFamilies) -> do
+        let header = dir </> T.unpack (T.toLower family) <.> "h"
+        putStrLn header
         mcus <- mapM (loadMCU dbDir) $ controllers subFamilies
         gss <- mapM (\x -> (x,) <$> gpioConfigSet dbDir x) =<< gpioConfigs dbDir family
-        mapM_ (putStrLn . T.unpack) $ familyHeader family mcus gss
+        T.writeFile header $ T.unlines $ familyHeader family mcus gss
 
