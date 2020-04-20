@@ -4,15 +4,10 @@ module Pretty
     ) where
 
 import Numeric (showHex)
-import Data.Char (toLower)
-import Data.List (stripPrefix, break, nub, sort)
+import Data.List (nub, sort)
 import Data.List.Extra (groupSort)
 import qualified Data.Set as Set
 import qualified Data.Text as T
-import qualified Data.Text.IO as T
-import System.Directory
-import System.FilePath
-import System.IO
 import IPMode
 import MCU
 

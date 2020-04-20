@@ -93,9 +93,6 @@ loadMCU dbDir c@Controller{..} = do
 gpioConfigSet :: FilePath -> Text -> IO (Set.Set ((PIN, AF), Int))
 gpioConfigSet dbDir gpioConfig = altFunSet <$> T.readFile (dbDir </> "IP" </> "GPIO-" <> T.unpack gpioConfig <> "_Modes" <.> "xml")
 
-gpioConfigMap :: FilePath -> Text -> IO (Map.Map (Text, Text) Int)
-gpioConfigMap dbDir gpioConfig = altFunMap <$> T.readFile (dbDir </> "IP" </> "GPIO-" <> T.unpack gpioConfig <> "_Modes" <.> "xml")
-
 gpioConfigs :: FilePath -> Text -> IO [Text]
 gpioConfigs dbDir family' = do
     map T.pack . mapMaybe (extractGpioConfig $ T.unpack family') <$> getDirectoryContents (dbDir </> "IP")

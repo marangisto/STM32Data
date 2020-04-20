@@ -1,20 +1,15 @@
 {-# LANGUAGE DeriveDataTypeable, RecordWildCards, TupleSections, DuplicateRecordFields #-}
 module Main where
 
-import Data.Char (toLower)
-import Data.List (stripPrefix)
-import qualified Data.Set as Set
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import System.Console.CmdArgs hiding (name)
-import System.Directory
 import System.FilePath
 import System.IO
 import Control.Monad
 import Control.Monad.Extra
 import Family as F
 import IPMode
-import MCU
 import Pretty
 
 type Text = T.Text
