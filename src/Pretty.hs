@@ -1,9 +1,11 @@
-{-# LANGUAGE OverloadedStrings, RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings, RecordWildCards, TupleSections #-}
 module Pretty
     ( familyHeader
     ) where
 
 import Numeric (showHex)
+import Text.Read (readMaybe)
+import Data.Char (ord)
 import Data.List (nub, sort)
 import Data.List.Extra (groupSort)
 import qualified Data.Set as Set
@@ -30,6 +32,8 @@ familyHeader family mcus ys = concat $
       , "static constexpr mcu_t target = MCU;"
       , "static constexpr gpio_conf_t gpio_conf = mcu_traits<target>::gpio_conf;"
       ]
+    , enumDecl2 "gpio_port_t" $ map (\p -> (T.pack [ 'P', p ], ord p - ord 'A')) ports
+    , enumDecl2 "gpio_pin_t" $ map (\(p, i) -> (T.pack $ 'P' : p : show i, (ord p - ord 'A') * 16 + i)) pins
     , funDecl $ maximum $ [ v | (_, xs) <- ss, (_, v) <- [ xs ] ]
     , afEnumDecl $ nub $ sort [ af | ((_, af), _) <- ss ]
     , gpioTraitsDecl
@@ -40,6 +44,20 @@ familyHeader family mcus ys = concat $
                | (conf, s) <- ys
                , (p, v) <- Set.toList s
                ]
+          ports = nub . sort $ map fst pins
+          pins = ioPins mcus
+
+ioPins :: [MCU] -> [(Char, Int)]
+ioPins mcus = nub $ sort
+    [ portPin
+    | MCU{..} <- mcus
+    , IOPin{..} <- pins
+    , Just portPin <- [ splitPin $ T.unpack pinName ]
+    ]
+
+splitPin :: String -> Maybe (Char, Int)
+splitPin ('P':p:xs) = (p,) <$> readMaybe xs
+splitPin _ = Nothing
 
 cleanGPIOConf :: Text -> GPIOConf
 cleanGPIOConf = GPIOConf . fst . T.breakOn "_"
@@ -49,6 +67,15 @@ enumDecl bits name xs = concat
     [ [ "", "enum " <> name ]
     , [ s <> x <> if bits then " = 0x" <> T.pack (showHex (2^i) "") else ""
       | (s, x, i) <- zip3 ("    { " : repeat "    , ") (sort xs) [0..]
+      ]
+    , [ "    };" ]
+    ]
+
+enumDecl2 :: Text -> [(Text, Int)] -> [Text]
+enumDecl2 name xs = concat
+    [ [ "", "enum " <> name ]
+    , [ s <> x <> " = 0x" <> T.pack (showHex i "")
+      | (s, (x, i)) <- zip ("    { " : repeat "    , ") xs
       ]
     , [ "    };" ]
     ]
