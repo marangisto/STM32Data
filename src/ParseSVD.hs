@@ -43,23 +43,23 @@ data Register = Register
     , description   :: Text
     , addressOffset :: Int
     , size          :: Int
+    , access        :: Text
     , resetValue    :: Int
     , fields        :: [Field]
     } deriving (Show)
 
 instance Default Register where
-    def = Register "" "" "" 0 0 0 []
+    def = Register "" "" "" 0 0 "" 0 []
 
 data Field = Field
     { name          :: Text
     , description   :: Text
     , bitOffset     :: Int
     , bitWidth      :: Int
-    , access        :: Text
     } deriving (Show)
 
 instance Default Field where
-    def = Field "" "" 0 0 ""
+    def = Field "" "" 0 0
 
 parseSVD :: Text -> SVD
 parseSVD xml = (name, ps)
@@ -119,6 +119,8 @@ register (t:ts)
         = (register ts) { addressOffset = fromHex $ ftt ts }
     | isTagOpenName "size" t
         = (register ts) { size = fromHex $ ftt ts }
+    | isTagOpenName "access" t
+        = (register ts) { access = ftt ts }
     | isTagOpenName "resetValue" t
         = (register ts) { resetValue = fromHex $ ftt ts }
     | isTagOpenName "fields" t
@@ -138,8 +140,6 @@ field (t:ts)
         = (field ts) { bitOffset = read $ T.unpack $ ftt ts }
     | isTagOpenName "bitWidth" t
         = (field ts) { bitWidth = read $ T.unpack $ ftt ts }
-    | isTagOpenName "access" t
-        = (field ts) { access = ftt ts }
     | otherwise = field ts
 
 ftt = fromTagText . head

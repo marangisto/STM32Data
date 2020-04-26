@@ -14,6 +14,7 @@ import Family as F
 import IPMode
 import Pretty
 import ParseSVD
+import PrettySVD
 
 type Text = T.Text
 
@@ -77,5 +78,5 @@ main = do
         xs <- filter pred <$> getDirectoryContents dir
         forM_ xs $ \x -> do
             putStrLn $ "parsing " <> x
-            print =<< parseSVD <$> T.readFile (dir </> x)
+            mapM_ T.putStrLn =<< prettySVD . parseSVD <$> T.readFile (dir </> x)
 
