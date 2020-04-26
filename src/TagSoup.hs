@@ -5,6 +5,10 @@ module TagSoup
     , fromTagText
     , fromAttrib
     , innerText
+    , isTagOpen
+    , isTagClose
+    , isTagOpenName
+    , isTagCloseName
     , partitions
     , (~==)
     , (~/=)

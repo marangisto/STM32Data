@@ -30,6 +30,7 @@ dependencies:
 - cmdargs
 - directory
 - extra
+- data-default
 
 library:
   source-dirs: src

@@ -5,12 +5,15 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import System.Console.CmdArgs hiding (name)
 import System.FilePath
+import System.Directory
 import System.IO
 import Control.Monad
 import Control.Monad.Extra
+import Data.List (isPrefixOf)
 import Family as F
 import IPMode
 import Pretty
+import ParseSVD
 
 type Text = T.Text
 
@@ -21,6 +24,7 @@ data Options = Options
     , family        :: [String]
     , sub_family    :: [String]
     , package       :: [String]
+    , parse_svd     :: Bool
     , files         :: [FilePath]
     } deriving (Show, Eq, Data, Typeable)
 
@@ -32,6 +36,7 @@ options = Main.Options
     , family = def &= help "filter on family"
     , sub_family = def &= help "filter on sub-family"
     , package = def &= help "filter on package"
+    , parse_svd = def &= help "process svd files"
     , files = def &= args &= typ "FILES"
     } &=
     verbosity &=
@@ -44,6 +49,7 @@ options = Main.Options
 stm32CubeMX = "c:/Program Files (x86)/STMicroelectronics/STM32Cube/STM32CubeMX"
 stm32DbDir = "db/mcu"
 familiesXML = "families.xml"
+svdDir = "c:/ST/STM32CubeIDE_1.3.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.productdb.debug_1.3.0.202002181050/resources/cmsis/STMicroelectronics_CMSIS_SVD"
 
 main :: IO ()
 main = do
@@ -64,4 +70,12 @@ main = do
         mcus <- mapM (loadMCU dbDir) $ controllers subFamilies
         gss <- mapM (\x -> (x,) <$> gpioConfigSet dbDir x) =<< gpioConfigs dbDir family
         T.writeFile header $ T.unlines $ familyHeader family mcus gss
+    when parse_svd $ forM_ families $ \(family, subFamilies) -> do
+        let dir = svdDir
+            pred x = T.unpack family `isPrefixOf` x && takeExtension x == ".svd"
+        print family
+        xs <- filter pred <$> getDirectoryContents dir
+        forM_ xs $ \x -> do
+            putStrLn $ "parsing " <> x
+            print =<< parseSVD <$> T.readFile (dir </> x)
 
