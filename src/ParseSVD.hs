@@ -2,6 +2,7 @@
 module ParseSVD
     ( SVD(..)
     , Peripheral(..)
+    , Interrupt(..)
     , Register(..)
     , Field(..)
     , parseSVD
@@ -19,11 +20,22 @@ data Peripheral = Peripheral
     { name          :: Text
     , description   :: Text
     , baseAddress   :: Int
+    , interrupts    :: [Interrupt]
     , registers     :: [Register]
+    , derivedFrom   :: Maybe Text
     } deriving (Show)
 
 instance Default Peripheral where
-    def = Peripheral "" "" 0 []
+    def = Peripheral "" "" 0 [] [] Nothing
+
+data Interrupt = Interrupt
+    { name          :: Text
+    , description   :: Text
+    , value         :: Int
+    } deriving (Show)
+
+instance Default Interrupt where
+    def = Interrupt "" "" 0
 
 data Register = Register
     { name          :: Text
@@ -63,17 +75,36 @@ svdName ts = (innerText xs, ys)
 peripheral :: [Tag Text] -> Peripheral
 peripheral [] = def
 peripheral (t:ts)
+    | isTagOpenName "peripheral" t
+        = let s = fromAttrib "derivedFrom" t
+              d = if s /= "" then Just s else Nothing
+           in (peripheral ts) { derivedFrom = d }
     | isTagOpenName "name" t
         = (peripheral ts) { name = ftt ts }
     | isTagOpenName "description" t
         = (peripheral ts) { description = ftt ts }
     | isTagOpenName "baseAddress" t
         = (peripheral ts) { baseAddress = fromHex $ ftt ts }
+    | isTagOpenName "interrupt" t
+        = let (us, rest) = break (~=="</interrupt>") ts
+              p = peripheral rest
+          in p { interrupts = interrupt us : interrupts p }
     | isTagOpenName "registers" t
-        = let (us, vs) = break (~=="</registers>") ts
+        = let (us, rest) = break (~=="</registers>") ts
               rs = partitions (~=="<register>") us
-          in (peripheral ts) { registers = map register rs }
+          in (peripheral rest) { registers = map register rs }
     | otherwise = peripheral ts
+
+interrupt :: [Tag Text] -> Interrupt
+interrupt [] = def
+interrupt (t:ts)
+    | isTagOpenName "name" t
+        = (interrupt ts) { name = ftt ts }
+    | isTagOpenName "description" t
+        = (interrupt ts) { description = ftt ts }
+    | isTagOpenName "bitOffset" t
+        = (interrupt ts) { value = read $ T.unpack $ ftt ts }
+    | otherwise = interrupt ts
 
 register :: [Tag Text] -> Register
 register [] = def
@@ -91,9 +122,9 @@ register (t:ts)
     | isTagOpenName "resetValue" t
         = (register ts) { resetValue = fromHex $ ftt ts }
     | isTagOpenName "fields" t
-        = let (us, vs) = break (~=="</fields>") ts
+        = let (us, rest) = break (~=="</fields>") ts
               rs = partitions (~=="<field>") us
-          in (register ts) { fields = map field rs }
+          in (register rest) { fields = map field rs }
     | otherwise = register ts
 
 field :: [Tag Text] -> Field
@@ -119,3 +150,4 @@ fromHex t
     | ('0':'X':xs) <- s, [(n, "")] <- readHex xs = n
     | otherwise = error $ "failed or read hex '" <> s <> "'"
     where s = T.unpack t
+
