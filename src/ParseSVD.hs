@@ -14,6 +14,8 @@ import Numeric (readHex)
 import Data.Default
 import TagSoup
 
+instance Default T.Text where def = ""
+
 type SVD = (Text, [Peripheral])
 
 data Peripheral = Peripheral
@@ -26,7 +28,7 @@ data Peripheral = Peripheral
     } deriving (Show)
 
 instance Default Peripheral where
-    def = Peripheral "" "" 0 [] [] Nothing
+    def = Peripheral def def def def def def
 
 data Interrupt = Interrupt
     { name          :: Text
@@ -35,7 +37,7 @@ data Interrupt = Interrupt
     } deriving (Show)
 
 instance Default Interrupt where
-    def = Interrupt "" "" 0
+    def = Interrupt def def def
 
 data Register = Register
     { name          :: Text
@@ -43,13 +45,13 @@ data Register = Register
     , description   :: Text
     , addressOffset :: Int
     , size          :: Int
-    , access        :: Text
+    , access        :: Maybe Text
     , resetValue    :: Int
     , fields        :: [Field]
     } deriving (Show)
 
 instance Default Register where
-    def = Register "" "" "" 0 0 "" 0 []
+    def = Register def def def def def def def def
 
 data Field = Field
     { name          :: Text
@@ -59,7 +61,7 @@ data Field = Field
     } deriving (Show)
 
 instance Default Field where
-    def = Field "" "" 0 0
+    def = Field def def def def
 
 parseSVD :: Text -> SVD
 parseSVD xml = (name, ps)
@@ -120,7 +122,7 @@ register (t:ts)
     | isTagOpenName "size" t
         = (register ts) { size = fromHex $ ftt ts }
     | isTagOpenName "access" t
-        = (register ts) { access = ftt ts }
+        = (register ts) { access = Just $ ftt ts }
     | isTagOpenName "resetValue" t
         = (register ts) { resetValue = fromHex $ ftt ts }
     | isTagOpenName "fields" t

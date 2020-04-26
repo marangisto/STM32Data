@@ -50,9 +50,7 @@ register Register{..} = T.concat
     , name
     , ";"
     , T.replicate (21 - T.length name) " "
-    , "// ["
-    , access
-    , "] "
+    , "// " <> maybe "" (\t -> "[" <> t <> "] ") access
     , description
     ]
 
