@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards, TupleSections, DuplicateRecordFields, OverloadedStrings #-}
+{-# LANGUAGE DuplicateRecordFields, OverloadedStrings #-}
 module ParseSVD
     ( SVD(..)
     , Peripheral(..)
@@ -16,7 +16,15 @@ import TagSoup
 
 instance Default T.Text where def = ""
 
-type SVD = (Text, [Peripheral])
+data SVD = SVD
+    { name          :: Text
+    , description   :: Text
+    , version       :: Text
+    , peripherals   :: [Peripheral]
+    } deriving (Show)
+
+instance Default SVD where
+    def = SVD def def def def
 
 data Peripheral = Peripheral
     { name          :: Text
@@ -64,15 +72,22 @@ instance Default Field where
     def = Field def def def def
 
 parseSVD :: Text -> SVD
-parseSVD xml = (name, ps)
-    where (name, ts) = svdName $ parseTags xml
-          ps = map peripheral
-             $ partitions (~=="<peripheral>")
-             $ dropWhile (~/="<peripheral>") ts
+parseSVD = svd . parseTags
 
-svdName :: [Tag Text] -> (Text, [Tag Text])
-svdName ts = (innerText xs, ys)
-    where (xs, ys) = break isTagClose $ dropWhile (~/="<name>") ts
+svd :: [Tag Text] -> SVD
+svd [] = def
+svd (t:ts)
+    | isTagOpenName "name" t
+        = (svd ts) { name = ftt ts }
+    | isTagOpenName "version" t
+        = (svd ts) { version = ftt ts }
+    | isTagOpenName "description" t
+        = (svd ts) { description = ftt ts }
+    | isTagOpenName "peripherals" t
+        = let (us, rest) = break (~=="</peripherals>") ts
+              ps = partitions (~=="<peripheral>") us
+          in (svd rest) { peripherals = map peripheral ps }
+    | otherwise = svd ts
 
 peripheral :: [Tag Text] -> Peripheral
 peripheral [] = def

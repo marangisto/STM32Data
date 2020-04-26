@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards, TupleSections, DuplicateRecordFields, OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards, OverloadedStrings #-}
 module PrettySVD (prettySVD) where
 
 import qualified Data.Text as T
@@ -7,10 +7,10 @@ import ParseSVD
 type Text = T.Text
 
 prettySVD :: SVD -> [Text]
-prettySVD (name, ps) =
+prettySVD SVD{..} =
     [ "#pragma once"
     ] ++
-    banner name ++
+    banner [ name, description, "Version: " <> version ] ++
     [ "#include <stdint.h>"
     , ""
     , "template<int N> class reserved_t { private: uint32_t m_pad[N]; };"
@@ -26,7 +26,7 @@ prettySVD (name, ps) =
     , "    }"
     , "};"
     ] ++
-    concatMap peripheral ps
+    concatMap peripheral peripherals
 
 peripheral :: Peripheral -> [Text]
 peripheral Peripheral{derivedFrom=Just from,..} =
@@ -34,33 +34,35 @@ peripheral Peripheral{derivedFrom=Just from,..} =
     , "// derived from " <> T.toLower from
     ]
 peripheral Peripheral{..} =
-    banner (T.unwords $ T.words description) ++
+    banner [ (T.unwords $ T.words description) ] ++
     [ "struct " <> T.toLower name <> "_t"
     , "{"
     ] ++
-    map register registers ++
+    map (register w) registers ++
     [ "};"
     ]
+    where w = maximum [ T.length name | Register{..} <- registers ]
 
-register :: Register -> Text
-register Register{..} = T.concat
+register :: Int -> Register -> Text
+register w Register{..} = T.concat
     [ "    "
     , "volatile uint32_t"
-    , "    "
+    , " "
     , name
     , ";"
-    , T.replicate (21 - T.length name) " "
-    , "// " <> maybe "" (\t -> "[" <> t <> "] ") access
+    , T.replicate (w - T.length name) " "
+    , " // " <> maybe "" (\t -> "[" <> t <> "] ") access
     , description
     ]
 
-banner :: Text -> [Text]
-banner x =
+banner :: [Text]-> [Text]
+banner xs =
     [ ""
     , "////"
     , "//"
-    , "//      " <> x
-    , "//"
+    ] ++
+    map ("//      " <>) xs ++
+    [ "//"
     , "////"
     , ""
     ]
