@@ -2,8 +2,9 @@
 module PrettySVD (prettySVD, peripheralMap) where
 
 import qualified Data.Text as T
-import Data.List (sortOn)
+import Data.List (sortOn, partition)
 import Data.Bits (shift)
+import Data.Maybe (isJust)
 import Numeric (showHex)
 import ParseSVD
 
@@ -29,12 +30,14 @@ prettySVD SVD{..} =
     , "    }"
     , "};"
     ] ++
-    concatMap peripheral peripherals
+    concatMap peripheral ys ++
+    concatMap peripheral xs
+    where (xs, ys) = partition (isJust . derivedFrom) peripherals
 
 peripheral :: Peripheral -> [Text]
 peripheral Peripheral{derivedFrom=Just from,..} =
     [ ""
-    , "// derived from " <> T.toLower from
+    , "typedef " <> T.toLower from <> "_t " <> T.toLower name <> "_t;"
     ]
 peripheral Peripheral{..} =
     banner [ cleanWords description ] ++
