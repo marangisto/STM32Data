@@ -3,6 +3,8 @@ module PrettySVD (prettySVD, peripheralMap) where
 
 import qualified Data.Text as T
 import Data.List (sortOn)
+import Data.Bits (shift)
+import Numeric (showHex)
 import ParseSVD
 
 type Text = T.Text
@@ -11,7 +13,7 @@ prettySVD :: SVD -> [Text]
 prettySVD SVD{..} =
     [ "#pragma once"
     ] ++
-    banner [ name, description, "Version: " <> version ] ++
+    banner [ name, "Version " <> version ] ++
     [ "#include <stdint.h>"
     , ""
     , "template<int N> class reserved_t { private: uint32_t m_pad[N]; };"
@@ -35,11 +37,12 @@ peripheral Peripheral{derivedFrom=Just from,..} =
     , "// derived from " <> T.toLower from
     ]
 peripheral Peripheral{..} =
-    banner [ (T.unwords $ T.words description) ] ++
+    banner [ cleanWords description ] ++
     [ "struct " <> T.toLower name <> "_t"
     , "{"
     ] ++
     map (register w) registers ++
+    concatMap registerFields registers ++
     [ "};"
     ]
     where w = maximum [ T.length name | Register{..} <- registers ]
@@ -53,8 +56,59 @@ register w Register{..} = T.concat
     , ";"
     , T.replicate (w - T.length name) " "
     , " // " <> maybe "" (\t -> "[" <> t <> "] ") access
-    , description
+    , cleanWords description
     ]
+
+registerFields :: Register -> [Text]
+registerFields Register{..}
+    | [] <- xs = []
+    | otherwise = "" : xs
+    where xs = concatMap (field w name) fields
+          w = maximum $ map fieldWidth fields
+
+field :: Int -> Text -> Field -> [Text]
+field w regName f@Field{..}
+    | bitWidth == 32 = []                   -- trivial field
+    | bitWidth == 1 = (:[]) $ T.concat      -- single-bit
+        [ decl
+        , " = "
+        , bitConstant bitOffset
+        , ";"
+        , doc
+        ]
+    | otherwise =                           -- multi-bit
+        [ "    " <> "template<uint32_t X>" <> doc
+        , decl <> " = " <> bits
+        ]
+    where decl = T.concat
+              [ "    "
+              , "static constexpr uint32_t"
+              , " "
+              , regName
+              , "_"
+              , name
+              ]
+          doc = T.concat
+              [ T.replicate (w - fieldWidth f) " "
+              , " // "
+              , cleanWords description
+              ]
+          bits = T.concat
+              [ "bit_field_t<"
+              , T.pack $ show bitOffset
+              , ", "
+              , hex $ shift 0xffffffff (bitWidth - 32)
+              , ">::value<X>();"
+              ]
+
+fieldWidth :: Field -> Int
+fieldWidth Field{..}
+    | bitWidth == 32 = 0
+    | bitWidth == 1 = T.length $ name <> bitConstant bitOffset
+    | otherwise = 0
+
+bitConstant :: Int -> Text
+bitConstant = hex . shift 1
 
 banner :: [Text]-> [Text]
 banner xs =
@@ -73,6 +127,13 @@ peripheralMap SVD{..} =
     [ name <> "," <> T.pack (show baseAddress)
     | Peripheral{..} <- sortOn baseAddress peripherals
     ]
+
+cleanWords :: Text -> Text
+cleanWords = T.unwords . T.words
+
+hex :: Int -> Text
+hex x = T.pack $ "0x" ++ showHex x ""
+
 {-
 type SVD = (Text, [Peripheral])
 
