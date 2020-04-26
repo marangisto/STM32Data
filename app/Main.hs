@@ -26,6 +26,7 @@ data Options = Options
     , sub_family    :: [String]
     , package       :: [String]
     , parse_svd     :: Bool
+    , address_map   :: Bool
     , files         :: [FilePath]
     } deriving (Show, Eq, Data, Typeable)
 
@@ -38,6 +39,7 @@ options = Main.Options
     , sub_family = def &= help "filter on sub-family"
     , package = def &= help "filter on package"
     , parse_svd = def &= help "process svd files"
+    , address_map = def &= help "show peripheral address map"
     , files = def &= args &= typ "FILES"
     } &=
     verbosity &=
@@ -74,9 +76,10 @@ main = do
     when parse_svd $ forM_ families $ \(family, subFamilies) -> do
         let dir = svdDir
             pred x = T.unpack family `isPrefixOf` x && takeExtension x == ".svd"
+            proc = if address_map then peripheralMap else prettySVD
         print family
         xs <- filter pred <$> getDirectoryContents dir
         forM_ xs $ \x -> do
             putStrLn $ "parsing " <> x
-            mapM_ T.putStrLn =<< prettySVD . parseSVD <$> T.readFile (dir </> x)
+            mapM_ T.putStrLn =<< proc . parseSVD <$> T.readFile (dir </> x)
 

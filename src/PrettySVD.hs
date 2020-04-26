@@ -1,7 +1,8 @@
 {-# LANGUAGE RecordWildCards, OverloadedStrings #-}
-module PrettySVD (prettySVD) where
+module PrettySVD (prettySVD, peripheralMap) where
 
 import qualified Data.Text as T
+import Data.List (sortOn)
 import ParseSVD
 
 type Text = T.Text
@@ -67,6 +68,11 @@ banner xs =
     , ""
     ]
 
+peripheralMap :: SVD -> [Text]
+peripheralMap SVD{..} =
+    [ name <> "," <> T.pack (show baseAddress)
+    | Peripheral{..} <- sortOn baseAddress peripherals
+    ]
 {-
 type SVD = (Text, [Peripheral])
 
