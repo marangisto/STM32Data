@@ -165,6 +165,7 @@ fromHex :: Text -> Int
 fromHex t
     | ('0':'x':xs) <- s, [(n, "")] <- readHex xs = n
     | ('0':'X':xs) <- s, [(n, "")] <- readHex xs = n
+    | [(n, "")] <- readHex s = n
     | otherwise = error $ "failed or read hex '" <> s <> "'"
     where s = T.unpack t
 
