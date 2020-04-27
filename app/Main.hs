@@ -7,15 +7,17 @@ import System.Console.CmdArgs hiding (name)
 import System.FilePath
 import System.Directory
 import System.IO
+import System.IO.Temp
 import Control.Monad
 import Control.Monad.Extra
 import Data.List (sort, isPrefixOf)
+import Data.Hashable
 import Family as F
 import IPMode
 import Pretty
-import ParseSVD
+import ParseSVD as P
 import PrettySVD
-import NormalSVD
+import NormalSVD as N
 
 type Text = T.Text
 
@@ -30,6 +32,7 @@ data Options = Options
     , parse_svd     :: Bool
     , address_map   :: Bool
     , normal_svd    :: Bool
+    , normalize     :: Bool
     , files         :: [FilePath]
     } deriving (Show, Eq, Data, Typeable)
 
@@ -45,6 +48,7 @@ options = Main.Options
     , parse_svd = def &= help "process svd files"
     , address_map = def &= help "show peripheral address map"
     , normal_svd = def &= help "normalize svd files"
+    , normalize = def &= help "normalize svd files"
     , files = def &= args &= typ "FILES"
     } &=
     verbosity &=
@@ -59,6 +63,7 @@ stm32DbDir = "db/mcu"
 familiesXML = "families.xml"
 svdDir = "c:/ST/STM32CubeIDE_1.3.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.productdb.debug_1.3.0.202002181050/resources/cmsis/STMicroelectronics_CMSIS_SVD"
 svdDir' = "c:/ST/STM32CubeIDE_1.3.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mpu.productdb.debug_1.3.0.202002181049/resources/cmsis/STMicroelectronics_CMSIS_SVD"
+tmpDir = "c:/tmp"
 
 main :: IO ()
 main = do
@@ -98,6 +103,53 @@ main = do
             parseSVD <$> T.readFile fn
         when address_map $ mapM_ T.putStrLn $ concatMap peripheralMap ys
         mapM_ print $ normalSVD ys
+
+    when normalize $ forM_ families $ \(family, subFamilies) -> withTempDirectory tmpDir (T.unpack family) $ \tmp -> do
+        putStrLn $ T.unpack family <> " in " <> tmp
+        xs <- svdFiles family
+        ys <- forM xs $ \(x, fn) -> do
+            putStrLn $ "parsing " <> fn
+            svd <- parseSVD <$> T.readFile fn
+            processSVD tmp svd
+        mapM_ print $ concat ys
+        let ps = [ text | Representative{..} <- concat ys ]
+        putStrLn $ "number of peripherals = " <> show (length ps)
+
+data Normalization
+    = Representative
+    { svdName   :: Text
+    , name      :: Text
+    , digest    :: Int
+    , text      :: FilePath
+    }
+    | Normalization
+    { svdName   :: Text
+    , name      :: Text
+    , digest    :: Int
+    } deriving (Show)
+
+processSVD :: FilePath -> SVD -> IO [Normalization]
+processSVD tmp SVD{..} = do
+    putStrLn $ "processing " <> T.unpack name
+    mapM (processPeripheral tmp name)
+        [ p
+        | p@Peripheral{..} <- peripherals
+        , Nothing <- [ derivedFrom ]
+        ]
+
+processPeripheral :: FilePath -> Text -> P.Peripheral -> IO Normalization
+processPeripheral tmp svdName p@Peripheral{..} = do
+    let h = hash p
+        fn = tmp </> show (abs h) <.> "h"
+    already <- doesFileExist fn
+    if already then do
+        putStrLn $ T.unpack name <> " normalized"
+        return Normalization{digest=h,..}
+    else do
+        putStr $ T.unpack name <> fn <> "..."
+        T.writeFile fn $ T.unlines $ prettyPeripheral p
+        putStrLn $ "done"
+        return Representative{digest=h,text=fn,..}
 
 svdFiles :: Text -> IO [(Text, FilePath)]
 svdFiles family = do

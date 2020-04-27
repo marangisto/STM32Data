@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards, OverloadedStrings #-}
-module PrettySVD (prettySVD, peripheralMap) where
+module PrettySVD (prettySVD, prettyPeripheral, peripheralMap) where
 
 import qualified Data.Text as T
 import Data.List (sortOn, partition)
@@ -34,6 +34,9 @@ prettySVD SVD{..} =
     concatMap peripheral ys ++
     concatMap peripheral xs
     where (xs, ys) = partition (isJust . derivedFrom) peripherals
+
+prettyPeripheral :: Peripheral -> [Text]
+prettyPeripheral = peripheral
 
 peripheral :: Peripheral -> [Text]
 peripheral Peripheral{derivedFrom=Just from,..} =

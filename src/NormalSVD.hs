@@ -1,7 +1,8 @@
 {-# LANGUAGE RecordWildCards, GeneralizedNewtypeDeriving, OverloadedStrings #-}
-module NormalSVD (normalSVD) where
+module NormalSVD (normalSVD, normalize) where
 
 import qualified Data.Text as T
+import qualified Data.Map.Strict as Map
 import Data.List (sortOn)
 import Data.List.Extra (groupSort)
 import Data.Hashable
@@ -40,6 +41,30 @@ plist SVD{..} = let svdName = SVDName name in
     [ ((PeripheralName name, hash p), (baseAddress, svdName))
     | p@Peripheral{..} <- peripherals
     ]
+
+normalize :: [SVD] -> IO [Peripheral]
+normalize xs = return [ qualify s p | (_, (s, _, p):_) <- normalize' xs ]
+
+qualify :: SVDName -> Peripheral -> Peripheral
+qualify s Peripheral{..} =
+    let name = unSVDName s <> "_" <> name
+     in Peripheral{..}
+
+normalize' :: [SVD] -> [(Int, [(SVDName, PeripheralName, Peripheral)])]
+normalize' = groupSort . concatMap f
+    where f SVD{..} = let svdName = SVDName name in
+            [ (hash p, (svdName, PeripheralName name, p))
+            | p@Peripheral{..} <- peripherals
+            , Nothing <- [ derivedFrom ]
+            ]
+
+pmap :: [SVD] -> Map.Map (SVDName, PeripheralName) Peripheral
+pmap = Map.fromList . concatMap f
+    where f SVD{..} = let svdName = SVDName name in
+            [ ((svdName, PeripheralName name), p)
+            | p@Peripheral{..} <- peripherals
+            , Nothing <- [ derivedFrom ]
+            ]
 
 instance Hashable Peripheral where
     hashWithSalt h Peripheral{..} = hashWithSalt h
