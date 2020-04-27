@@ -5,6 +5,7 @@ import qualified Data.Text as T
 import Data.List (sortOn, partition)
 import Data.Bits (shift)
 import Data.Maybe (isJust)
+import Data.Char (isAscii)
 import Numeric (showHex)
 import ParseSVD
 
@@ -147,7 +148,7 @@ peripheralMap SVD{..} =
     ]
 
 cleanWords :: Text -> Text
-cleanWords = T.unwords . T.words
+cleanWords = T.unwords . T.words . T.filter isAscii
 
 hex :: Int -> Text
 hex x = T.pack $ "0x" ++ showHex x ""
