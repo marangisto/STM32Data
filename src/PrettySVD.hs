@@ -80,8 +80,9 @@ field w regName f@Field{..}
         , doc
         ]
     | otherwise =                           -- multi-bit
-        [ "    " <> "template<uint32_t X>" <> doc
-        , decl <> " = " <> bits
+        [ "    " <> "template<uint32_t X>"
+        , decl <> " =  " <> doc
+        , "        " <> bits <> ";"
         ]
     where decl = T.concat
               [ "    "
@@ -101,14 +102,14 @@ field w regName f@Field{..}
               , T.pack $ show bitOffset
               , ", "
               , hex $ shift 0xffffffff (bitWidth - 32)
-              , ">::value<X>();"
+              , ">::value<X>()"
               ]
 
 fieldWidth :: Field -> Int
 fieldWidth Field{..}
     | bitWidth == 32 = 0
     | bitWidth == 1 = T.length $ name <> bitConstant bitOffset
-    | otherwise = 0
+    | otherwise = T.length $ name
 
 bitConstant :: Int -> Text
 bitConstant = hex . shift 1
