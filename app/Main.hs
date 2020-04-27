@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, RecordWildCards, TupleSections, DuplicateRecordFields #-}
+{-# LANGUAGE DeriveDataTypeable, RecordWildCards, TupleSections, DuplicateRecordFields, OverloadedStrings #-}
 module Main where
 
 import qualified Data.Text as T
@@ -9,7 +9,7 @@ import System.Directory
 import System.IO
 import Control.Monad
 import Control.Monad.Extra
-import Data.List (isPrefixOf)
+import Data.List (sort, isPrefixOf)
 import Family as F
 import IPMode
 import Pretty
@@ -58,6 +58,7 @@ stm32CubeMX = "c:/Program Files (x86)/STMicroelectronics/STM32Cube/STM32CubeMX"
 stm32DbDir = "db/mcu"
 familiesXML = "families.xml"
 svdDir = "c:/ST/STM32CubeIDE_1.3.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.productdb.debug_1.3.0.202002181050/resources/cmsis/STMicroelectronics_CMSIS_SVD"
+svdDir' = "c:/ST/STM32CubeIDE_1.3.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mpu.productdb.debug_1.3.0.202002181049/resources/cmsis/STMicroelectronics_CMSIS_SVD"
 
 main :: IO ()
 main = do
@@ -81,24 +82,31 @@ main = do
 
     whenJust svd_header $ \dir -> forM_ families $ \(family, subFamilies) -> do
         T.putStrLn family
-        let pred x = T.unpack family `isPrefixOf` x && takeExtension x == ".svd"
-        xs <- filter pred <$> getDirectoryContents svdDir
-        forM_ xs $ \x -> do
-            putStrLn $ "parsing " <> x
-            svd <- parseSVD <$> T.readFile (svdDir </> x)
+        xs <- svdFiles family
+        forM_ xs $ \(x, fn) -> do
+            putStrLn $ "parsing " <> fn
+            svd <- parseSVD <$> T.readFile fn
             let header = svdHeader dir svd
             putStrLn $ "writing " <> header
             T.writeFile header $ T.unlines $ prettySVD svd
 
     when normal_svd $ forM_ families $ \(family, subFamilies) -> do
-        let pred x = T.unpack family `isPrefixOf` x && takeExtension x == ".svd"
         T.putStrLn family
-        xs <- filter pred <$> getDirectoryContents svdDir
-        ys <- forM xs $ \x -> do
-            putStrLn $ "parsing " <> x
-            parseSVD <$> T.readFile (svdDir </> x)
+        xs <- svdFiles family
+        ys <- forM xs $ \(x, fn) -> do
+            putStrLn $ "parsing " <> fn
+            parseSVD <$> T.readFile fn
         when address_map $ mapM_ T.putStrLn $ concatMap peripheralMap ys
         mapM_ print $ normalSVD ys
+
+svdFiles :: Text -> IO [(Text, FilePath)]
+svdFiles family = do
+    xs <- sort . filter pred <$> getDirectoryContents dir
+    return $ map (\s -> (T.pack $ dropExtension s, dir </> s)) xs
+    where pred x = T.unpack family `isPrefixOf` x && takeExtension x == ".svd"
+          dir = case T.unpack family of
+              "STM32MP1" -> svdDir'
+              _ -> svdDir
 
 svdHeader :: FilePath -> SVD -> FilePath
 svdHeader dir SVD{..} = dir </> T.unpack (T.toLower name) <.> "h"
