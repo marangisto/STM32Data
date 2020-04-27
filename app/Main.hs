@@ -15,6 +15,7 @@ import IPMode
 import Pretty
 import ParseSVD
 import PrettySVD
+import NormalSVD
 
 type Text = T.Text
 
@@ -27,6 +28,7 @@ data Options = Options
     , package       :: [String]
     , parse_svd     :: Bool
     , address_map   :: Bool
+    , normal_svd    :: Bool
     , files         :: [FilePath]
     } deriving (Show, Eq, Data, Typeable)
 
@@ -40,6 +42,7 @@ options = Main.Options
     , package = def &= help "filter on package"
     , parse_svd = def &= help "process svd files"
     , address_map = def &= help "show peripheral address map"
+    , normal_svd = def &= help "normalize svd files"
     , files = def &= args &= typ "FILES"
     } &=
     verbosity &=
@@ -79,7 +82,13 @@ main = do
             proc = if address_map then peripheralMap else prettySVD
         print family
         xs <- filter pred <$> getDirectoryContents dir
-        forM_ xs $ \x -> do
+        ys <- forM xs $ \x -> do
             putStrLn $ "parsing " <> x
-            mapM_ T.putStrLn =<< proc . parseSVD <$> T.readFile (dir </> x)
+            parseSVD <$> T.readFile (dir </> x)
+        if address_map then
+            mapM_ T.putStrLn $ concatMap peripheralMap ys
+        else if normal_svd then
+            mapM_ print $ normalSVD ys
+        else
+            mapM_ T.putStrLn $ concatMap prettySVD ys
 
