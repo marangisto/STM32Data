@@ -26,6 +26,7 @@ data Options = Options
     , family        :: [String]
     , sub_family    :: [String]
     , package       :: [String]
+    , svd_header    :: Maybe FilePath
     , parse_svd     :: Bool
     , address_map   :: Bool
     , normal_svd    :: Bool
@@ -40,6 +41,7 @@ options = Main.Options
     , family = def &= help "filter on family"
     , sub_family = def &= help "filter on sub-family"
     , package = def &= help "filter on package"
+    , svd_header = def &= help "generate svd header (to directory)"
     , parse_svd = def &= help "process svd files"
     , address_map = def &= help "show peripheral address map"
     , normal_svd = def &= help "normalize svd files"
@@ -85,10 +87,10 @@ main = do
         ys <- forM xs $ \x -> do
             putStrLn $ "parsing " <> x
             parseSVD <$> T.readFile (dir </> x)
-        if address_map then
-            mapM_ T.putStrLn $ concatMap peripheralMap ys
-        else if normal_svd then
-            mapM_ print $ normalSVD ys
-        else
-            mapM_ T.putStrLn $ concatMap prettySVD ys
+        whenJust svd_header $ \dir -> forM_ ys $ \svd@SVD{..} -> do
+            let header = dir </> T.unpack (T.toLower name) <.> "h"
+            putStrLn header
+            T.writeFile header $ T.unlines $ prettySVD svd
+        when address_map $ mapM_ T.putStrLn $ concatMap peripheralMap ys
+        when normal_svd $ mapM_ print $ normalSVD ys
 
