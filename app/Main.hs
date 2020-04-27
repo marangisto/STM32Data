@@ -78,19 +78,28 @@ main = do
         mcus <- mapM (loadMCU dbDir) $ controllers subFamilies
         gss <- mapM (\x -> (x,) <$> gpioConfigSet dbDir x) =<< gpioConfigs dbDir family
         T.writeFile header $ T.unlines $ familyHeader family mcus gss
-    when parse_svd $ forM_ families $ \(family, subFamilies) -> do
-        let dir = svdDir
-            pred x = T.unpack family `isPrefixOf` x && takeExtension x == ".svd"
-            proc = if address_map then peripheralMap else prettySVD
-        print family
-        xs <- filter pred <$> getDirectoryContents dir
+
+    whenJust svd_header $ \dir -> forM_ families $ \(family, subFamilies) -> do
+        T.putStrLn family
+        let pred x = T.unpack family `isPrefixOf` x && takeExtension x == ".svd"
+        xs <- filter pred <$> getDirectoryContents svdDir
+        forM_ xs $ \x -> do
+            putStrLn $ "parsing " <> x
+            svd <- parseSVD <$> T.readFile (svdDir </> x)
+            let header = svdHeader dir svd
+            putStrLn $ "writing " <> header
+            T.writeFile header $ T.unlines $ prettySVD svd
+
+    when normal_svd $ forM_ families $ \(family, subFamilies) -> do
+        let pred x = T.unpack family `isPrefixOf` x && takeExtension x == ".svd"
+        T.putStrLn family
+        xs <- filter pred <$> getDirectoryContents svdDir
         ys <- forM xs $ \x -> do
             putStrLn $ "parsing " <> x
-            parseSVD <$> T.readFile (dir </> x)
-        whenJust svd_header $ \dir -> forM_ ys $ \svd@SVD{..} -> do
-            let header = dir </> T.unpack (T.toLower name) <.> "h"
-            putStrLn header
-            T.writeFile header $ T.unlines $ prettySVD svd
+            parseSVD <$> T.readFile (svdDir </> x)
         when address_map $ mapM_ T.putStrLn $ concatMap peripheralMap ys
-        when normal_svd $ mapM_ print $ normalSVD ys
+        mapM_ print $ normalSVD ys
+
+svdHeader :: FilePath -> SVD -> FilePath
+svdHeader dir SVD{..} = dir </> T.unpack (T.toLower name) <.> "h"
 
