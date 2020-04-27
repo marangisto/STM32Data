@@ -78,11 +78,19 @@ register w (Register{..}, nextOffset) = T.concat
         ]
 
 registerFields :: Register -> [Text]
-registerFields Register{..}
-    | [] <- xs = []
-    | otherwise = "" : xs
+registerFields Register{..} = "" : rv : xs
     where xs = concatMap (field w name) fields
           w = maximum $ map fieldWidth fields
+          rv = T.concat
+            [ "    "
+            , "static constexpr uint32_t"
+            , " "
+            , name
+            , "_RESET_VALUE"
+            , " = "
+            , hex resetValue
+            , ";"
+            ]
 
 field :: Int -> Text -> Field -> [Text]
 field w regName f@Field{..}

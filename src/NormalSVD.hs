@@ -43,9 +43,9 @@ plist SVD{..} = let svdName = SVDName name in
 
 instance Hashable Peripheral where
     hashWithSalt h Peripheral{..} = hashWithSalt h
-        ( name
-        , sortOn value interrupts
-        , sortOn addressOffset registers
+--        ( name
+--        , sortOn value interrupts
+        ( sortOn addressOffset registers
         , derivedFrom
         )
 
