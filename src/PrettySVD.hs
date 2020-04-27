@@ -44,14 +44,18 @@ peripheral Peripheral{..} =
     [ "struct " <> T.toLower name <> "_t"
     , "{"
     ] ++
-    map (register w) registers ++
+    concatMap (register w) (reserve $ sortOn addressOffset registers) ++
     concatMap registerFields registers ++
     [ "};"
     ]
     where w = maximum [ T.length name | Register{..} <- registers ]
 
-register :: Int -> Register -> Text
-register w Register{..} = T.concat
+reserve :: [Register] -> [(Register, Maybe Int)]
+reserve xs = zip xs $ ys ++ [ Nothing ]
+    where ys = map (Just . addressOffset) $ tail xs
+
+register :: Int -> (Register, Maybe Int) -> [Text]
+register w (Register{..}, nextOffset) = T.concat
     [ "    "
     , "volatile uint32_t"
     , " "
@@ -60,7 +64,17 @@ register w Register{..} = T.concat
     , T.replicate (w - T.length name) " "
     , " // " <> maybe "" (\t -> "[" <> t <> "] ") access
     , cleanWords description
-    ]
+    ] : [ let m = (n - (addressOffset + 4)) `div` 4 in T.concat
+          [ "    "
+          , "reserved_t<"
+          , hex m
+          , "> _"
+          , hex n
+          , ";"
+          ]
+        | Just n <- [ nextOffset ]
+        , n > addressOffset + 4
+        ]
 
 registerFields :: Register -> [Text]
 registerFields Register{..}
