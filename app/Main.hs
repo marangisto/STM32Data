@@ -86,12 +86,19 @@ main = do
 
 svdFiles :: Text -> IO [(Text, FilePath)]
 svdFiles family = do
-    xs <- sort . filter pred <$> getDirectoryContents dir
+    xs <- sort . filter pred . filter isSVD <$> getDirectoryContents dir
     return $ map (\s -> (T.pack $ dropExtension s, dir </> s)) xs
-    where pred x = T.unpack family `isPrefixOf` x && takeExtension x == ".svd"
+    where isSVD x = takeExtension x == ".svd"
+          pred x
+            | fam == "STM32L4+" = isL4plus x
+            | otherwise = fam `isPrefixOf` x && not (isL4plus x)
+            where fam = T.unpack family
           dir = case T.unpack family of
               "STM32MP1" -> svdDir'
               _ -> svdDir
+
+isL4plus :: String -> Bool
+isL4plus x = any (`isPrefixOf`x) $ map ("STM32L4"<>) [ "P", "Q", "R", "S" ]
 
 svdHeader :: FilePath -> SVD -> FilePath
 svdHeader dir SVD{..} = dir </> T.unpack (T.toLower name) <.> "h"
