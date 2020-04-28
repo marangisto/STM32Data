@@ -11,13 +11,11 @@ import System.IO.Temp
 import Control.Monad
 import Control.Monad.Extra
 import Data.List (sort, isPrefixOf)
-import Data.Hashable
-import Family as F
+import Family
 import IPMode
 import Pretty
-import ParseSVD as P
-import PrettySVD
-import NormalSVD as N
+import ParseSVD
+import NormalSVD
 
 type Text = T.Text
 
@@ -31,8 +29,6 @@ data Options = Options
     , svd_header    :: Maybe FilePath
     , parse_svd     :: Bool
     , address_map   :: Bool
-    , normal_svd    :: Bool
-    , normalize     :: Bool
     , files         :: [FilePath]
     } deriving (Show, Eq, Data, Typeable)
 
@@ -47,8 +43,6 @@ options = Main.Options
     , svd_header = def &= help "generate svd header (to directory)"
     , parse_svd = def &= help "process svd files"
     , address_map = def &= help "show peripheral address map"
-    , normal_svd = def &= help "normalize svd files"
-    , normalize = def &= help "normalize svd files"
     , files = def &= args &= typ "FILES"
     } &=
     verbosity &=
@@ -85,71 +79,10 @@ main = do
         gss <- mapM (\x -> (x,) <$> gpioConfigSet dbDir x) =<< gpioConfigs dbDir family
         T.writeFile header $ T.unlines $ familyHeader family mcus gss
 
-    whenJust svd_header $ \dir -> forM_ families $ \(family, subFamilies) -> do
-        T.putStrLn family
-        xs <- svdFiles family
-        forM_ xs $ \(x, fn) -> do
-            putStrLn $ "parsing " <> fn
-            svd <- parseSVD <$> T.readFile fn
-            let header = svdHeader dir svd
-            putStrLn $ "writing " <> header
-            T.writeFile header $ T.unlines $ prettySVD svd
-
-    when normal_svd $ forM_ families $ \(family, subFamilies) -> do
-        T.putStrLn family
-        xs <- svdFiles family
-        ys <- forM xs $ \(x, fn) -> do
-            putStrLn $ "parsing " <> fn
-            parseSVD <$> T.readFile fn
-        when address_map $ mapM_ T.putStrLn $ concatMap peripheralMap ys
-        mapM_ print $ normalSVD ys
-
-    when normalize $ forM_ families $ \(family, subFamilies) -> withTempDirectory tmpDir (T.unpack family) $ \tmp -> do
-        putStrLn $ T.unpack family <> " in " <> tmp
-        xs <- svdFiles family
-        ys <- forM xs $ \(x, fn) -> do
-            putStrLn $ "parsing " <> fn
-            svd <- parseSVD <$> T.readFile fn
-            processSVD tmp svd
-        mapM_ print $ concat ys
-        let ps = [ text | Representative{..} <- concat ys ]
-        putStrLn $ "number of peripherals = " <> show (length ps)
-
-data Normalization
-    = Representative
-    { svdName   :: Text
-    , name      :: Text
-    , digest    :: Int
-    , text      :: FilePath
-    }
-    | Normalization
-    { svdName   :: Text
-    , name      :: Text
-    , digest    :: Int
-    } deriving (Show)
-
-processSVD :: FilePath -> SVD -> IO [Normalization]
-processSVD tmp SVD{..} = do
-    putStrLn $ "processing " <> T.unpack name
-    mapM (processPeripheral tmp name)
-        [ p
-        | p@Peripheral{..} <- peripherals
-        , Nothing <- [ derivedFrom ]
-        ]
-
-processPeripheral :: FilePath -> Text -> P.Peripheral -> IO Normalization
-processPeripheral tmp svdName p@Peripheral{..} = do
-    let h = hash p
-        fn = tmp </> show (abs h) <.> "h"
-    already <- doesFileExist fn
-    if already then do
-        putStrLn $ T.unpack name <> " normalized"
-        return Normalization{digest=h,..}
-    else do
-        putStr $ T.unpack name <> fn <> "..."
-        T.writeFile fn $ T.unlines $ prettyPeripheral p
-        putStrLn $ "done"
-        return Representative{digest=h,text=fn,..}
+    whenJust svd_header $ \dir ->
+      forM_ families $ \(family, _) ->
+        withTempDirectory tmpDir (T.unpack family) $ \tmp ->
+          normalizeSVD tmp family =<< svdFiles family
 
 svdFiles :: Text -> IO [(Text, FilePath)]
 svdFiles family = do
