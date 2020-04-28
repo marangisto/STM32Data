@@ -71,9 +71,14 @@ normalizeSVD tmp dir family xs = do
     hs <- forM rs $ \Representative{..} -> T.readFile text
     let header = dir </> T.unpack (T.toLower family) <.> "h"
     putStrLn $ "writing " <> header
-    T.writeFile header $ T.concat hs
+    T.writeFile header $ T.concat $ preamble : hs
     where f :: Normalization -> Text
           f = name
+          preamble = T.unlines
+            [ "#pragma once"
+            , ""
+            , "// " <> family <> " peripherals"
+            ]
 
 processSVD :: FilePath -> SVD -> IO [Normalization]
 processSVD tmp SVD{..} = do
