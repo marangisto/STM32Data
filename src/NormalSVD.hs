@@ -12,6 +12,7 @@ import System.Directory
 import Control.Monad
 import Numeric (showHex)
 import ParseSVD
+import FixupSVD
 import PrettySVD
 
 type Text = T.Text
@@ -64,7 +65,7 @@ normalizeSVD tmp dir family xs = do
     ys <- forM xs $ \(x, fn) -> do
         putStrLn $ "parsing " <> fn
         svd <- parseSVD <$> T.readFile fn
-        processSVD tmp svd
+        processSVD tmp family svd
     mapM_ print $ concat ys
     let rs = sortOn f [ r | r@Representative{..} <- concat ys ]
     putStrLn $ "number of peripherals = " <> show (length rs)
@@ -80,17 +81,17 @@ normalizeSVD tmp dir family xs = do
             , "// " <> family <> " peripherals"
             ]
 
-processSVD :: FilePath -> SVD -> IO [Normalization]
-processSVD tmp SVD{..} = do
+processSVD :: FilePath -> Text -> SVD -> IO [Normalization]
+processSVD tmp family SVD{..} = do
     putStrLn $ "processing " <> T.unpack name
-    mapM (processPeripheral tmp name)
+    mapM (processPeripheral tmp family name)
         [ p
         | p@Peripheral{..} <- peripherals
         , Nothing <- [ derivedFrom ]
         ]
 
-processPeripheral :: FilePath -> Text -> Peripheral -> IO Normalization
-processPeripheral tmp svdName p@Peripheral{..} = do
+processPeripheral :: FilePath -> Text -> Text -> Peripheral -> IO Normalization
+processPeripheral tmp family svdName p@Peripheral{..} = do
     let h = hash p
         fn = tmp </> T.unpack (hex (abs h)) <.> "h"
     already <- doesFileExist fn
@@ -99,7 +100,11 @@ processPeripheral tmp svdName p@Peripheral{..} = do
         return Normalization{digest=h,..}
     else do
         putStr $ T.unpack name <> fn <> "..."
-        T.writeFile fn $ T.unlines $ prettyPeripheral $ qualify svdName p
+        T.writeFile fn
+            $ T.unlines
+            . prettyPeripheral
+            . qualify svdName
+            $ fixupPeripheral family p
         putStrLn $ "done"
         return Representative{digest=h,text=fn,..}
 

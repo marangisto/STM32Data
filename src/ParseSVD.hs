@@ -6,6 +6,7 @@ module ParseSVD
     , Register(..)
     , Field(..)
     , parseSVD
+    , fromHex
     ) where
 
 import Data.List (break)
