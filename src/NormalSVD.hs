@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards, GeneralizedNewtypeDeriving, OverloadedStrings, DuplicateRecordFields #-}
+{-# LANGUAGE RecordWildCards, OverloadedStrings, DuplicateRecordFields #-}
 module NormalSVD (normalizeSVD) where
 
 import qualified Data.Text as T
@@ -45,17 +45,6 @@ instance Hashable Field where
         , bitWidth
         )
 
-normalizeSVD :: FilePath -> Text -> [(Text, FilePath)] -> IO ()
-normalizeSVD tmp family xs = do
-    putStrLn $ T.unpack family <> " in " <> tmp
-    ys <- forM xs $ \(x, fn) -> do
-        putStrLn $ "parsing " <> fn
-        svd <- parseSVD <$> T.readFile fn
-        processSVD tmp svd
-    mapM_ print $ concat ys
-    let ps = [ text | Representative{..} <- concat ys ]
-    putStrLn $ "number of peripherals = " <> show (length ps)
-
 data Normalization
     = Representative
     { svdName   :: Text
@@ -68,6 +57,23 @@ data Normalization
     , name      :: Text
     , digest    :: Int
     } deriving (Show)
+
+normalizeSVD :: FilePath -> FilePath -> Text -> [(Text, FilePath)] -> IO ()
+normalizeSVD tmp dir family xs = do
+    putStrLn $ T.unpack family <> " in " <> tmp
+    ys <- forM xs $ \(x, fn) -> do
+        putStrLn $ "parsing " <> fn
+        svd <- parseSVD <$> T.readFile fn
+        processSVD tmp svd
+    mapM_ print $ concat ys
+    let rs = sortOn f [ r | r@Representative{..} <- concat ys ]
+    putStrLn $ "number of peripherals = " <> show (length rs)
+    hs <- forM rs $ \Representative{..} -> T.readFile text
+    let header = dir </> T.unpack (T.toLower family) <.> "h"
+    putStrLn $ "writing " <> header
+    T.writeFile header $ T.concat hs
+    where f :: Normalization -> Text
+          f = name
 
 processSVD :: FilePath -> SVD -> IO [Normalization]
 processSVD tmp SVD{..} = do
@@ -88,9 +94,12 @@ processPeripheral tmp svdName p@Peripheral{..} = do
         return Normalization{digest=h,..}
     else do
         putStr $ T.unpack name <> fn <> "..."
-        T.writeFile fn $ T.unlines $ prettyPeripheral p
+        T.writeFile fn $ T.unlines $ prettyPeripheral $ qualify svdName p
         putStrLn $ "done"
         return Representative{digest=h,text=fn,..}
+
+qualify :: Text -> Peripheral -> Peripheral
+qualify svdName p@Peripheral{..} = p { name = svdName <> "_" <> name }
 
 hex :: Int -> Text
 hex x = T.pack $ "0x" ++ showHex x ""

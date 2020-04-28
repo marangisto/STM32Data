@@ -82,7 +82,7 @@ main = do
     whenJust svd_header $ \dir ->
       forM_ families $ \(family, _) ->
         withTempDirectory tmpDir (T.unpack family) $ \tmp ->
-          normalizeSVD tmp family =<< svdFiles family
+          normalizeSVD tmp dir family =<< svdFiles family
 
 svdFiles :: Text -> IO [(Text, FilePath)]
 svdFiles family = do
