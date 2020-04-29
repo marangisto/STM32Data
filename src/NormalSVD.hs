@@ -4,9 +4,10 @@ module NormalSVD (normalizeSVD) where
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 --import qualified Data.Map.Strict as Map
-import Data.List (sortOn)
---import Data.List.Extra (groupSort)
+import Data.List (partition, sortOn)
+import Data.List.Extra (groupSort)
 import Data.Hashable
+import Data.Maybe (fromMaybe)
 import System.FilePath
 import System.Directory
 import Control.Monad
@@ -19,8 +20,6 @@ type Text = T.Text
 
 instance Hashable Peripheral where
     hashWithSalt h Peripheral{..} = hashWithSalt h
---        ( name
---        , sortOn value interrupts
         ( sortOn addressOffset registers
         , derivedFrom
         )
@@ -50,6 +49,7 @@ data Normalization
     = Representative
     { svdName   :: Text
     , name      :: Text
+    , groupName :: Maybe Text
     , digest    :: Int
     , text      :: FilePath
     }
@@ -66,19 +66,25 @@ normalizeSVD tmp dir family xs = do
         putStrLn $ "parsing " <> fn
         svd <- parseSVD <$> T.readFile fn
         processSVD tmp family svd
-    mapM_ print $ concat ys
-    let rs = sortOn f [ r | r@Representative{..} <- concat ys ]
-    putStrLn $ "number of peripherals = " <> show (length rs)
-    hs <- forM rs $ \Representative{..} -> T.readFile text
-    let header = dir </> T.unpack (T.toLower family) <.> "h"
+    let (rs, ds) = partition isRep $ concat ys
+        gs = groupSort $ map (\r@Representative{..} -> (groupName, r)) rs
+    putStrLn $ show (length rs) <> " peripherals, " <> show (length gs) <> " groups"
+    dir <- return $ dir </> lower family
+    createDirectoryIfMissing False dir
+    mapM_ (uncurry $ genHeader dir family) gs
+    where isRep Representative{} = True
+          isRep _ = False
+
+genHeader :: FilePath -> Text -> Maybe Text -> [Normalization] -> IO ()
+genHeader dir family group rs = do
+    hs <- forM (sortOn f rs) $ \Representative{..} -> T.readFile text
+    let header = dir </> maybe "other" lower group <.> "h"
     putStrLn $ "writing " <> header
     T.writeFile header $ T.concat $ preamble : hs
     where f :: Normalization -> Text
           f = name
-          preamble = T.unlines
-            [ "#pragma once"
-            , ""
-            , "// " <> family <> " peripherals"
+          preamble = T.unlines $ "#pragma once" : banner
+            [ family <> " " <> fromMaybe "other" group <> " peripherals"
             ]
 
 processSVD :: FilePath -> Text -> SVD -> IO [Normalization]
@@ -113,4 +119,7 @@ qualify svdName p@Peripheral{..} = p { name = svdName <> "_" <> name }
 
 hex :: Int -> Text
 hex x = T.pack $ "0x" ++ showHex x ""
+
+lower :: Text -> String
+lower = T.unpack . T.toLower
 

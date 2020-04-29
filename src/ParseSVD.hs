@@ -30,6 +30,7 @@ instance Default SVD where
 data Peripheral = Peripheral
     { name          :: Text
     , description   :: Text
+    , groupName     :: Maybe Text
     , baseAddress   :: Int
     , interrupts    :: [Interrupt]
     , registers     :: [Register]
@@ -37,7 +38,7 @@ data Peripheral = Peripheral
     } deriving (Show)
 
 instance Default Peripheral where
-    def = Peripheral def def def def def def
+    def = Peripheral def def def def def def def
 
 data Interrupt = Interrupt
     { name          :: Text
@@ -101,6 +102,8 @@ peripheral (t:ts)
         = (peripheral ts) { name = ftt ts }
     | isTagOpenName "description" t
         = (peripheral ts) { description = ftt ts }
+    | isTagOpenName "groupName" t
+        = (peripheral ts) { groupName = Just $ ftt ts }
     | isTagOpenName "baseAddress" t
         = (peripheral ts) { baseAddress = fromHex $ ftt ts }
     | isTagOpenName "interrupt" t

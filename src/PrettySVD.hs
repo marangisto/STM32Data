@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards, OverloadedStrings #-}
-module PrettySVD (prettySVD, prettyPeripheral, peripheralMap) where
+module PrettySVD (prettySVD, prettyPeripheral, peripheralMap, banner) where
 
 import qualified Data.Text as T
 import Data.List (sortOn, partition)
