@@ -3,7 +3,6 @@ module NormalSVD (normalizeSVD) where
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
---import qualified Data.Map.Strict as Map
 import Data.List (partition, sortOn)
 import Data.List.Extra (groupSort)
 import Data.Hashable
@@ -66,28 +65,56 @@ normalizeSVD tmp dir family xs = do
         putStrLn $ "parsing " <> fn
         svd <- parseSVD <$> T.readFile fn
         processSVD tmp family svd
-    let (rs, ds) = partition isRep $ concat ys
-        gs = groupSort $ map (\r@Representative{..} -> (groupName, r)) rs
-    putStrLn $ show (length rs) <> " peripherals, " <> show (length gs) <> " groups"
+    let ds = groupSort $ map f $ concat ys
+        gs = groupSort
+            [ (groupName, (r, fromMaybe [] $ lookup digest ds))
+            | r@Representative{..} <- concat ys
+            ]
     dir <- return $ dir </> lower family
     createDirectoryIfMissing False dir
     mapM_ (uncurry $ genHeader dir family) gs
-    where isRep Representative{} = True
-          isRep _ = False
+    where f :: Normalization -> (Int, (Text, Text))
+          f Representative{..} = (digest, (svdName, name))
+          f Normalization{..} = (digest, (svdName, name))
 
-genHeader :: FilePath -> Text -> Maybe Text -> [Normalization] -> IO ()
+genHeader
+    :: FilePath
+    -> Text
+    -> Maybe Text
+    -> [(Normalization, [(Text, Text)])]
+    -> IO ()
 genHeader dir family group rs = do
-    hs <- forM (sortOn f rs) $ \Representative{..} -> T.readFile text
+    hs <- forM (sortOn f rs) $ \(Representative{..}, _) -> T.readFile text
     let header = dir </> maybe "other" lower group <.> "h"
     putStrLn $ "writing " <> header
-    T.writeFile header $ T.concat $ preamble : hs
-    where f :: Normalization -> Text
-          f = name
-          preamble = T.unlines $ "#pragma once" : banner
+    T.writeFile header $ T.unlines $ concat
+        [ preamble
+        , (:[]) $ T.concat hs
+        , concatMap genTraits rs
+        ]
+    where f :: (Normalization, [(Text, Text)]) -> Text
+          f (Representative{..}, _) = name
+          preamble = "#pragma once" : banner
             [ family <> " " <> fromMaybe "other" group <> " peripherals"
             ]
 
-processSVD :: FilePath -> Text -> SVD -> IO [Normalization]
+genTraits :: (Normalization, [(Text, Text)]) -> [Text]
+genTraits (Representative{..}, xs) = map f xs
+    where f (s, n) = T.toLower $ T.concat
+            [ "typedef"
+            , " "
+            , svdName <> "_" <> name <> "_t"
+            , " "
+            , n <> "_t"
+            , "; // "
+            , s
+            ]
+
+processSVD
+    :: FilePath
+    -> Text
+    -> SVD
+    -> IO [Normalization]
 processSVD tmp family SVD{..} = do
     putStrLn $ "processing " <> T.unpack name
     mapM (processPeripheral tmp family name)
@@ -96,7 +123,12 @@ processSVD tmp family SVD{..} = do
         , Nothing <- [ derivedFrom ]
         ]
 
-processPeripheral :: FilePath -> Text -> Text -> Peripheral -> IO Normalization
+processPeripheral
+    :: FilePath
+    -> Text
+    -> Text
+    -> Peripheral
+    -> IO Normalization
 processPeripheral tmp family svdName p@Peripheral{..} = do
     let h = hash p
         fn = tmp </> T.unpack (hex (abs h)) <.> "h"
