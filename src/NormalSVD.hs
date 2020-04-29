@@ -48,6 +48,7 @@ data Normalization
     = Representative
     { svdName       :: !Text
     , name          :: !Text
+    , baseAddress   :: !Int
     , groupName     :: !(Maybe Text)
     , digest        :: !Int
     , text          :: !FilePath
@@ -55,11 +56,13 @@ data Normalization
     | Duplicate
     { svdName       :: !Text
     , name          :: !Text
+    , baseAddress   :: !Int
     , digest        :: !Int
     }
     | Derived
     { svdName       :: !Text
     , name          :: !Text
+    , baseAddress   :: !Int
     , derivedFrom   :: !Text
     } deriving (Show)
 
@@ -83,7 +86,7 @@ genHeader
     :: FilePath
     -> Text
     -> Maybe Text
-    -> [(Normalization, [(Text, Text)])]
+    -> [(Normalization, [(Text, Text, Int)])]
     -> IO ()
 genHeader dir family group rs = do
     hs <- forM (sortOn f rs) $ \(Representative{..}, _) -> T.readFile text
@@ -94,15 +97,15 @@ genHeader dir family group rs = do
         , (:[]) $ T.concat hs
         , concatMap genTraits rs
         ]
-    where f :: (Normalization, [(Text, Text)]) -> Text
+    where f :: (Normalization, [(Text, Text, Int)]) -> Text
           f (Representative{..}, _) = name
           preamble = "#pragma once" : banner
             [ family <> " " <> fromMaybe "other" group <> " peripherals"
             ]
 
-genTraits :: (Normalization, [(Text, Text)]) -> [Text]
+genTraits :: (Normalization, [(Text, Text, Int)]) -> [Text]
 genTraits (Representative{..}, xs) = map f xs
-    where f (s, n) = T.toLower $ T.concat
+    where f (s, n, a) = T.toLower $ T.concat
             [ "typedef"
             , " "
             , svdName <> "_" <> name <> "_t"
@@ -110,6 +113,8 @@ genTraits (Representative{..}, xs) = map f xs
             , n <> "_t"
             , "; // "
             , s
+            , " "
+            , hex a
             ]
 
 processPeripheral
@@ -143,10 +148,10 @@ digests = mapMaybe f
           f Duplicate{..} = Just ((svdName, name), digest)
           f _ = Nothing
 
-remap :: [((Text, Text), Int)] -> Normalization -> (Int, (Text, Text))
-remap _ Representative{..} = (digest, (svdName, name))
-remap _ Duplicate{..} = (digest, (svdName, name))
-remap ss Derived{..} = (digest, (svdName, name))
+remap :: [((Text, Text), Int)] -> Normalization -> (Int, (Text, Text, Int))
+remap _ Representative{..} = (digest, (svdName, name, baseAddress))
+remap _ Duplicate{..} = (digest, (svdName, name, baseAddress))
+remap ss Derived{..} = (digest, (svdName, name, baseAddress))
     where digest = fromMaybe (error $ "failed to derive " <> qname)
                  $ lookup (svdName, derivedFrom) ss
           qname = T.unpack $ svdName <> "." <> derivedFrom
