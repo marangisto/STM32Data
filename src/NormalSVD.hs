@@ -6,7 +6,7 @@ import qualified Data.Text.IO as T
 import Data.List (partition, sortOn)
 import Data.List.Extra (groupSort)
 import Data.Hashable
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import System.FilePath
 import System.Directory
 import Control.Monad
@@ -52,30 +52,32 @@ data Normalization
     , digest    :: Int
     , text      :: FilePath
     }
-    | Normalization
+    | Duplicate
     { svdName   :: Text
     , name      :: Text
     , digest    :: Int
+    }
+    | Derived
+    { svdName       :: Text
+    , name          :: Text
+    , derivedFrom   :: Text
     } deriving (Show)
 
 normalizeSVD :: FilePath -> FilePath -> Text -> [(Text, FilePath)] -> IO ()
 normalizeSVD tmp dir family xs = do
     putStrLn $ T.unpack family <> " in " <> tmp
-    ys <- forM xs $ \(x, fn) -> do
+    ys <- fmap concat $ forM xs $ \(x, fn) -> do
         putStrLn $ "parsing " <> fn
-        svd <- parseSVD <$> T.readFile fn
-        processSVD tmp family svd
-    let ds = groupSort $ map f $ concat ys
+        SVD{..} <- parseSVD <$> T.readFile fn
+        mapM (processPeripheral tmp family name) peripherals
+    let ds = groupSort $ map (remap $ digests ys) ys
         gs = groupSort
             [ (groupName, (r, fromMaybe [] $ lookup digest ds))
-            | r@Representative{..} <- concat ys
+            | r@Representative{..} <- ys
             ]
     dir <- return $ dir </> lower family
     createDirectoryIfMissing False dir
     mapM_ (uncurry $ genHeader dir family) gs
-    where f :: Normalization -> (Int, (Text, Text))
-          f Representative{..} = (digest, (svdName, name))
-          f Normalization{..} = (digest, (svdName, name))
 
 genHeader
     :: FilePath
@@ -110,32 +112,21 @@ genTraits (Representative{..}, xs) = map f xs
             , s
             ]
 
-processSVD
-    :: FilePath
-    -> Text
-    -> SVD
-    -> IO [Normalization]
-processSVD tmp family SVD{..} = do
-    putStrLn $ "processing " <> T.unpack name
-    mapM (processPeripheral tmp family name)
-        [ p
-        | p@Peripheral{..} <- peripherals
-        , Nothing <- [ derivedFrom ]
-        ]
-
 processPeripheral
     :: FilePath
     -> Text
     -> Text
     -> Peripheral
     -> IO Normalization
+processPeripheral tmp family svdName p@Peripheral{derivedFrom=Just s,..} =
+    return Derived{derivedFrom=s,..}
 processPeripheral tmp family svdName p@Peripheral{..} = do
     let h = hash p
         fn = tmp </> T.unpack (hex (abs h)) <.> "h"
     already <- doesFileExist fn
     if already then do
         putStrLn $ T.unpack name <> " normalized"
-        return Normalization{digest=h,..}
+        return Duplicate{digest=h,..}
     else do
         putStr $ T.unpack name <> fn <> "..."
         T.writeFile fn
@@ -145,6 +136,20 @@ processPeripheral tmp family svdName p@Peripheral{..} = do
             $ fixupPeripheral family p
         putStrLn $ "done"
         return Representative{digest=h,text=fn,..}
+
+digests :: [Normalization] -> [((Text, Text), Int)]
+digests = mapMaybe f
+    where f Representative{..} = Just ((svdName, name), digest)
+          f Duplicate{..} = Just ((svdName, name), digest)
+          f _ = Nothing
+
+remap :: [((Text, Text), Int)] -> Normalization -> (Int, (Text, Text))
+remap _ Representative{..} = (digest, (svdName, name))
+remap _ Duplicate{..} = (digest, (svdName, name))
+remap ss Derived{..} = (digest, (svdName, name))
+    where digest = fromMaybe (error $ "failed to derive " <> qname)
+                 $ lookup (svdName, derivedFrom) ss
+          qname = T.unpack $ svdName <> "." <> derivedFrom
 
 qualify :: Text -> Peripheral -> Peripheral
 qualify svdName p@Peripheral{..} = p { name = svdName <> "_" <> name }
