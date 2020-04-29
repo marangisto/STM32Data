@@ -46,21 +46,21 @@ instance Hashable Field where
 
 data Normalization
     = Representative
-    { svdName   :: Text
-    , name      :: Text
-    , groupName :: Maybe Text
-    , digest    :: Int
-    , text      :: FilePath
+    { svdName       :: !Text
+    , name          :: !Text
+    , groupName     :: !(Maybe Text)
+    , digest        :: !Int
+    , text          :: !FilePath
     }
     | Duplicate
-    { svdName   :: Text
-    , name      :: Text
-    , digest    :: Int
+    { svdName       :: !Text
+    , name          :: !Text
+    , digest        :: !Int
     }
     | Derived
-    { svdName       :: Text
-    , name          :: Text
-    , derivedFrom   :: Text
+    { svdName       :: !Text
+    , name          :: !Text
+    , derivedFrom   :: !Text
     } deriving (Show)
 
 normalizeSVD :: FilePath -> FilePath -> Text -> [(Text, FilePath)] -> IO ()
@@ -119,14 +119,14 @@ processPeripheral
     -> Peripheral
     -> IO Normalization
 processPeripheral tmp family svdName p@Peripheral{derivedFrom=Just s,..} =
-    return Derived{derivedFrom=s,..}
+    return $! Derived{derivedFrom=s,..}
 processPeripheral tmp family svdName p@Peripheral{..} = do
     let h = hash p
         fn = tmp </> T.unpack (hex (abs h)) <.> "h"
     already <- doesFileExist fn
     if already then do
         putStrLn $ T.unpack name <> " normalized"
-        return Duplicate{digest=h,..}
+        return $! Duplicate{digest=h,..}
     else do
         putStr $ T.unpack name <> fn <> "..."
         T.writeFile fn
@@ -135,7 +135,7 @@ processPeripheral tmp family svdName p@Peripheral{..} = do
             . qualify svdName
             $ fixupPeripheral family p
         putStrLn $ "done"
-        return Representative{digest=h,text=fn,..}
+        return $! Representative{digest=h,text=fn,..}
 
 digests :: [Normalization] -> [((Text, Text), Int)]
 digests = mapMaybe f
