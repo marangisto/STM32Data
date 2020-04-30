@@ -81,6 +81,7 @@ normalizeSVD tmp dir family xs = do
     dir <- return $ dir </> lower family
     createDirectoryIfMissing False dir
     mapM_ (uncurry $ genHeader dir family) gs
+    allHeader dir family $ map fst gs
 
 genHeader
     :: FilePath
@@ -102,6 +103,20 @@ genHeader dir family group rs = do
           preamble = "#pragma once" : banner
             [ family <> " " <> fromMaybe "other" group <> " peripherals"
             ]
+
+allHeader
+    :: FilePath
+    -> Text
+    -> [Maybe Text]
+    -> IO ()
+allHeader dir family groups = do
+    let header = dir </> "peripheral" <.> "h"
+    putStrLn $ "writing " <> header
+    T.writeFile header $ T.unlines
+        $ "#pragma once"
+        : banner [ family <> " peripherals" ]
+        ++ map f groups
+        where f x = "#include \"" <> maybe "other" T.toLower x <> ".h\""
 
 genTraits :: (Normalization, [(Text, Text, Int)]) -> [Text]
 genTraits (Representative{..}, xs) = map f xs
