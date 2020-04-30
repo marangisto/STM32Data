@@ -80,8 +80,9 @@ normalizeSVD tmp dir family xs = do
             ]
     dir <- return $ dir </> lower family
     createDirectoryIfMissing False dir
+    familyHeader dir family $ map fst xs
     mapM_ (uncurry $ genHeader dir family) gs
-    allHeader dir family $ map fst gs
+    comboHeader dir family $ map fst gs
 
 genHeader
     :: FilePath
@@ -104,12 +105,25 @@ genHeader dir family group rs = do
             [ family <> " " <> fromMaybe "other" group <> " peripherals"
             ]
 
-allHeader
+familyHeader
+    :: FilePath
+    -> Text
+    -> [Text]
+    -> IO ()
+familyHeader dir family svds = do
+    let header = dir </> "family" <.> "h"
+    putStrLn $ "writing " <> header
+    T.writeFile header $ T.unlines
+        $ "#pragma once"
+        : banner [ family <> " members" ]
+        ++ enum "family_member_t" svds
+
+comboHeader
     :: FilePath
     -> Text
     -> [Maybe Text]
     -> IO ()
-allHeader dir family groups = do
+comboHeader dir family groups = do
     let header = dir </> "peripheral" <.> "h"
     putStrLn $ "writing " <> header
     T.writeFile header $ T.unlines
@@ -179,4 +193,13 @@ hex x = T.pack $ "0x" ++ showHex x ""
 
 lower :: Text -> String
 lower = T.unpack . T.toLower
+
+enum :: Text -> [Text] -> [Text]
+enum name xs = concat
+    [ [ "", "enum " <> name ]
+    , [ s <> x
+      | (s, x) <- zip ("    { " : repeat "    , ") xs
+      ]
+    , [ "    };" ]
+    ]
 
