@@ -3,7 +3,7 @@ module NormalSVD (normalizeSVD) where
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import Data.List (partition, sortOn)
+import Data.List (partition, sortOn, sort, nub)
 import Data.List.Extra (groupSort)
 import Data.Hashable
 import Data.Maybe (fromMaybe, mapMaybe)
@@ -80,7 +80,7 @@ normalizeSVD tmp dir family xs = do
             ]
     dir <- return $ dir </> lower family
     createDirectoryIfMissing False dir
-    familyHeader dir family $ map fst xs
+    familyHeader dir family (concatMap snd ds)
     mapM_ (uncurry $ genHeader dir family) gs
     comboHeader dir family $ map fst gs
 
@@ -108,15 +108,18 @@ genHeader dir family group rs = do
 familyHeader
     :: FilePath
     -> Text
-    -> [Text]
+    -> [(Text, Text, Int)]
     -> IO ()
-familyHeader dir family svds = do
+familyHeader dir family peripherals = do
     let header = dir </> "family" <.> "h"
     putStrLn $ "writing " <> header
     T.writeFile header $ T.unlines
         $ "#pragma once"
         : banner [ family <> " members" ]
         ++ enum "family_member_t" svds
+        ++ enum "peripheral_t" perips
+    where svds = nub $ sort [ svd | (svd, _, _) <- peripherals ]
+          perips = nub $ sort [ p | (_, p, _) <- peripherals ]
 
 comboHeader
     :: FilePath
