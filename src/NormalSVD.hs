@@ -129,6 +129,7 @@ comboHeader dir family groups = do
     T.writeFile header $ T.unlines
         $ "#pragma once"
         : banner [ family <> " peripherals" ]
+        ++ [ "" ]
         ++ map f groups
         where f x = "#include \"" <> maybe "other" T.toLower x <> ".h\""
 

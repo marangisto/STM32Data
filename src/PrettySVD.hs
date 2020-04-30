@@ -16,7 +16,8 @@ prettySVD SVD{..} =
     [ "#pragma once"
     ] ++
     banner [ name, "Version " <> version ] ++
-    [ "#include <stdint.h>"
+    [ ""
+    , "#include <stdint.h>"
     , ""
     , "template<int N> class reserved_t { private: uint32_t m_pad[N]; };"
     , ""
@@ -45,7 +46,8 @@ peripheral Peripheral{derivedFrom=Just from,..} =
     ]
 peripheral Peripheral{..} =
     banner [ cleanWords description ] ++
-    [ "struct " <> T.toLower name <> "_t"
+    [ ""
+    , "struct " <> T.toLower name <> "_t"
     , "{"
     ] ++
     concatMap (register w) (reserve $ sortOn addressOffset registers) ++
@@ -149,7 +151,6 @@ banner xs =
     map ("//      " <>) xs ++
     [ "//"
     , "////"
-    , ""
     ]
 
 peripheralMap :: SVD -> [Text]
