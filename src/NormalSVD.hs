@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards, OverloadedStrings, DuplicateRecordFields #-}
+{-# LANGUAGE RecordWildCards, OverloadedStrings, DuplicateRecordFields, TupleSections #-}
 module NormalSVD (normalizeSVD) where
 
 import qualified Data.Text as T
@@ -94,11 +94,10 @@ genHeader dir family group rs = do
     hs <- forM (sortOn f rs) $ \(Representative{..}, _) -> T.readFile text
     let header = dir </> maybe "other" lower group <.> "h"
     putStrLn $ "writing " <> header
-    T.writeFile header $ T.unlines $ concat
-        [ preamble
-        , (:[]) $ T.concat hs
-        , concatMap genTraits rs
-        ]
+    T.writeFile header $ T.unlines $ preamble ++ hs
+        ++ concatMap (uncurry genTraits) rs
+        ++ map genUsing (nub $ sort [ name | (_, name, _) <- concatMap snd rs ])
+        ++ [ "" ]
     where f :: (Normalization, [(Text, Text, Int)]) -> Text
           f (Representative{..}, _) = name
           preamble = "#pragma once" : banner
@@ -118,6 +117,7 @@ familyHeader dir family peripherals = do
         : banner [ family <> " members" ]
         ++ enum "family_member_t" svds
         ++ enum "peripheral_t" perips
+        ++ [ "" ]
     where svds = nub $ sort [ svd | (svd, _, _) <- peripherals ]
           perips = nub $ sort [ p | (_, p, _) <- peripherals ]
 
@@ -134,21 +134,34 @@ comboHeader dir family groups = do
         : banner [ family <> " peripherals" ]
         ++ [ "" ]
         ++ map f groups
+        ++ [ "" ]
         where f x = "#include \"" <> maybe "other" T.toLower x <> ".h\""
 
-genTraits :: (Normalization, [(Text, Text, Int)]) -> [Text]
-genTraits (Representative{..}, xs) = map f xs
-    where f (s, n, a) = T.toLower $ T.concat
-            [ "typedef"
-            , " "
-            , svdName <> "_" <> name <> "_t"
-            , " "
-            , n <> "_t"
-            , "; // "
-            , s
-            , " "
-            , hex a
-            ]
+genTraits :: Normalization -> [(Text, Text, Int)] -> [Text]
+genTraits Representative{..} = concatMap (genTrait . ((svdName, name),))
+
+genTrait :: ((Text, Text), (Text, Text, Int)) -> [Text]
+genTrait ((repSvd, repName), (svd, name, addr)) =
+    [ "template<>"
+    , "struct peripheral_t<" <> svd <> ", " <> name <> ">"
+    , "{"
+    , "    typedef " <> T.toLower repSvd
+                     <> "_"
+                     <> T.toLower repName
+                     <> "_t type;"
+    , "    static constexpr uint32_t base_address = " <> hex addr <> ";"
+    , "};"
+    , ""
+    ]
+
+genUsing :: Text -> Text
+genUsing name
+    = "using "
+    <> T.toLower name
+    <> "_t"
+    <> " = peripheral_t<family_member, "
+    <> name
+    <> ">;"
 
 processPeripheral
     :: FilePath
