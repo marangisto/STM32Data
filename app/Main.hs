@@ -72,12 +72,21 @@ main = do
     families <- prune fs . parseFamilies <$> T.readFile (dbDir </> familiesXML)
     when list_mcus $ mcuList families
     when build_rules $ mapM_ (putStrLn . T.unpack) $ buildRules families
+    {-
     whenJust family_header $ \dir -> forM_ families $ \(family, subFamilies) -> do
         let header = dir </> T.unpack (T.toLower family) <.> "h"
         putStrLn header
         mcus <- mapM (loadMCU dbDir) $ controllers subFamilies
         gss <- mapM (\x -> (x,) <$> gpioConfigSet dbDir x) =<< gpioConfigs dbDir family
         T.writeFile header $ T.unlines $ familyHeader family mcus gss
+        -}
+
+    whenJust family_header $ \dir ->
+      forM_ families $ \(family, subFamilies) -> do
+        mcus <- mapM (loadMCU dbDir) $ controllers subFamilies
+        gss <- mapM (\x -> (x,) <$> gpioConfigSet dbDir x)
+            =<< gpioConfigs dbDir family
+        familyHeaders dir family mcus gss
 
     whenJust svd_header $ \dir ->
       forM_ families $ \(family, _) ->

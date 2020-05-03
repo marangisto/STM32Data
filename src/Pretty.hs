@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings, RecordWildCards, TupleSections #-}
 module Pretty
-    ( familyHeader
+    ( familyHeaders
     ) where
 
 import Numeric (showHex)
@@ -10,18 +10,35 @@ import Data.List (nub, sort)
 import Data.List.Extra (groupSort)
 import qualified Data.Set as Set
 import qualified Data.Text as T
+import qualified Data.Text.IO as T
+import System.FilePath
 import IPMode
 import MCU
 
 type Text = T.Text
 
-familyHeader :: Text -> [MCU] -> [(Text, Set.Set ((PIN, AF), Int))] -> [Text]
-familyHeader family mcus ys = concat $
+familyHeaders
+    :: FilePath
+    -> Text
+    -> [MCU]
+    -> [(Text, Set.Set ((PIN, AF), Int))]
+    -> IO ()
+familyHeaders dir family mcus ys = do
+    dir <- return $ dir </> T.unpack (T.toLower family)
+    let h1 = dir </> "mcu" <.> "h"
+    putStrLn h1
+    T.writeFile h1 $ T.unlines $ mcuHeader family mcus ys
+    let h2 = dir </> "pin" <.> "h"
+    putStrLn h2
+    T.writeFile h2 $ T.unlines $ pinHeader family mcus ys
+
+mcuHeader :: Text -> [MCU] -> [(Text, Set.Set ((PIN, AF), Int))] -> [Text]
+mcuHeader family mcus ys = concat $
     [ [ "#pragma once"
       , ""
       , "////"
       , "//"
-      , "//      " <> family
+      , "//      " <> family <> " MCUs"
       , "//"
       , "////"
       ]
@@ -30,6 +47,21 @@ familyHeader family mcus ys = concat $
     , mcuTraitsDecl mcus
     , [ ""
       , "static constexpr mcu_t target = MCU;"
+      ]
+    ]
+    where confs = map (cleanGPIOConf . fst) ys
+
+pinHeader :: Text -> [MCU] -> [(Text, Set.Set ((PIN, AF), Int))] -> [Text]
+pinHeader family mcus ys = concat $
+    [ [ "#pragma once"
+      , ""
+      , "////"
+      , "//"
+      , "//      " <> family <> " pins"
+      , "//"
+      , "////"
+      ]
+    , [ ""
       , "static constexpr gpio_conf_t gpio_conf = mcu_traits<target>::gpio_conf;"
       ]
     , enumDecl2 "gpio_port_t" $ map (\p -> (T.pack [ 'P', p ], ord p - ord 'A')) ports
