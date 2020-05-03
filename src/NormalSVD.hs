@@ -116,7 +116,7 @@ familyHeader dir family peripherals = do
         $ "#pragma once"
         : banner [ family <> " members" ]
         ++ enum "family_member_t" svds
-        ++ enum "peripheral_t" perips
+        ++ enum "peripheral_enum_t" perips
         ++ [ "" ]
     where svds = nub $ sort [ svd | (svd, _, _) <- peripherals ]
           perips = nub $ sort [ p | (_, p, _) <- peripherals ]
