@@ -80,7 +80,7 @@ normalizeSVD tmp dir family xs = do
             ]
     dir <- return $ dir </> lower family
     createDirectoryIfMissing False dir
-    familyHeader dir family (concatMap snd ds)
+    peripheralHeader dir family (concatMap snd ds)
     mapM_ (uncurry $ genHeader dir family) gs
     comboHeader dir family $ map fst gs
 
@@ -104,13 +104,13 @@ genHeader dir family group rs = do
             [ family <> " " <> fromMaybe "other" group <> " peripherals"
             ]
 
-familyHeader
+peripheralHeader
     :: FilePath
     -> Text
     -> [(Text, Text, Int)]
     -> IO ()
-familyHeader dir family peripherals = do
-    let header = dir </> "family" <.> "h"
+peripheralHeader dir family peripherals = do
+    let header = dir </> "peripheral" <.> "h"
     putStrLn $ "writing " <> header
     T.writeFile header $ T.unlines
         $ "#pragma once"
