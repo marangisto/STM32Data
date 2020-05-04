@@ -181,30 +181,37 @@ mcuTraitsDecl mcus svds =
             [ ""
             , "template<> struct mcu_traits<" <> name <> ">"
             , "{"
-            , "    static constexpr mcu_svd_t mcu_svd = " <> svd <> ";"
-            , "    static constexpr gpio_conf_t gpio_conf = " <> gc <> ";"
+            ] ++
+            [ "    static constexpr mcu_svd_t mcu_svd = " <> svd <> ";"
+            | Just svd <- [ matchSVD svds name ]
+            ] ++
+            [ "    static constexpr gpio_conf_t gpio_conf = " <> gc <> ";"
             , "};"
             ]
             where gc = unGPIOConf $ cleanGPIOConf gpioConfig
-                  svd = matchSVD svds name
 
-matchSVD :: [Text] -> Text -> Text
+matchSVD :: [Text] -> Text -> Maybe Text
 matchSVD svds name = case filter p svds of
-    [] | "STM32F105" `T.isPrefixOf` name -> "STM32F107"
-    [] | "STM32F205" `T.isPrefixOf` name -> "STM32F215"
-    [] | "STM32F207" `T.isPrefixOf` name -> "STM32F217"
-    [] | "STM32F415" `T.isPrefixOf` name -> "STM32F405"
-    [] | "STM32F417" `T.isPrefixOf` name -> "STM32F407"
-    [] | "STM32F423" `T.isPrefixOf` name -> "STM32F413"
-    [] | "STM32F437" `T.isPrefixOf` name -> "STM32F427"
-    [] | "STM32F439" `T.isPrefixOf` name -> "STM32F429"
-    [] | "STM32F479" `T.isPrefixOf` name -> "STM32F469"
-    [] | "STM32GBK1" `T.isPrefixOf` name -> "STM32F431" -- is this even real?
+    [] | "STM32F105" `T.isPrefixOf` name -> Just "STM32F107"
+    [] | "STM32F205" `T.isPrefixOf` name -> Just "STM32F215"
+    [] | "STM32F207" `T.isPrefixOf` name -> Just "STM32F217"
+    [] | "STM32F415" `T.isPrefixOf` name -> Just "STM32F405"
+    [] | "STM32F417" `T.isPrefixOf` name -> Just "STM32F407"
+    [] | "STM32F423" `T.isPrefixOf` name -> Just "STM32F413"
+    [] | "STM32F437" `T.isPrefixOf` name -> Just "STM32F427"
+    [] | "STM32F439" `T.isPrefixOf` name -> Just "STM32F429"
+    [] | "STM32F479" `T.isPrefixOf` name -> Just "STM32F469"
+    [] | "STM32GBK1" `T.isPrefixOf` name -> Nothing
+    [] | "STM32H745BG" `T.isPrefixOf` name -> Nothing
     [] ->  error $ "failed to match svd for " <> T.unpack name
-    [ svd ] -> svd
-    xs -> error $ T.unpack name <> " matches " <> show xs
+    --[] ->  Nothing -- error $ "failed to match svd for " <> T.unpack name
+    [ svd ] -> Just svd
+    xs -> case filter tame xs of
+        [ svd ] -> Just svd
+        _ -> error $ T.unpack name <> " matches " <> show xs
     where p = all match . zip (T.unpack name) . T.unpack
           match (n, s) = n == s || s == 'x'
+          tame = not . any (=='x') . T.unpack
 
 gpioTraitsDecl :: [Text]
 gpioTraitsDecl =
