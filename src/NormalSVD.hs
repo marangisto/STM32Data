@@ -14,8 +14,7 @@ import Numeric (showHex)
 import ParseSVD
 import FixupSVD
 import PrettySVD
-
-type Text = T.Text
+import Utils
 
 instance Hashable Peripheral where
     hashWithSalt h Peripheral{..} = hashWithSalt h
@@ -204,18 +203,6 @@ remap ss Derived{..} = (digest, (svdName, name, baseAddress))
 qualify :: Text -> Peripheral -> Peripheral
 qualify svdName p@Peripheral{..} = p { name = svdName <> "_" <> name }
 
-hex :: Int -> Text
-hex x = T.pack $ "0x" ++ showHex x ""
-
 lower :: Text -> String
 lower = T.unpack . T.toLower
-
-enum :: Text -> [Text] -> [Text]
-enum name xs = concat
-    [ [ "", "enum " <> name ]
-    , [ s <> x
-      | (s, x) <- zip ("    { " : repeat "    , ") xs
-      ]
-    , [ "    };" ]
-    ]
 

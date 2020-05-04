@@ -1,15 +1,13 @@
 {-# LANGUAGE RecordWildCards, OverloadedStrings #-}
-module PrettySVD (prettySVD, prettyPeripheral, peripheralMap, banner) where
+module PrettySVD (prettySVD, prettyPeripheral, peripheralMap) where
 
 import qualified Data.Text as T
 import Data.List (sortOn, partition)
 import Data.Bits (shift)
 import Data.Maybe (isJust)
 import Data.Char (isAscii)
-import Numeric (showHex)
 import ParseSVD
-
-type Text = T.Text
+import Utils
 
 prettySVD :: SVD -> [Text]
 prettySVD SVD{..} =
@@ -142,17 +140,6 @@ fieldWidth Field{..}
 bitConstant :: Int -> Text
 bitConstant = hex . shift 1
 
-banner :: [Text]-> [Text]
-banner xs =
-    [ ""
-    , "////"
-    , "//"
-    ] ++
-    map ("//      " <>) xs ++
-    [ "//"
-    , "////"
-    ]
-
 peripheralMap :: SVD -> [Text]
 peripheralMap SVD{..} =
     [ name <> "," <> T.pack (show baseAddress)
@@ -161,9 +148,6 @@ peripheralMap SVD{..} =
 
 cleanWords :: Text -> Text
 cleanWords = T.unwords . T.words . T.filter isAscii
-
-hex :: Int -> Text
-hex x = T.pack $ "0x" ++ showHex x ""
 
 {-
 type SVD = (Text, [Peripheral])
