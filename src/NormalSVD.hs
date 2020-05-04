@@ -113,7 +113,7 @@ peripheralHeader dir family peripherals = do
     putStrLn $ "writing " <> header
     writeText header
         $ "#pragma once"
-        : banner [ family <> " members" ]
+        : banner [ family <> " peripherals" ]
         ++ enum "peripheral_enum_t" perips
         ++ [ "" ]
     where svds = nub $ sort [ svd | (svd, _, _) <- peripherals ]
@@ -125,7 +125,7 @@ comboHeader
     -> [Maybe Text]
     -> IO ()
 comboHeader dir family groups = do
-    let header = dir </> "peripheral" <.> "h"
+    let header = dir </> "all" <.> "h"
     putStrLn $ "writing " <> header
     writeText header
         $ "#pragma once"
