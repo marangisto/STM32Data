@@ -190,7 +190,17 @@ mcuTraitsDecl mcus svds =
 
 matchSVD :: [Text] -> Text -> Text
 matchSVD svds name = case filter p svds of
-    [] -> error $ "failed to match svd for " <> T.unpack name
+    [] | "STM32F105" `T.isPrefixOf` name -> "STM32F107"
+    [] | "STM32F205" `T.isPrefixOf` name -> "STM32F215"
+    [] | "STM32F207" `T.isPrefixOf` name -> "STM32F217"
+    [] | "STM32F415" `T.isPrefixOf` name -> "STM32F405"
+    [] | "STM32F417" `T.isPrefixOf` name -> "STM32F407"
+    [] | "STM32F423" `T.isPrefixOf` name -> "STM32F413"
+    [] | "STM32F437" `T.isPrefixOf` name -> "STM32F427"
+    [] | "STM32F439" `T.isPrefixOf` name -> "STM32F429"
+    [] | "STM32F479" `T.isPrefixOf` name -> "STM32F469"
+    [] | "STM32GBK1" `T.isPrefixOf` name -> "STM32F431" -- is this even real?
+    [] ->  error $ "failed to match svd for " <> T.unpack name
     [ svd ] -> svd
     xs -> error $ T.unpack name <> " matches " <> show xs
     where p = all match . zip (T.unpack name) . T.unpack
