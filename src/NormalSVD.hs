@@ -157,7 +157,7 @@ genUsing name
     = "using "
     <> T.toLower name
     <> "_t"
-    <> " = peripheral_t<family_member, "
+    <> " = peripheral_t<mcu_svd, "
     <> name
     <> ">;"
 

@@ -47,7 +47,7 @@ mcuHeader family mcus ys svds = concat $
       , "////"
       ]
     , enumDecl False "mcu_t" $ map name mcus
-    , enumDecl False "family_member_t" svds
+    , enumDecl False "mcu_svd_t" svds
     , enumDecl True "gpio_conf_t" $ map unGPIOConf confs
     , mcuTraitsDecl mcus
     , [ ""
