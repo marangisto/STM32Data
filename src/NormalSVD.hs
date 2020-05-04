@@ -115,7 +115,6 @@ peripheralHeader dir family peripherals = do
     T.writeFile header $ T.unlines
         $ "#pragma once"
         : banner [ family <> " members" ]
-        ++ enum "family_member_t" svds
         ++ enum "peripheral_enum_t" perips
         ++ [ "" ]
     where svds = nub $ sort [ svd | (svd, _, _) <- peripherals ]

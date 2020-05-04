@@ -22,18 +22,24 @@ familyHeaders
     -> Text
     -> [MCU]
     -> [(Text, Set.Set ((PIN, AF), Int))]
+    -> [Text]
     -> IO ()
-familyHeaders dir family mcus ys = do
+familyHeaders dir family mcus ys svds = do
     dir <- return $ dir </> T.unpack (T.toLower family)
     let h1 = dir </> "mcu" <.> "h"
     putStrLn h1
-    T.writeFile h1 $ T.unlines $ mcuHeader family mcus ys
+    T.writeFile h1 $ T.unlines $ mcuHeader family mcus ys svds
     let h2 = dir </> "pin" <.> "h"
     putStrLn h2
     T.writeFile h2 $ T.unlines $ pinHeader family mcus ys
 
-mcuHeader :: Text -> [MCU] -> [(Text, Set.Set ((PIN, AF), Int))] -> [Text]
-mcuHeader family mcus ys = concat $
+mcuHeader
+    :: Text
+    -> [MCU]
+    -> [(Text, Set.Set ((PIN, AF), Int))]
+    -> [Text]
+    -> [Text]
+mcuHeader family mcus ys svds = concat $
     [ [ "#pragma once"
       , ""
       , "////"
@@ -43,6 +49,7 @@ mcuHeader family mcus ys = concat $
       , "////"
       ]
     , enumDecl False "mcu_t" $ map name mcus
+    , enumDecl False "family_member_t" svds
     , enumDecl True "gpio_conf_t" $ map unGPIOConf confs
     , mcuTraitsDecl mcus
     , [ ""
