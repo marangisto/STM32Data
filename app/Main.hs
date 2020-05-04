@@ -3,7 +3,7 @@ module Main where
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import System.Console.CmdArgs hiding (name)
+import System.Console.CmdArgs hiding (name, enum)
 import System.FilePath
 import System.Directory
 import System.IO
@@ -16,8 +16,7 @@ import IPMode
 import Pretty
 import ParseSVD
 import NormalSVD
-
-type Text = T.Text
+import Utils
 
 data Options = Options
     { list_mcus     :: Bool
@@ -73,7 +72,8 @@ main = do
     when list_mcus $ mcuList families
     when build_rules $ mapM_ (putStrLn . T.unpack) $ buildRules families
 
-    whenJust svd_header $ \dir ->
+    whenJust svd_header $ \dir -> do
+      stm32Header dir $ map fst families
       forM_ families $ \(family, _) ->
         withTempDirectory tmpDir (T.unpack family) $ \tmp ->
           normalizeSVD tmp dir family =<< svdFiles family
@@ -85,6 +85,15 @@ main = do
             =<< gpioConfigs dbDir family
         svds <- map fst <$> svdFiles family
         familyHeaders dir family mcus gss svds
+
+stm32Header :: FilePath -> [Text] -> IO ()
+stm32Header dir xs = do
+    createDirectoryIfMissing False dir
+    let header = dir </> "stm32" <.> "h"
+    putStrLn $ "writing " <> header
+    T.writeFile header $ T.unlines
+        $ banner [ "STM32 MCU families" ]
+        ++ enum "mcu_families_t" xs
 
 svdFiles :: Text -> IO [(Text, FilePath)]
 svdFiles family = do
