@@ -10,12 +10,10 @@ import Data.List (nub, sort)
 import Data.List.Extra (groupSort)
 import qualified Data.Set as Set
 import qualified Data.Text as T
-import qualified Data.Text.IO as T
 import System.FilePath
 import IPMode
 import MCU
-
-type Text = T.Text
+import Utils
 
 familyHeaders
     :: FilePath
@@ -28,10 +26,10 @@ familyHeaders dir family mcus ys svds = do
     dir <- return $ dir </> T.unpack (T.toLower family)
     let h1 = dir </> "mcu" <.> "h"
     putStrLn h1
-    T.writeFile h1 $ T.unlines $ mcuHeader family mcus ys svds
+    writeText h1 $ mcuHeader family mcus ys svds
     let h2 = dir </> "pin" <.> "h"
     putStrLn h2
-    T.writeFile h2 $ T.unlines $ pinHeader family mcus ys
+    writeText h2 $ pinHeader family mcus ys
 
 mcuHeader
     :: Text

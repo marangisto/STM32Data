@@ -93,7 +93,7 @@ genHeader dir family group rs = do
     hs <- forM (sortOn f rs) $ \(Representative{..}, _) -> T.readFile text
     let header = dir </> maybe "other" lower group <.> "h"
     putStrLn $ "writing " <> header
-    T.writeFile header $ T.unlines $ preamble ++ hs
+    writeText header $ preamble ++ hs
         ++ concatMap (uncurry genTraits) rs
         ++ map genUsing (nub $ sort [ name | (_, name, _) <- concatMap snd rs ])
         ++ [ "" ]
@@ -111,7 +111,7 @@ peripheralHeader
 peripheralHeader dir family peripherals = do
     let header = dir </> "peripheral" <.> "h"
     putStrLn $ "writing " <> header
-    T.writeFile header $ T.unlines
+    writeText header
         $ "#pragma once"
         : banner [ family <> " members" ]
         ++ enum "peripheral_enum_t" perips
@@ -127,7 +127,7 @@ comboHeader
 comboHeader dir family groups = do
     let header = dir </> "peripheral" <.> "h"
     putStrLn $ "writing " <> header
-    T.writeFile header $ T.unlines
+    writeText header
         $ "#pragma once"
         : banner [ family <> " peripherals" ]
         ++ [ "" ]
@@ -178,9 +178,8 @@ processPeripheral tmp family svdName p@Peripheral{..} = do
         return $! Duplicate{digest=h,..}
     else do
         putStr $ T.unpack name <> fn <> "..."
-        T.writeFile fn
-            $ T.unlines
-            . prettyPeripheral
+        writeText fn
+            $ prettyPeripheral
             . qualify svdName
             $ fixupPeripheral family p
         putStrLn $ "done"

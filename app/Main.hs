@@ -91,7 +91,7 @@ stm32Header dir xs = do
     createDirectoryIfMissing False dir
     let header = dir </> "stm32" <.> "h"
     putStrLn $ "writing " <> header
-    T.writeFile header $ T.unlines
+    writeText header
         $ banner [ "STM32 MCU families" ]
         ++ enum "mcu_families_t" xs
 
