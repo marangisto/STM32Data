@@ -11,6 +11,7 @@ import Data.List.Extra (groupSort)
 import qualified Data.Set as Set
 import qualified Data.Text as T
 import System.FilePath
+import System.Directory
 import IPMode
 import MCU
 import Utils
@@ -24,6 +25,7 @@ familyHeaders
     -> IO ()
 familyHeaders dir family mcus ys svds = do
     dir <- return $ dir </> T.unpack (T.toLower family)
+    createDirectoryIfMissing False dir
     let h1 = dir </> "mcu" <.> "h"
     putStrLn h1
     writeText h1 $ mcuHeader family mcus ys svds
@@ -49,7 +51,7 @@ mcuHeader family mcus ys svds = concat $
     , enumDecl False "mcu_t" $ map name mcus
     , enumDecl False "mcu_svd_t" svds
     , enumDecl True "gpio_conf_t" $ map unGPIOConf confs
-    , mcuTraitsDecl mcus
+    , mcuTraitsDecl mcus svds
     , [ ""
       , "static constexpr mcu_t target = MCU;"
       ]
@@ -170,8 +172,8 @@ afEnumDecl xs = concat
     , [ "    };" ]
     ]
 
-mcuTraitsDecl :: [MCU] -> [Text]
-mcuTraitsDecl mcus =
+mcuTraitsDecl :: [MCU] -> [Text] -> [Text]
+mcuTraitsDecl mcus svds =
     [ ""
     , "template<mcu_t MCU> struct mcu_traits {};"
     ] ++ concatMap f mcus
@@ -179,10 +181,20 @@ mcuTraitsDecl mcus =
             [ ""
             , "template<> struct mcu_traits<" <> name <> ">"
             , "{"
+            , "    static constexpr mcu_svd_t mcu_svd = " <> svd <> ";"
             , "    static constexpr gpio_conf_t gpio_conf = " <> gc <> ";"
             , "};"
             ]
             where gc = unGPIOConf $ cleanGPIOConf gpioConfig
+                  svd = matchSVD svds name
+
+matchSVD :: [Text] -> Text -> Text
+matchSVD svds name = case filter p svds of
+    [] -> error $ "failed to match svd for " <> T.unpack name
+    [ svd ] -> svd
+    xs -> error $ T.unpack name <> " matches " <> show xs
+    where p = all match . zip (T.unpack name) . T.unpack
+          match (n, s) = n == s || s == 'x'
 
 gpioTraitsDecl :: [Text]
 gpioTraitsDecl =
