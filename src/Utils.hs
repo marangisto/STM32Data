@@ -4,6 +4,7 @@ module Utils
     , enum
     , banner
     , hex
+    , unPlus
     , writeText
     ) where
 
@@ -36,6 +37,11 @@ banner xs =
 
 hex :: Int -> Text
 hex x = T.pack $ "0x" ++ showHex x ""
+
+unPlus :: Text -> Text
+unPlus s
+    | Just x <- T.stripSuffix "+" s = x <> "Plus"
+    | otherwise = s
 
 -- | Does the right thing to not get crlf in output
 writeText :: FilePath -> [Text] -> IO ()

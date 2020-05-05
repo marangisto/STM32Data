@@ -51,7 +51,7 @@ mcuHeader family mcus ys svds = concat $
     , enumDecl False "mcu_t" $ map name mcus
     , enumDecl False "mcu_svd_t" svds
     , enumDecl True "gpio_conf_t" $ map unGPIOConf confs
-    , mcuTraitsDecl mcus svds
+    , mcuTraitsDecl family mcus svds
     , [ ""
       , "static constexpr mcu_t target = MCU;"
       ]
@@ -172,8 +172,8 @@ afEnumDecl xs = concat
     , [ "    };" ]
     ]
 
-mcuTraitsDecl :: [MCU] -> [Text] -> [Text]
-mcuTraitsDecl mcus svds =
+mcuTraitsDecl :: Text -> [MCU] -> [Text] -> [Text]
+mcuTraitsDecl family mcus svds =
     [ ""
     , "template<mcu_t MCU> struct mcu_traits {};"
     ] ++ concatMap f mcus
@@ -181,6 +181,7 @@ mcuTraitsDecl mcus svds =
             [ ""
             , "template<> struct mcu_traits<" <> name <> ">"
             , "{"
+            , "    static constexpr mcu_family_t mcu_family = " <> unPlus family <> ";"
             ] ++
             [ "    static constexpr mcu_svd_t mcu_svd = " <> svd <> ";"
             | Just svd <- [ matchSVD svds name ]
