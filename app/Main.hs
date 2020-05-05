@@ -93,7 +93,7 @@ stm32Header dir xs = do
     putStrLn $ "writing " <> header
     writeText header
         $ banner [ "STM32 MCU families" ]
-        ++ enum "mcu_families_t" (map unPlus xs)
+        ++ enum "mcu_family_t" (map unPlus xs)
 
 svdFiles :: Text -> IO [(Text, FilePath)]
 svdFiles family = do
