@@ -14,6 +14,7 @@ import Numeric (showHex)
 import ParseSVD
 import FixupSVD
 import PrettySVD
+import PrettyVector
 import Utils
 
 instance Hashable Peripheral where
@@ -68,10 +69,12 @@ data Normalization
 normalizeSVD :: FilePath -> FilePath -> Text -> [(Text, FilePath)] -> IO ()
 normalizeSVD tmp dir family xs = do
     putStrLn $ T.unpack family <> " in " <> tmp
-    ys <- fmap concat $ forM xs $ \(x, fn) -> do
+    (ys, is) <- fmap unzip $ forM xs $ \(x, fn) -> do
         putStrLn $ "parsing " <> fn
         SVD{..} <- parseSVD <$> T.readFile fn
-        mapM (processPeripheral tmp family name) peripherals
+        ys <- mapM (processPeripheral tmp family name) peripherals
+        return $! (ys, concatMap interrupts peripherals)
+    ys <- return $ concat ys
     let ds = groupSort $ map (remap $ digests ys) ys
         gs = groupSort
             [ (groupName, (r, fromMaybe [] $ lookup digest ds))
@@ -82,6 +85,7 @@ normalizeSVD tmp dir family xs = do
     peripheralHeader dir family (concatMap snd ds)
     mapM_ (uncurry $ genHeader dir family) gs
     comboHeader dir family $ map fst gs
+    vectorHeader dir family $ concat is
 
 genHeader
     :: FilePath
@@ -134,6 +138,19 @@ comboHeader dir family groups = do
         ++ map f groups
         ++ [ "" ]
         where f x = "#include \"" <> maybe "other" T.toLower x <> ".h\""
+
+vectorHeader
+    :: FilePath
+    -> Text
+    -> [Interrupt]
+    -> IO ()
+vectorHeader dir family xs = do
+    let header = dir </> "vector" <.> "h"
+    putStrLn $ "writing " <> header
+    writeText header
+        $ "#pragma once"
+        : banner [ family <> " vectors" ]
+        ++ prettyVector Nothing xs
 
 genTraits :: Normalization -> [(Text, Text, Int)] -> [Text]
 genTraits Representative{..} = concatMap (genTrait . ((svdName, name),))

@@ -5,7 +5,6 @@ import qualified Data.Text as T
 import Data.List (sortOn, partition)
 import Data.Bits (shift)
 import Data.Maybe (isJust)
-import Data.Char (isAscii)
 import ParseSVD
 import Utils
 
@@ -145,9 +144,6 @@ peripheralMap SVD{..} =
     [ name <> "," <> T.pack (show baseAddress)
     | Peripheral{..} <- sortOn baseAddress peripherals
     ]
-
-cleanWords :: Text -> Text
-cleanWords = T.unwords . T.words . T.filter isAscii
 
 {-
 type SVD = (Text, [Peripheral])

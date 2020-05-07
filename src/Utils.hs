@@ -5,13 +5,15 @@ module Utils
     , banner
     , hex
     , unPlus
+    , cleanWords
     , writeText
     ) where
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import System.IO
+import Data.Char (isAscii)
 import Numeric (showHex)
+import System.IO
 
 type Text = T.Text
 
@@ -42,6 +44,9 @@ unPlus :: Text -> Text
 unPlus s
     | Just x <- T.stripSuffix "+" s = x <> "Plus"
     | otherwise = s
+
+cleanWords :: Text -> Text
+cleanWords = T.unwords . T.words . T.filter isAscii
 
 -- | Does the right thing to not get crlf in output
 writeText :: FilePath -> [Text] -> IO ()
