@@ -27,7 +27,7 @@ data Options = Options
     , package       :: [String]
     , svd_header    :: Maybe FilePath
     , parse_svd     :: Bool
-    , address_map   :: Bool
+    , interrupt     :: Bool
     , files         :: [FilePath]
     } deriving (Show, Eq, Data, Typeable)
 
@@ -41,7 +41,7 @@ options = Main.Options
     , package = def &= help "filter on package"
     , svd_header = def &= help "generate svd header (to directory)"
     , parse_svd = def &= help "process svd files"
-    , address_map = def &= help "show peripheral address map"
+    , interrupt = def &= help "show peripheral interrupts"
     , files = def &= args &= typ "FILES"
     } &=
     verbosity &=
@@ -85,6 +85,20 @@ main = do
             =<< gpioConfigs dbDir family
         svds <- map fst <$> svdFiles family
         familyHeaders dir family mcus gss svds
+
+    when interrupt $ forM_ families $ \(family, _) -> do
+      xs <- svdFiles family
+      forM xs $ \(svd, fn) -> do
+        SVD{..} <- parseSVD <$> T.readFile fn
+        let ys = concat [ interrupts | Peripheral{..} <- peripherals ]
+        forM_ ys $ \Interrupt{..} -> do
+            putStrLn $ T.unpack $ T.concat
+                [ family
+                , ","
+                , T.pack (show value)
+                , ","
+                , name
+                ]
 
 stm32Header :: FilePath -> [Text] -> IO ()
 stm32Header dir xs = do

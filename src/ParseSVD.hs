@@ -123,7 +123,7 @@ interrupt (t:ts)
         = (interrupt ts) { name = ftt ts }
     | isTagOpenName "description" t
         = (interrupt ts) { description = ftt ts }
-    | isTagOpenName "bitOffset" t
+    | isTagOpenName "value" t
         = (interrupt ts) { value = read $ T.unpack $ ftt ts }
     | otherwise = interrupt ts
 
