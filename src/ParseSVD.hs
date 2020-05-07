@@ -163,6 +163,7 @@ field (t:ts)
         = (field ts) { bitWidth = read $ T.unpack $ ftt ts }
     | otherwise = field ts
 
+ftt :: [Tag Text] -> Text
 ftt = fromTagText . head
 
 fromHex :: Text -> Int

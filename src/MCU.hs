@@ -97,6 +97,7 @@ pinFromTags (t:ts) = case fromAttrib "Type" t of
     _         -> error $ "unexpected: " <> show t
     where pinName = cleanPin $ fromAttrib "Name" t
           position = readPosition $ fromAttrib "Position" t
+pinFromTags [] = error "empty pin"
 
 cleanPin :: Text -> Text
 cleanPin = T.pack . fst . break (not . isAlphaNum) . T.unpack -- FIXME: capture what we throw away in another field?
@@ -112,6 +113,7 @@ resolveFunctions af p@IOPin{..} = p { signals = map f signals }
     where f Unresolved{..}
               | (Just alternateFunction) <- Map.lookup (pinName, signalName) af = AlternateFunction{..}
               | otherwise = AdditionalFunction{..}
+          f _ = error "guru meditation"
 resolveFunctions _ p = p
 
 parseMCU :: Controller -> Text -> MCU

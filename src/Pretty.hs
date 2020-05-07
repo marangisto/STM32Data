@@ -51,7 +51,7 @@ mcuHeader family mcus ys svds = concat $
     , enumDecl False "mcu_t" $ map name mcus
     , enumDecl False "mcu_svd_t" svds
     , enumDecl True "gpio_conf_t" $ map unGPIOConf confs
-    , mcuTraitsDecl family mcus svds
+    , mcuTraitsDecl mcus svds
     , [ ""
       , "static constexpr mcu_t target = MCU;"
       ]
@@ -104,8 +104,8 @@ cleanGPIOConf = GPIOConf . fst . T.breakOn "_"
 enumDecl :: Bool -> Text -> [Text] -> [Text]
 enumDecl bits name xs = concat
     [ [ "", "enum " <> name ]
-    , [ s <> x <> if bits then " = 0x" <> T.pack (showHex (2^i) "") else ""
-      | (s, x, i) <- zip3 ("    { " : repeat "    , ") (sort xs) [0..]
+    , [ s <> x <> if bits then " = 0x" <> T.pack (showHex ((2::Int)^i) "") else ""
+      | (s, x, i) <- zip3 ("    { " : repeat "    , ") (sort xs) [(0::Int)..]
       ]
     , [ "    };" ]
     ]
@@ -141,7 +141,7 @@ gpioConfigTraitDecl confs ((pin, altfun), confVals) = T.concat
           ms = map fst confVals
 
 value :: (Int, [GPIOConf]) -> Maybe (Int, [GPIOConf]) -> Text
-value p@(v, _) Nothing = "AF" <> T.pack (show v)
+value (v, _) Nothing = "AF" <> T.pack (show v)
 value p@(v, xs) (Just q@(u, ys))
     | length xs > length ys = value q $ Just p
     | otherwise = T.concat
@@ -172,8 +172,8 @@ afEnumDecl xs = concat
     , [ "    };" ]
     ]
 
-mcuTraitsDecl :: Text -> [MCU] -> [Text] -> [Text]
-mcuTraitsDecl family mcus svds =
+mcuTraitsDecl :: [MCU] -> [Text] -> [Text]
+mcuTraitsDecl mcus svds =
     [ ""
     , "template<mcu_t MCU> struct mcu_traits {};"
     ] ++ concatMap f mcus

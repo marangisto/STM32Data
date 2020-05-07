@@ -51,16 +51,25 @@ options = Main.Options
             , "MCUs based on vendor XML files from SMT32CubeMX."
             ]
 
+stm32CubeMX :: FilePath
 stm32CubeMX = "c:/Program Files (x86)/STMicroelectronics/STM32Cube/STM32CubeMX"
+
+stm32DbDir :: FilePath
 stm32DbDir = "db/mcu"
+
+familiesXML :: FilePath
 familiesXML = "families.xml"
+
+svdDir, svdDir' :: FilePath
 svdDir = "c:/ST/STM32CubeIDE_1.3.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.productdb.debug_1.3.0.202002181050/resources/cmsis/STMicroelectronics_CMSIS_SVD"
 svdDir' = "c:/ST/STM32CubeIDE_1.3.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mpu.productdb.debug_1.3.0.202002181049/resources/cmsis/STMicroelectronics_CMSIS_SVD"
+
+tmpDir :: FilePath
 tmpDir = "c:/tmp"
 
 main :: IO ()
 main = do
-    opts@Options{..} <- cmdArgs options
+    Options{..} <- cmdArgs options
     hSetNewlineMode stdout noNewlineTranslation
     let dbDir = stm32CubeMX </> stm32DbDir
         fs = concat
@@ -88,7 +97,7 @@ main = do
 
     when interrupt $ forM_ families $ \(family, _) -> do
       xs <- svdFiles family
-      forM xs $ \(svd, fn) -> do
+      forM xs $ \(_, fn) -> do
         SVD{..} <- parseSVD <$> T.readFile fn
         let ys = concat [ interrupts | Peripheral{..} <- peripherals ]
         forM_ ys $ \Interrupt{..} -> do

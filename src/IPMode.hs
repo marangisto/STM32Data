@@ -46,6 +46,7 @@ pinModeFromTags (t:ts) = IPMode{..}
           signals = mapMaybe altFun
                   $ partitions (~=="<PinSignal>")
                   $ dropWhile (~/="<PinSignal>") ts
+pinModeFromTags [] = error "empty pin-mode"
 
 altFun :: [Tag Text] -> Maybe AltFun
 altFun (t:ts)
@@ -61,6 +62,7 @@ altFun (t:ts)
     | otherwise = Nothing                   -- FIXME: remapping not yet supported
     where signalName = cleanSignal $ fromAttrib "Name" t
           s = T.strip $ innerText ts
+altFun [] = error "empty alernate function"
 
 altFunSet :: Text -> Set.Set ((PIN, AF), Int)
 altFunSet xml = Set.fromList

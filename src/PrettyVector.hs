@@ -1,14 +1,13 @@
 {-# LANGUAGE RecordWildCards, OverloadedStrings, DuplicateRecordFields, TupleSections #-}
-module PrettyVector (prettyVector) where
+module PrettyVector (prettyVector, prettyInterrupt) where
 
 import qualified Data.Text as T
-import Data.Maybe (fromMaybe)
 import Data.List.Extra (sortOn, nubOn)
 import ParseSVD
 import Utils
 
-prettyVector :: Maybe Int -> [Interrupt] -> [Text]
-prettyVector n' xs = concat
+prettyVector :: [Interrupt] -> [Text]
+prettyVector xs = concat
     [ [ "" ]
     , map weakDecl (tail ys)
     , [ "" ]
@@ -17,7 +16,6 @@ prettyVector n' xs = concat
     ]
     where ys = exceptions ++ nubOn value (sortOn value xs)
           vs = map (vectorDecl w) (padInterrupts (-16) ys)
-          n = fromMaybe (length vs) n'
           w = maximum $ 25 : [ 4 + T.length name | Interrupt{..} <- xs ]
           decl = "void (*vectors[])(void) __attribute__ ((section(\".vectors\"))) ="
           stack = mconcat
@@ -69,8 +67,8 @@ exceptions = map (\(value, name, description) -> Interrupt{..})
     , (-1, "SysTick", "System tick timer [settable]")
     ]
 
-interruptEnumDecl :: [Interrupt] -> [Text]
-interruptEnumDecl xs =
+prettyInterrupt :: [Interrupt] -> [Text]
+prettyInterrupt xs =
     [ "struct interrupt"
     , "{"
     , "    static inline void enable() { __asm volatile (\"cpsie i\"); }"
@@ -78,7 +76,7 @@ interruptEnumDecl xs =
     , ""
     , "    enum interrupt_t"
     ] ++
-    zipWith f [0..] (exceptions ++ nubOn value (sortOn value xs)) ++
+    zipWith f [(0::Int)..] (exceptions ++ nubOn value (sortOn value xs)) ++
     [ "    };"
     , "};"
     ]

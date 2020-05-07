@@ -3,14 +3,13 @@ module NormalSVD (normalizeSVD) where
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import Data.List (partition, sortOn, sort, nub)
+import Data.List (sortOn, sort, nub)
 import Data.List.Extra (groupSort)
 import Data.Hashable
 import Data.Maybe (fromMaybe, mapMaybe)
 import System.FilePath
 import System.Directory
 import Control.Monad
-import Numeric (showHex)
 import ParseSVD
 import FixupSVD
 import PrettySVD
@@ -69,7 +68,7 @@ data Normalization
 normalizeSVD :: FilePath -> FilePath -> Text -> [(Text, FilePath)] -> IO ()
 normalizeSVD tmp dir family xs = do
     putStrLn $ T.unpack family <> " in " <> tmp
-    (ys, is) <- fmap unzip $ forM xs $ \(x, fn) -> do
+    (ys, is) <- fmap unzip $ forM xs $ \(_, fn) -> do
         putStrLn $ "parsing " <> fn
         SVD{..} <- parseSVD <$> T.readFile fn
         ys <- mapM (processPeripheral tmp family name) peripherals
@@ -103,6 +102,7 @@ genHeader dir family group rs = do
         ++ [ "" ]
     where f :: (Normalization, [(Text, Text, Int)]) -> Text
           f (Representative{..}, _) = name
+          f _ = error "expected representative"
           preamble = "#pragma once" : banner
             [ family <> " " <> fromMaybe "other" group <> " peripherals"
             ]
@@ -120,8 +120,7 @@ peripheralHeader dir family peripherals = do
         : banner [ family <> " peripherals" ]
         ++ enum "peripheral_enum_t" perips
         ++ [ "" ]
-    where svds = nub $ sort [ svd | (svd, _, _) <- peripherals ]
-          perips = nub $ sort [ p | (_, p, _) <- peripherals ]
+    where perips = nub $ sort [ p | (_, p, _) <- peripherals ]
 
 comboHeader
     :: FilePath
@@ -150,10 +149,11 @@ vectorHeader dir family xs = do
     writeText header
         $ "#pragma once"
         : banner [ family <> " vectors" ]
-        ++ prettyVector Nothing xs
+        ++ prettyVector xs
 
 genTraits :: Normalization -> [(Text, Text, Int)] -> [Text]
 genTraits Representative{..} = concatMap (genTrait . ((svdName, name),))
+genTraits _ = error "exprected representative"
 
 genTrait :: ((Text, Text), (Text, Text, Int)) -> [Text]
 genTrait ((repSvd, repName), (svd, name, addr)) =
@@ -184,7 +184,7 @@ processPeripheral
     -> Text
     -> Peripheral
     -> IO Normalization
-processPeripheral tmp family svdName p@Peripheral{derivedFrom=Just s,..} =
+processPeripheral _ _ svdName Peripheral{derivedFrom=Just s,..} =
     return $! Derived{derivedFrom=s,..}
 processPeripheral tmp family svdName p@Peripheral{..} = do
     let h = hash p

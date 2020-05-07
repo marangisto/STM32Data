@@ -70,16 +70,19 @@ mcuFromTags (t:ts)
           ram = read $ T.unpack $ elementText "<Ram>" ts
           numIO = read $ T.unpack $ elementText "<IONb>" ts
           peripherals = map peripheralFromTag $ filter (~=="<Peripheral>") ts
+mcuFromTags [] = Nothing
 
 subFamilyFromTags :: [Tag Text] -> SubFamily
 subFamilyFromTags (t:ts) = (fromAttrib "Name" t, xs)
     where xs = mapMaybe mcuFromTags
              $ partitions (~=="<Mcu>") ts
+subFamilyFromTags [] = error "empty sub-family"
 
 familyFromTags :: [Tag Text] -> Family
 familyFromTags (t:ts) = (fromAttrib "Name" t, xs)
     where xs = map subFamilyFromTags
              $ partitions (~=="<SubFamily>") ts
+familyFromTags [] = error "empty sub-family"
 
 parseFamilies :: Text -> [Family]
 parseFamilies
@@ -189,7 +192,7 @@ buildRules families =
                     , show ram
                     ]
                | (family, subFamilies) <- families
-               , (subFamily, mcus) <- subFamilies
+               , (_, mcus) <- subFamilies
                , Controller{..} <- mcus
                ]
           cleanCore s | Just r <- T.stripPrefix "arm " $ T.map toLower s = r
