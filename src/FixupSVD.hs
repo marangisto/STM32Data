@@ -3,8 +3,7 @@ module FixupSVD (fixupPeripheral) where
 
 import qualified Data.Text as T
 import ParseSVD
-
-type Text = T.Text
+import Utils
 
 fixupPeripheral :: Text -> Peripheral -> Peripheral
 fixupPeripheral "STM32F3" p@Peripheral{..}

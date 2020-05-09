@@ -1,4 +1,5 @@
-{-# LANGUAGE DuplicateRecordFields, OverloadedStrings #-}
+{-# LANGUAGE Arrows, NoMonomorphismRestriction #-}
+{-# LANGUAGE RecordWildCards, DuplicateRecordFields #-}
 module ParseSVD
     ( SVD(..)
     , Peripheral(..)
@@ -6,171 +7,153 @@ module ParseSVD
     , Register(..)
     , Field(..)
     , parseSVD
-    , fromHex
     ) where
 
-import Data.List (break)
-import qualified Data.Text as T
-import Numeric (readHex)
-import Data.Default
-import TagSoup
-
-instance Default T.Text where def = ""
+import Text.XML.HXT.Core
+import Data.Text (Text, pack, unpack)
+import Utils (fromHex)
 
 data SVD = SVD
-    { name          :: Text
-    , description   :: Text
-    , version       :: Text
-    , peripherals   :: [Peripheral]
+    { name          :: !Text
+    , version       :: !Text
+    , description   :: !Text
+    , peripherals   :: ![Peripheral]
+    , interrupts    :: ![Interrupt]
     } deriving (Show)
-
-instance Default SVD where
-    def = SVD def def def def
 
 data Peripheral = Peripheral
-    { name          :: Text
-    , description   :: Text
-    , groupName     :: Maybe Text
-    , baseAddress   :: Int
-    , interrupts    :: [Interrupt]
-    , registers     :: [Register]
-    , derivedFrom   :: Maybe Text
+    { name          :: !Text
+    , description   :: !Text
+    , groupName     :: !Text
+    , baseAddress   :: !Int
+    , registers     :: ![Register]
+    , derivedFrom   :: !(Maybe Text)
     } deriving (Show)
-
-instance Default Peripheral where
-    def = Peripheral def def def def def def def
 
 data Interrupt = Interrupt
-    { name          :: Text
-    , description   :: Text
-    , value         :: Int
+    { name          :: !Text
+    , description   :: !Text
+    , value         :: !Int
     } deriving (Show)
-
-instance Default Interrupt where
-    def = Interrupt def def def
 
 data Register = Register
-    { name          :: Text
-    , displayName   :: Text
-    , description   :: Text
-    , addressOffset :: Int
-    , size          :: Int
-    , access        :: Maybe Text
-    , resetValue    :: Int
-    , fields        :: [Field]
+    { name          :: !Text
+    , displayName   :: !Text
+    , description   :: !Text
+    , addressOffset :: !Int
+    , size          :: !Int
+    , access        :: !(Maybe Text)
+    , resetValue    :: !Int
+    , fields        :: ![Field]
     } deriving (Show)
-
-instance Default Register where
-    def = Register def def def def def def def def
 
 data Field = Field
-    { name          :: Text
-    , description   :: Text
-    , bitOffset     :: Int
-    , bitWidth      :: Int
+    { name          :: !Text
+    , description   :: !Text
+    , bitOffset     :: !Int
+    , bitWidth      :: !Int
     } deriving (Show)
 
-instance Default Field where
-    def = Field def def def def
+parseSVD :: FilePath -> IO SVD
+parseSVD fn = do
+    s <- readFile fn
+    xs <- runX (readString [ withValidate yes ] s >>> getSVD)
+    case xs of
+        [x] -> return x
+        _ -> error "failed to parse SVD"
 
-parseSVD :: Text -> SVD
-parseSVD = svd . parseTags
+getSVD = atTag "device" >>>
+    proc x -> do
+        name <- elemText "name" -< x
+        version <- elemText "version" -< x
+        description <- elemText "description" -< x
+        peripherals <- listA getPeripheral <<< list "peripherals" -< x
+        interrupts <- listA getInterrupt -< x
+        returnA -< SVD
+            { name = pack name
+            , version = pack version
+            , description = pack description
+            , peripherals = peripherals
+            , interrupts = interrupts
+            }
 
-svd :: [Tag Text] -> SVD
-svd [] = def
-svd (t:ts)
-    | isTagOpenName "name" t
-        = (svd ts) { name = ftt ts }
-    | isTagOpenName "version" t
-        = (svd ts) { version = ftt ts }
-    | isTagOpenName "description" t
-        = (svd ts) { description = ftt ts }
-    | isTagOpenName "peripherals" t
-        = let (us, rest) = break (~=="</peripherals>") ts
-              ps = partitions (~=="<peripheral>") us
-          in (svd rest) { peripherals = map peripheral ps }
-    | otherwise = svd ts
+getPeripheral = atTag "peripheral" >>>
+    proc x -> do
+        name <- elemText "name" -< x
+        description <- elemText "description" -< x
+        groupName <- elemText "groupName" -< x
+        baseAddress <- elemText "baseAddress" -< x
+        derivedFrom <- elemTextMay "derivedFrom" -< x
+        registers <- listA getRegister <<< list "registers" -< x
+        returnA -< Peripheral
+            { name = pack name
+            , description = pack description
+            , groupName = pack groupName
+            , baseAddress = fromHex $ pack baseAddress
+            , registers = registers
+            , derivedFrom = pack <$> derivedFrom
+            }
 
-peripheral :: [Tag Text] -> Peripheral
-peripheral [] = def
-peripheral (t:ts)
-    | isTagOpenName "peripheral" t
-        = let s = fromAttrib "derivedFrom" t
-              d = if s /= "" then Just s else Nothing
-           in (peripheral ts) { derivedFrom = d }
-    | isTagOpenName "name" t
-        = (peripheral ts) { name = ftt ts }
-    | isTagOpenName "description" t
-        = (peripheral ts) { description = ftt ts }
-    | isTagOpenName "groupName" t
-        = (peripheral ts) { groupName = Just $ ftt ts }
-    | isTagOpenName "baseAddress" t
-        = (peripheral ts) { baseAddress = fromHex $ ftt ts }
-    | isTagOpenName "interrupt" t
-        = let (us, rest) = break (~=="</interrupt>") ts
-              p = peripheral rest
-          in p { interrupts = interrupt us : interrupts p }
-    | isTagOpenName "registers" t
-        = let (us, rest) = break (~=="</registers>") ts
-              rs = partitions (~=="<register>") us
-          in (peripheral rest) { registers = map register rs }
-    | otherwise = peripheral ts
+getRegister = atTag "register" >>>
+    proc x -> do
+        name <- elemText "name" -< x
+        displayName <- elemText "displayName" -< x
+        description <- elemText "description" -< x
+        addressOffset <- elemText "addressOffset" -< x
+        size <- elemText "size" -< x
+        access <- elemTextMay "access" -< x
+        resetValue <- elemText "resetValue" -< x
+        fields <- listA getField <<< list "fields" -< x
+        returnA -< Register
+            { name = pack name
+            , displayName = pack displayName
+            , description = pack description
+            , addressOffset = fromHex $ pack addressOffset
+            , size = fromHex $ pack size
+            , access = pack <$> access
+            , resetValue = fromHex $ pack resetValue
+            , fields = fields
+            }
 
-interrupt :: [Tag Text] -> Interrupt
-interrupt [] = def
-interrupt (t:ts)
-    | isTagOpenName "name" t
-        = (interrupt ts) { name = ftt ts }
-    | isTagOpenName "description" t
-        = (interrupt ts) { description = ftt ts }
-    | isTagOpenName "value" t
-        = (interrupt ts) { value = read $ T.unpack $ ftt ts }
-    | otherwise = interrupt ts
+getField = atTag "field" >>>
+    proc x -> do
+        name <- elemText "name" -< x
+        description <- elemText "description" -< x
+        bitOffset <- elemText "bitOffset" -< x
+        bitWidth <- elemText "bitWidth" -< x
+        returnA -< Field
+            { name = pack name
+            , description = pack description
+            , bitOffset = read bitOffset
+            , bitWidth = read bitWidth
+            }
 
-register :: [Tag Text] -> Register
-register [] = def
-register (t:ts)
-    | isTagOpenName "name" t
-        = (register ts) { name = ftt ts }
-    | isTagOpenName "displayName" t
-        = (register ts) { displayName = ftt ts }
-    | isTagOpenName "description" t
-        = (register ts) { description = ftt ts }
-    | isTagOpenName "addressOffset" t
-        = (register ts) { addressOffset = fromHex $ ftt ts }
-    | isTagOpenName "size" t
-        = (register ts) { size = fromHex $ ftt ts }
-    | isTagOpenName "access" t
-        = (register ts) { access = Just $ ftt ts }
-    | isTagOpenName "resetValue" t
-        = (register ts) { resetValue = fromHex $ ftt ts }
-    | isTagOpenName "fields" t
-        = let (us, rest) = break (~=="</fields>") ts
-              rs = partitions (~=="<field>") us
-          in (register rest) { fields = map field rs }
-    | otherwise = register ts
+getInterrupt = atTag "interrupt" >>>
+    proc x -> do
+        name <- elemText "name" -< x
+        description <- elemText "description" -< x
+        value <- elemText "value" -< x
+        returnA -< Interrupt
+            { name = pack name
+            , description = pack description
+            , value = read value
+            }
+ 
+atTag tag = deep (isElem >>> hasName tag)
 
-field :: [Tag Text] -> Field
-field [] = def
-field (t:ts)
-    | isTagOpenName "name" t
-        = (field ts) { name = ftt ts }
-    | isTagOpenName "description" t
-        = (field ts) { description = ftt ts }
-    | isTagOpenName "bitOffset" t
-        = (field ts) { bitOffset = read $ T.unpack $ ftt ts }
-    | isTagOpenName "bitWidth" t
-        = (field ts) { bitWidth = read $ T.unpack $ ftt ts }
-    | otherwise = field ts
+elemText tag
+    = getChildren
+    >>> isElem
+    >>> hasName tag
+    >>> getChildren
+    >>> getText
 
-ftt :: [Tag Text] -> Text
-ftt = fromTagText . head
+elemTextMay tag
+    = (elemText tag >>> arr Just)
+    `orElse` (constA Nothing)
 
-fromHex :: Text -> Int
-fromHex t
-    | ('0':'x':xs) <- s, [(n, "")] <- readHex xs = n
-    | ('0':'X':xs) <- s, [(n, "")] <- readHex xs = n
-    | [(n, "")] <- readHex s = n
-    | otherwise = error $ "failed or read hex '" <> s <> "'"
-    where s = T.unpack t
+list tag
+    = getChildren
+    >>> isElem
+    >>> hasName tag
 

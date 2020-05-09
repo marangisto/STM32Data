@@ -48,7 +48,7 @@ data Normalization
     { svdName       :: !Text
     , name          :: !Text
     , baseAddress   :: !Int
-    , groupName     :: !(Maybe Text)
+    , groupName     :: !Text
     , digest        :: !Int
     , text          :: !FilePath
     }
@@ -70,9 +70,9 @@ normalizeSVD tmp dir family xs = do
     putStrLn $ T.unpack family <> " in " <> tmp
     (ys, is) <- fmap unzip $ forM xs $ \(_, fn) -> do
         putStrLn $ "parsing " <> fn
-        SVD{..} <- parseSVD <$> T.readFile fn
+        SVD{..} <- parseSVD fn
         ys <- mapM (processPeripheral tmp family name) peripherals
-        return $! (ys, concatMap interrupts peripherals)
+        return $! (ys, interrupts)
     ys <- return $ concat ys
     let ds = groupSort $ map (remap $ digests ys) ys
         gs = groupSort
@@ -89,12 +89,12 @@ normalizeSVD tmp dir family xs = do
 genHeader
     :: FilePath
     -> Text
-    -> Maybe Text
+    -> Text
     -> [(Normalization, [(Text, Text, Int)])]
     -> IO ()
 genHeader dir family group rs = do
     hs <- forM (sortOn f rs) $ \(Representative{..}, _) -> T.readFile text
-    let header = dir </> maybe "other" lower group <.> "h"
+    let header = dir </> lower group <.> "h"
     putStrLn $ "writing " <> header
     writeText header $ preamble ++ hs
         ++ concatMap (uncurry genTraits) rs
@@ -104,7 +104,7 @@ genHeader dir family group rs = do
           f (Representative{..}, _) = name
           f _ = error "expected representative"
           preamble = "#pragma once" : banner
-            [ family <> " " <> fromMaybe "other" group <> " peripherals"
+            [ family <> " " <> group <> " peripherals"
             ]
 
 peripheralHeader
@@ -125,7 +125,7 @@ peripheralHeader dir family peripherals = do
 comboHeader
     :: FilePath
     -> Text
-    -> [Maybe Text]
+    -> [Text]
     -> IO ()
 comboHeader dir family groups = do
     let header = dir </> "all" <.> "h"
@@ -136,7 +136,7 @@ comboHeader dir family groups = do
         ++ [ "" ]
         ++ map f groups
         ++ [ "" ]
-        where f x = "#include \"" <> maybe "other" T.toLower x <> ".h\""
+        where f x = "#include \"" <> T.toLower x <> ".h\""
 
 vectorHeader
     :: FilePath

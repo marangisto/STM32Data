@@ -4,6 +4,7 @@ module Utils
     , enum
     , banner
     , hex
+    , fromHex
     , unPlus
     , cleanWords
     , writeText
@@ -12,7 +13,7 @@ module Utils
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import Data.Char (isAscii)
-import Numeric (showHex)
+import Numeric (readHex, showHex)
 import System.IO
 
 type Text = T.Text
@@ -39,6 +40,14 @@ banner xs =
 
 hex :: Int -> Text
 hex x = T.pack $ "0x" ++ showHex x ""
+
+fromHex :: Text -> Int
+fromHex t
+    | ('0':'x':xs) <- s, [(n, "")] <- readHex xs = n
+    | ('0':'X':xs) <- s, [(n, "")] <- readHex xs = n
+    | [(n, "")] <- readHex s = n
+    | otherwise = error $ "failed or read hex '" <> s <> "'"
+    where s = T.unpack t
 
 unPlus :: Text -> Text
 unPlus s

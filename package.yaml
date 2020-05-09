@@ -33,6 +33,7 @@ dependencies:
 - data-default
 - hashable
 - temporary
+- hxt
 
 library:
   source-dirs: src

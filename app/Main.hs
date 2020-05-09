@@ -28,6 +28,7 @@ data Options = Options
     , svd_header    :: Maybe FilePath
     , parse_svd     :: Bool
     , interrupt     :: Bool
+    , hxt           :: Bool
     , files         :: [FilePath]
     } deriving (Show, Eq, Data, Typeable)
 
@@ -42,6 +43,7 @@ options = Main.Options
     , svd_header = def &= help "generate svd header (to directory)"
     , parse_svd = def &= help "process svd files"
     , interrupt = def &= help "show peripheral interrupts"
+    , hxt = def &= help "use hxt"
     , files = def &= args &= typ "FILES"
     } &=
     verbosity &=
@@ -52,7 +54,7 @@ options = Main.Options
             ]
 
 stm32CubeMX :: FilePath
-stm32CubeMX = "c:/Program Files (x86)/STMicroelectronics/STM32Cube/STM32CubeMX"
+stm32CubeMX = "C:/Program Files (x86)/STMicroelectronics/STM32Cube/STM32CubeMX"
 
 stm32DbDir :: FilePath
 stm32DbDir = "db/mcu"
@@ -61,11 +63,11 @@ familiesXML :: FilePath
 familiesXML = "families.xml"
 
 svdDir, svdDir' :: FilePath
-svdDir = "c:/ST/STM32CubeIDE_1.3.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.productdb.debug_1.3.0.202002181050/resources/cmsis/STMicroelectronics_CMSIS_SVD"
-svdDir' = "c:/ST/STM32CubeIDE_1.3.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mpu.productdb.debug_1.3.0.202002181049/resources/cmsis/STMicroelectronics_CMSIS_SVD"
+svdDir = "C:/ST/STM32CubeIDE_1.3.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.productdb.debug_1.3.0.202002181050/resources/cmsis/STMicroelectronics_CMSIS_SVD"
+svdDir' = "C:/ST/STM32CubeIDE_1.3.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mpu.productdb.debug_1.3.0.202002181049/resources/cmsis/STMicroelectronics_CMSIS_SVD"
 
 tmpDir :: FilePath
-tmpDir = "c:/tmp"
+tmpDir = "C:/tmp"
 
 main :: IO ()
 main = do
@@ -98,7 +100,21 @@ main = do
     when interrupt $ forM_ families $ \(family, _) -> do
       xs <- svdFiles family
       forM xs $ \(_, fn) -> do
-        SVD{..} <- parseSVD <$> T.readFile fn
+        SVD{..} <- parseSVD fn
+        let ys = concat [ interrupts | Peripheral{..} <- peripherals ]
+        forM_ ys $ \Interrupt{..} -> do
+            putStrLn $ T.unpack $ T.concat
+                [ family
+                , ","
+                , T.pack (show value)
+                , ","
+                , name
+                ]
+
+    when hxt $ forM_ families $ \(family, _) -> do
+      xs <- take 1 <$> svdFiles family
+      forM xs $ \(_, fn) -> do
+        SVD{..} <- parseSVD fn
         let ys = concat [ interrupts | Peripheral{..} <- peripherals ]
         forM_ ys $ \Interrupt{..} -> do
             putStrLn $ T.unpack $ T.concat
