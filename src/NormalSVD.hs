@@ -79,8 +79,6 @@ normalizeSVD tmp dir family xs = do
             [ (groupName, (r, fromMaybe [] $ lookup digest ds))
             | r@Representative{..} <- ys
             ]
-    dir <- return $ dir </> lower family
-    createDirectoryIfMissing False dir
     peripheralHeader dir family (concatMap snd ds)
     mapM_ (uncurry $ genHeader dir family) gs
     comboHeader dir family $ map fst gs

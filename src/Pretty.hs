@@ -11,7 +11,6 @@ import Data.List.Extra (groupSort)
 import qualified Data.Set as Set
 import qualified Data.Text as T
 import System.FilePath
-import System.Directory
 import IPMode
 import MCU
 import Utils
@@ -24,8 +23,6 @@ familyHeaders
     -> [Text]
     -> IO ()
 familyHeaders dir family mcus ys svds = do
-    dir <- return $ dir </> T.unpack (T.toLower family)
-    createDirectoryIfMissing False dir
     let h1 = dir </> "mcu" <.> "h"
     putStrLn h1
     writeText h1 $ mcuHeader family mcus ys svds

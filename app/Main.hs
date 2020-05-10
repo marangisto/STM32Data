@@ -21,12 +21,10 @@ import Utils
 data Options = Options
     { list_mcus     :: Bool
     , build_rules   :: Bool
-    , family_header :: Maybe FilePath
+    , headers       :: Maybe FilePath
     , family        :: [String]
     , sub_family    :: [String]
     , package       :: [String]
-    , svd_header    :: Maybe FilePath
-    , parse_svd     :: Bool
     , files         :: [FilePath]
     } deriving (Show, Eq, Data, Typeable)
 
@@ -34,12 +32,10 @@ options :: Main.Options
 options = Main.Options
     { list_mcus = def &= help "list available MCUs by family"
     , build_rules = def &= help "generate source for build rules"
-    , family_header = def &= help "generate family header (to directory)"
     , family = def &= help "filter on family"
     , sub_family = def &= help "filter on sub-family"
     , package = def &= help "filter on package"
-    , svd_header = def &= help "generate svd header (to directory)"
-    , parse_svd = def &= help "process svd files"
+    , headers = def &= help "generate headers (to directory)"
     , files = def &= args &= typ "FILES"
     } &=
     verbosity &=
@@ -81,19 +77,18 @@ main = do
     when list_mcus $ mcuList families
     when build_rules $ mapM_ (putStrLn . T.unpack) $ buildRules families
 
-    whenJust svd_header $ \dir -> do
-      stm32Header dir $ map fst families'
-      forM_ families $ \(family, _) ->
-        withTempDirectory tmpDir (T.unpack family) $ \tmp ->
-          normalizeSVD tmp dir family =<< svdFiles family
-
-    whenJust family_header $ \dir ->
+    whenJust headers $ \top -> do
+      stm32Header top $ map fst families'
       forM_ families $ \(family, subFamilies) -> do
+        let dir = top </> T.unpack (T.toLower family) </> "device"
+        createDirectoryIfMissing True dir
+        svds <- svdFiles family
         mcus <- mapM (loadMCU dbDir) $ controllers subFamilies
         gss <- mapM (\x -> (x,) <$> gpioConfigSet dbDir x)
             =<< gpioConfigs dbDir family
-        svds <- map fst <$> svdFiles family
-        familyHeaders dir family mcus gss svds
+        familyHeaders dir family mcus gss $ map fst svds
+        withTempDirectory tmpDir (T.unpack family) $ \tmp ->
+          normalizeSVD tmp dir family svds
 
 stm32Header :: FilePath -> [Text] -> IO ()
 stm32Header dir xs = do
