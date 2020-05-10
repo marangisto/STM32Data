@@ -2,6 +2,7 @@
 module Utils
     ( Text
     , enum
+    , enum2
     , banner
     , hex
     , fromHex
@@ -23,6 +24,15 @@ enum name xs = concat
     [ [ "", "enum " <> name ]
     , [ s <> x
       | (s, x) <- zip ("    { " : repeat "    , ") xs
+      ]
+    , [ "    };" ]
+    ]
+
+enum2 :: Text -> [(Text, Int)] -> [Text]
+enum2 name xs = concat
+    [ [ "", "enum " <> name ]
+    , [ s <> x <> " = " <> T.pack (show i)
+      | (s, (x, i)) <- zip ("    { " : repeat "    , ") xs
       ]
     , [ "    };" ]
     ]

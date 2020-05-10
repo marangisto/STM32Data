@@ -69,7 +69,8 @@ exceptions = map (\(value, name, description) -> Interrupt{..})
 
 prettyInterrupt :: [Interrupt] -> [Text]
 prettyInterrupt xs =
-    [ "struct interrupt"
+    [ ""
+    , "struct interrupt"
     , "{"
     , "    static inline void enable() { __asm volatile (\"cpsie i\"); }"
     , "    static inline void disable() { __asm volatile (\"cpsid i\"); }"

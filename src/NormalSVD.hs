@@ -84,6 +84,7 @@ normalizeSVD tmp dir family xs = do
     peripheralHeader dir family (concatMap snd ds)
     mapM_ (uncurry $ genHeader dir family) gs
     comboHeader dir family $ map fst gs
+    interruptHeader dir family $ concat is
     vectorHeader dir family $ concat is
 
 genHeader
@@ -137,6 +138,19 @@ comboHeader dir family groups = do
         ++ map f groups
         ++ [ "" ]
         where f x = "#include \"" <> T.toLower x <> ".h\""
+
+interruptHeader
+    :: FilePath
+    -> Text
+    -> [Interrupt]
+    -> IO ()
+interruptHeader dir family xs = do
+    let header = dir </> "interrupt" <.> "h"
+    putStrLn $ "writing " <> header
+    writeText header
+        $ "#pragma once"
+        : banner [ family <> " interrupts" ]
+        ++ prettyInterrupt xs
 
 vectorHeader
     :: FilePath
