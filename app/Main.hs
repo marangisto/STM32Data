@@ -27,8 +27,6 @@ data Options = Options
     , package       :: [String]
     , svd_header    :: Maybe FilePath
     , parse_svd     :: Bool
-    , interrupt     :: Bool
-    , hxt           :: Bool
     , files         :: [FilePath]
     } deriving (Show, Eq, Data, Typeable)
 
@@ -42,8 +40,6 @@ options = Main.Options
     , package = def &= help "filter on package"
     , svd_header = def &= help "generate svd header (to directory)"
     , parse_svd = def &= help "process svd files"
-    , interrupt = def &= help "show peripheral interrupts"
-    , hxt = def &= help "use hxt"
     , files = def &= args &= typ "FILES"
     } &=
     verbosity &=
@@ -79,12 +75,14 @@ main = do
             , map (SubFamily . T.pack) sub_family
             , map (Package . T.pack) package
             ]
-    families <- prune fs . parseFamilies <$> T.readFile (dbDir </> familiesXML)
+
+    families' <- parseFamilies <$> T.readFile (dbDir </> familiesXML)
+    families <- return $ prune fs families'
     when list_mcus $ mcuList families
     when build_rules $ mapM_ (putStrLn . T.unpack) $ buildRules families
 
     whenJust svd_header $ \dir -> do
-      stm32Header dir $ map fst families
+      stm32Header dir $ map fst families'
       forM_ families $ \(family, _) ->
         withTempDirectory tmpDir (T.unpack family) $ \tmp ->
           normalizeSVD tmp dir family =<< svdFiles family
@@ -96,34 +94,6 @@ main = do
             =<< gpioConfigs dbDir family
         svds <- map fst <$> svdFiles family
         familyHeaders dir family mcus gss svds
-
-    when interrupt $ forM_ families $ \(family, _) -> do
-      xs <- svdFiles family
-      forM xs $ \(_, fn) -> do
-        SVD{..} <- parseSVD fn
-        let ys = concat [ interrupts | Peripheral{..} <- peripherals ]
-        forM_ ys $ \Interrupt{..} -> do
-            putStrLn $ T.unpack $ T.concat
-                [ family
-                , ","
-                , T.pack (show value)
-                , ","
-                , name
-                ]
-
-    when hxt $ forM_ families $ \(family, _) -> do
-      xs <- take 1 <$> svdFiles family
-      forM xs $ \(_, fn) -> do
-        SVD{..} <- parseSVD fn
-        let ys = concat [ interrupts | Peripheral{..} <- peripherals ]
-        forM_ ys $ \Interrupt{..} -> do
-            putStrLn $ T.unpack $ T.concat
-                [ family
-                , ","
-                , T.pack (show value)
-                , ","
-                , name
-                ]
 
 stm32Header :: FilePath -> [Text] -> IO ()
 stm32Header dir xs = do
