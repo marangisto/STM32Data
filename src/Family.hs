@@ -165,11 +165,11 @@ preAmble Controller{..} =
 
 buildRules :: [Family] -> [Text]
 buildRules families =
-    [ "module STM32MCUs (MCU(..), mcuList) where"
+    [ "module STM32 (MCU(..), mcuList) where"
     , ""
     , "data MCU = MCU"
     , "    { name   :: String"
-    , "    , family :: Family"
+    , "    , family :: String"
     , "    , core   :: String"
     , "    , flash  :: Int"
     , "    , ram    :: Int"
