@@ -65,13 +65,14 @@ pinHeader family mcus ys = concat $
       , "//"
       , "////"
       ]
-    , [ ""
-      , "static constexpr gpio_conf_t gpio_conf = mcu_traits<target>::gpio_conf;"
-      ]
-    , enumDecl2 "gpio_port_t" $ map (\p -> (T.pack [ 'P', p ], ord p - ord 'A')) ports
+    , enumDecl2 "gpio_port_t" [ (T.pack $ 'P' : p, i) | (p, i) <- ports ]
+    , portTraitsDecl $ map (T.pack . fst) ports
     , enumDecl2 "gpio_pin_t" $ map (\(p, i) -> (T.pack $ 'P' : p : show i, (ord p - ord 'A') * 16 + i)) pins
     , funDecl $ maximum $ [ v | (_, xs) <- ss, (_, v) <- [ xs ] ]
     , afEnumDecl $ nub $ sort [ af | ((_, af), _) <- ss ]
+    , [ ""
+      , "static constexpr gpio_conf_t gpio_conf = mcu_traits<target>::gpio_conf;"
+      ]
     , gpioTraitsDecl
     , map (gpioConfigTraitDecl confs) $ groupSort ss
     ]
@@ -80,7 +81,9 @@ pinHeader family mcus ys = concat $
                | (conf, s) <- ys
                , (p, v) <- Set.toList s
                ]
-          ports = nub . sort $ map fst pins
+          ports = [ ([ p ], ord p - ord 'A')
+                  | p <- nub . sort $ map fst pins
+                  ]
           pins = ioPins mcus
 
 ioPins :: [MCU] -> [(Char, Int)]
@@ -115,6 +118,21 @@ enumDecl2 name xs = concat
       ]
     , [ "    };" ]
     ]
+
+portTraitsDecl :: [Text] -> [Text]
+portTraitsDecl ports =
+    [ ""
+    , "template<gpio_port_t PORT> struct port_traits {};"
+    ] ++ concatMap f ports
+    where f port =
+            [ ""
+            , "template<> struct port_traits<P" <> port <> ">"
+            , "{"
+            , "    typedef " <> ty <> "::type type;"
+            , "    static constexpr uint32_t base_address = " <> ty <> "::base_address;"
+            , "};"
+            ]
+            where ty = "gpio" <> T.toLower port <> "_t"
 
 gpioConfigTraitDecl :: [GPIOConf] -> ((PIN, AF), [(GPIOConf, Int)]) -> Text
 gpioConfigTraitDecl confs ((pin, altfun), confVals) = T.concat
