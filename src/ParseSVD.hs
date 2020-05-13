@@ -80,11 +80,11 @@ getSVD = atTag "device" >>>
 
 getPeripheral = atTag "peripheral" >>>
     proc x -> do
+        derivedFrom <- attrTextMay "derivedFrom" -< x
         name <- elemText "name" -< x
         description <- elemTextMay "description" -< x
         groupName <- elemTextMay "groupName" -< x
         baseAddress <- elemText "baseAddress" -< x
-        derivedFrom <- elemTextMay "derivedFrom" -< x
         registers <- ( listA getRegister <<< list "registers"
                      ) `orElse` constA [] -< x
         returnA -< Peripheral
@@ -143,6 +143,10 @@ getInterrupt = atTag "interrupt" >>>
  
 atTag tag = deep (isElem >>> hasName tag)
 
+attrTextMay tag
+    = (hasAttr tag >>> getAttrValue tag >>> arr Just)
+    `orElse` constA Nothing
+
 elemText tag
     = getChildren
     >>> isElem
@@ -152,7 +156,7 @@ elemText tag
 
 elemTextMay tag
     = (elemText tag >>> arr Just)
-    `orElse` (constA Nothing)
+    `orElse` constA Nothing
 
 list tag
     = getChildren
