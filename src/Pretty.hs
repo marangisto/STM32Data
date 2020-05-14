@@ -122,15 +122,22 @@ enumDecl2 name xs = concat
 portTraitsDecl :: [Text] -> [Text]
 portTraitsDecl ports =
     [ ""
-    , "template<gpio_port_t PORT> struct port_traits {};"
+    , "template<gpio_port_t PORT> struct gpio_t {};"
     ] ++ concatMap f ports
     where f port =
             [ ""
-            , "template<> struct port_traits<P" <> port <> ">"
+            , "template<> struct gpio_t<P" <> port <> ">"
             , "{"
-            , "    typedef " <> ty <> "::type type;"
-            , "    static constexpr uint32_t base_address = " <> ty <> "::base_address;"
+            , "    typedef " <> ty <> "::type T;"
+            , "    static constexpr uint32_t A = " <> ty
+           <> "::base_address;"
+            , "    static T& R;"
             , "};"
+            , ""
+            , "typename gpio_t<P" <> port <> ">::T& "
+           <> "gpio_t<P" <> port <> ">::R ="
+            , "    *reinterpret_cast<typename gpio_t<P" <> port
+           <> ">::T*>(gpio_t<P" <> port <> ">::A);"
             ]
             where ty = "gpio" <> T.toLower port <> "_t"
 
