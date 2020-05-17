@@ -12,6 +12,7 @@ import System.Directory
 import Control.Monad
 import ParseSVD
 import FixupSVD
+import ClockControl
 import PrettySVD
 import PrettyVector
 import Utils
@@ -65,14 +66,20 @@ data Normalization
     , derivedFrom   :: !Text
     } deriving (Show)
 
-normalizeSVD :: FilePath -> FilePath -> Text -> [(Text, FilePath)] -> IO ()
+normalizeSVD
+    :: FilePath
+    -> FilePath
+    -> Text
+    -> [(Text, FilePath)]
+    -> IO ()
 normalizeSVD tmp dir family xs = do
     putStrLn $ T.unpack family <> " in " <> tmp
-    (ys, is) <- fmap unzip $ forM xs $ \(_, fn) -> do
+    (ys, rs, is) <- fmap unzip3 $ forM xs $ \(_, fn) -> do
         putStrLn $ "parsing " <> fn
-        SVD{..} <- parseSVD fn
+        svd@SVD{..} <- parseSVD fn
         ys <- mapM (processPeripheral tmp family name) peripherals
-        return $! (ys, interrupts)
+        let rs = mapMaybe (rccFlags name) peripherals
+        return $! (ys, rs, interrupts)
     ys <- return $ concat ys
     let ds = groupSort $ map (remap $ digests ys) ys
         gs = groupSort
@@ -84,6 +91,7 @@ normalizeSVD tmp dir family xs = do
     comboHeader dir family $ map fst gs
     interruptHeader dir family $ concat is
     vectorHeader dir family $ concat is
+    controlHeader dir family $ concat rs
 
 genHeader
     :: FilePath
@@ -97,6 +105,7 @@ genHeader dir family group rs = do
     putStrLn $ "writing " <> header
     writeText header $ preamble ++ hs
         ++ concatMap (uncurry genTraits) rs
+        ++ [ "" ]
         ++ map genUsing (nub $ sort [ name | (_, name, _) <- concatMap snd rs ])
         ++ [ "" ]
     where f :: (Normalization, [(Text, Text, Int)]) -> Text
@@ -163,23 +172,49 @@ vectorHeader dir family xs = do
         : banner [ family <> " vectors" ]
         ++ prettyVector xs
 
-genTraits :: Normalization -> [(Text, Text, Int)] -> [Text]
-genTraits Representative{..} = concatMap (genTrait . ((svdName, name),))
-genTraits _ = error "exprected representative"
+controlHeader
+    :: FilePath
+    -> Text
+    -> [(Text, [(Text, Text)])]
+    -> IO ()
+controlHeader dir family xs = do
+    let header = dir </> "control" <.> "h"
+    putStrLn $ "writing " <> header
+    writeText header
+        $ "#pragma once"
+        : banner [ family <> " peripheral clock control" ]
+        ++ concatMap (uncurry prettyRCC) xs
 
-genTrait :: ((Text, Text), (Text, Text, Int)) -> [Text]
+genTraits
+    :: Normalization
+    -> [(Text, Text, Int)]
+    -> [Text]
+genTraits Representative{..}
+    = concatMap (genTrait . ((svdName, name),))
+genTraits _
+    = error "exprected representative"
+
+genTrait
+    :: ((Text, Text), (Text, Text, Int))
+    -> [Text]
 genTrait ((repSvd, repName), (svd, name, addr)) =
-    [ "template<>"
+    [ ""
+    , "template<>"
     , "struct peripheral_t<" <> svd <> ", " <> name <> ">"
     , "{"
     , "    typedef " <> T.toLower repSvd
                      <> "_"
                      <> T.toLower repName
-                     <> "_t type;"
-    , "    static constexpr uint32_t base_address = " <> hex addr <> ";"
+                     <> "_t T;"
+    , "    static T& V;"
     , "};"
     , ""
+    , "typename " <> s <> "::T& " <> s <> "::V ="
+    , "    "
+    <> "*reinterpret_cast<typename " <> s <> "::T*>"
+    <> "(" <> hex addr <> ");"
     ]
+    where s = "peripheral_t<" <> svd <> ", " <> name <> ">"
 
 genUsing :: Text -> Text
 genUsing name
@@ -208,8 +243,7 @@ processPeripheral tmp family svdName p@Peripheral{..} = do
     else do
         putStr $ T.unpack name <> fn <> "..."
         writeText fn
-            $ prettyPeripheral
-            . qualify svdName
+            $ prettyPeripheral svdName
             $ fixupPeripheral family p
         putStrLn $ "done"
         return $! Representative{digest=h,text=fn,..}
@@ -220,16 +254,16 @@ digests = mapMaybe f
           f Duplicate{..} = Just ((svdName, name), digest)
           f _ = Nothing
 
-remap :: [((Text, Text), Int)] -> Normalization -> (Int, (Text, Text, Int))
+remap
+    :: [((Text, Text), Int)]
+    -> Normalization
+    -> (Int, (Text, Text, Int))
 remap _ Representative{..} = (digest, (svdName, name, baseAddress))
 remap _ Duplicate{..} = (digest, (svdName, name, baseAddress))
 remap ss Derived{..} = (digest, (svdName, name, baseAddress))
     where digest = fromMaybe (error $ "failed to derive " <> qname)
                  $ lookup (svdName, derivedFrom) ss
           qname = T.unpack $ svdName <> "." <> derivedFrom
-
-qualify :: Text -> Peripheral -> Peripheral
-qualify svdName p@Peripheral{..} = p { name = svdName <> "_" <> name }
 
 lower :: Text -> String
 lower = T.unpack . T.toLower

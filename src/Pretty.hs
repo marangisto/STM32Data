@@ -122,24 +122,16 @@ enumDecl2 name xs = concat
 portTraitsDecl :: [Text] -> [Text]
 portTraitsDecl ports =
     [ ""
-    , "template<gpio_port_t PORT> struct gpio_t {};"
+    , "template<gpio_port_t PORT> struct gpio_traits_t {};"
     ] ++ concatMap f ports
     where f port =
             [ ""
-            , "template<> struct gpio_t<P" <> port <> ">"
+            , "template<> struct gpio_traits_t<P" <> port <> ">"
             , "{"
-            , "    typedef " <> ty <> "::type T;"
-            , "    static constexpr uint32_t A = " <> ty
-           <> "::base_address;"
-            , "    static T& R;"
+            , "    static constexpr peripheral_enum_t "
+            <> "peripheral = GPIO" <> port <> ";"
             , "};"
-            , ""
-            , "typename gpio_t<P" <> port <> ">::T& "
-           <> "gpio_t<P" <> port <> ">::R ="
-            , "    *reinterpret_cast<typename gpio_t<P" <> port
-           <> ">::T*>(gpio_t<P" <> port <> ">::A);"
             ]
-            where ty = "gpio" <> T.toLower port <> "_t"
 
 gpioConfigTraitDecl :: [GPIOConf] -> ((PIN, AF), [(GPIOConf, Int)]) -> Text
 gpioConfigTraitDecl confs ((pin, altfun), confVals) = T.concat

@@ -1,50 +1,23 @@
 {-# LANGUAGE RecordWildCards, OverloadedStrings #-}
-module PrettySVD (prettySVD, prettyPeripheral, peripheralMap) where
+module PrettySVD (prettyPeripheral, peripheralMap) where
 
 import qualified Data.Text as T
-import Data.List (sortOn, partition)
+import Data.List (sortOn)
 import Data.Bits (shift)
 import Data.Maybe (isJust)
 import ParseSVD
 import Utils
 
-prettySVD :: SVD -> [Text]
-prettySVD SVD{..} =
-    [ "#pragma once"
-    ] ++
-    banner [ name, "Version " <> version ] ++
+prettyPeripheral :: Text -> Peripheral -> [Text]
+prettyPeripheral svd Peripheral{derivedFrom=Just from,..} =
     [ ""
-    , "#include <stdint.h>"
-    , ""
-    , "template<int N> class reserved_t { private: uint32_t m_pad[N]; };"
-    , ""
-    , "template<uint8_t POS, uint32_t MASK>"
-    , "struct bit_field_t"
-    , "{"
-    , "    template <uint32_t X>"
-    , "    static constexpr uint32_t value()"
-    , "    {"
-    , "        static_assert((X & ~MASK) == 0, \"field value too large\");"
-    , "        return X << POS;"
-    , "    }"
-    , "};"
-    ] ++
-    concatMap peripheral ys ++
-    concatMap peripheral xs
-    where (xs, ys) = partition (isJust . derivedFrom) peripherals
-
-prettyPeripheral :: Peripheral -> [Text]
-prettyPeripheral = peripheral
-
-peripheral :: Peripheral -> [Text]
-peripheral Peripheral{derivedFrom=Just from,..} =
-    [ ""
-    , "typedef " <> T.toLower from <> "_t " <> T.toLower name <> "_t;"
+    , "typedef " <> tname (Just svd) from
+    <> " " <> tname Nothing name <> ";"
     ]
-peripheral Peripheral{..} =
+prettyPeripheral svd Peripheral{..} =
     banner [ cleanWords description ] ++
     [ ""
-    , "struct " <> T.toLower name <> "_t"
+    , "struct " <> tname (Just svd) name
     , "{"
     ] ++
     concatMap (register w) (reserve $ sortOn addressOffset registers) ++
@@ -53,6 +26,9 @@ peripheral Peripheral{..} =
     ]
     where w = maximum [ T.length name | Register{..} <- registers ]
 
+tname :: Maybe Text -> Text -> Text
+tname qual name = T.toLower $ maybe "" (<>"_") qual <> name <> "_t"
+ 
 reserve :: [Register] -> [(Register, Maybe Int)]
 reserve xs = zip xs $ ys ++ [ Nothing ]
     where ys = map (Just . addressOffset) $ tail xs
@@ -145,49 +121,3 @@ peripheralMap SVD{..} =
     | Peripheral{..} <- sortOn baseAddress peripherals
     ]
 
-{-
-type SVD = (Text, [Peripheral])
-
-data Peripheral = Peripheral
-    { name          :: Text
-    , description   :: Text
-    , baseAddress   :: Int
-    , interrupts    :: [Interrupt]
-    , registers     :: [Register]
-    , derivedFrom   :: Maybe Text
-    } deriving (Show)
-
-instance Default Peripheral where
-    def = Peripheral "" "" 0 [] [] Nothing
-
-data Interrupt = Interrupt
-    { name          :: Text
-    , description   :: Text
-    , value         :: Int
-    } deriving (Show)
-
-instance Default Interrupt where
-    def = Interrupt "" "" 0
-
-data Register = Register
-    { name          :: Text
-    , displayName   :: Text
-    , description   :: Text
-    , addressOffset :: Int
-    , size          :: Int
-    , access        :: Text
-    , resetValue    :: Int
-    , fields        :: [Field]
-    } deriving (Show)
-
-instance Default Register where
-    def = Register "" "" "" 0 0 0 []
-
-data Field = Field
-    { name          :: Text
-    , description   :: Text
-    , bitOffset     :: Int
-    , bitWidth      :: Int
-    } deriving (Show)
-
--}
