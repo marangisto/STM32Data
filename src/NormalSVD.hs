@@ -87,6 +87,7 @@ normalizeSVD tmp dir family xs = do
             | r@Representative{..} <- ys
             ]
     peripheralHeader dir family (concatMap snd ds)
+    genPeripheralDefs dir family $ concatMap snd gs
     mapM_ (uncurry $ genHeader dir family) gs
     comboHeader dir family $ map fst gs
     interruptHeader dir family $ concat is
@@ -114,6 +115,20 @@ genHeader dir family group rs = do
           preamble = "#pragma once" : banner
             [ family <> " " <> group <> " peripherals"
             ]
+
+genPeripheralDefs
+    :: FilePath
+    -> Text
+    -> [(Normalization, [(Text, Text, Int)])]
+    -> IO ()
+genPeripheralDefs dir family rs = do
+    let header = dir </> "peripheral" <.> "cpp"
+    putStrLn $ "writing " <> header
+    writeText header
+        $ "#pragma once"
+        : banner [ family <> " peripherals" ]
+        ++ concatMap (uncurry genTraitsDefs) rs
+        ++ [ "" ]
 
 peripheralHeader
     :: FilePath
@@ -208,7 +223,22 @@ genTrait ((repSvd, repName), (svd, name, addr)) =
                      <> "_t T;"
     , "    static T& V;"
     , "};"
-    , ""
+    ]
+
+genTraitsDefs
+    :: Normalization
+    -> [(Text, Text, Int)]
+    -> [Text]
+genTraitsDefs Representative{..}
+    = concatMap (genTraitDef . ((svdName, name),))
+genTraitsDefs _
+    = error "exprected representative"
+
+genTraitDef
+    :: ((Text, Text), (Text, Text, Int))
+    -> [Text]
+genTraitDef ((repSvd, repName), (svd, name, addr)) =
+    [ ""
     , "typename " <> s <> "::T& " <> s <> "::V ="
     , "    "
     <> "*reinterpret_cast<typename " <> s <> "::T*>"
