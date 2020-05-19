@@ -142,7 +142,17 @@ peripheralHeader dir family peripherals = do
         $ "#pragma once"
         : banner [ family <> " peripherals" ]
         ++ enum "peripheral_enum_t" perips
-        ++ [ "" ]
+        ++ [ ""
+           , "template<mcu_svd_t SVD, peripheral_enum_t PERIPHERAL>"
+           , "struct peripheral_t"
+           , "{"
+           , "    static_assert"
+           , "        ( always_false_i<SVD>::value"
+           , "        , \"peripheral not available on MCU!\""
+           , "        );"
+           , "};"
+           , ""
+           ]
     where perips = nub $ sort [ p | (_, p, _) <- peripherals ]
 
 comboHeader
@@ -198,6 +208,10 @@ controlHeader dir family xs = do
     writeText header
         $ "#pragma once"
         : banner [ family <> " peripheral clock control" ]
+        ++ [ ""
+           , "template<typename PERIPHERAL>"
+           , "struct clock_control_t {};"
+           ]
         ++ concatMap (uncurry prettyRCC) xs
 
 genTraits
