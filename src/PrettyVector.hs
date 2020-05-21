@@ -72,20 +72,48 @@ prettyInterrupt xs =
     [ ""
     , "struct interrupt"
     , "{"
-    , "    static inline void enable() { __asm volatile (\"cpsie i\"); }"
-    , "    static inline void disable() { __asm volatile (\"cpsid i\"); }"
+    ] ++
+    map ("    "<>) (prettyInterruptBody xs) ++
+    [ "};"
     , ""
-    , "    enum interrupt_t"
+    ]
+
+prettyInterruptBody :: [Interrupt] -> [Text]
+prettyInterruptBody xs =
+    [ "static inline void enable() { __asm volatile (\"cpsie i\"); }"
+    , "static inline void disable() { __asm volatile (\"cpsid i\"); }"
+    , ""
+    , "enum interrupt_t"
     ] ++
     zipWith f [(0::Int)..] (exceptions ++ nubOn value (sortOn value xs)) ++
-    [ "    };"
+    [ "};"
+    , ""
+    , "template<interrupt_t INTERRUPT>"
+    , "static void enable() { helper<nvic_t, INTERRUPT>::enable(); }"
+    , ""
+    , "template<typename NVIC, interrupt_t I, typename = is_in_range<true>>"
+    , "struct helper"
+    , "{"
+    , "    static_assert(always_false_i<I>::value, \"no such interrupt\");"
     , "};"
-    ]
+    ] ++
+    concatMap enableInRange [0..maximum (map value xs) `div` 32]
     where f i Interrupt{..} = mconcat
-              [ "    "
-              , if i == 0 then "{ " else ", "
+              [ if i == 0 then "{ " else ", "
               , T.toUpper name
               , " = "
               , T.pack $ show value
               ]
+
+enableInRange :: Int -> [Text]
+enableInRange i =
+    [ ""
+    , "template<typename NVIC, interrupt_t I>"
+    , "struct helper<NVIC, I, is_in_range<(" <> T.pack rng <> ")>>"
+    , "{"
+    , "    static void enable() { NVIC::V.ISER" <> T.pack bit <> "; }"
+    , "};"
+    ]
+    where rng = show (i*32) <> " <= I && I < " <> show ((i+1)*32)
+          bit = show i <> " |= 1 << (I - " <> show (i*32) <> ")"
 

@@ -15,14 +15,10 @@ fixupPeripheral "STM32G0" p@Peripheral{..}
 fixupPeripheral "STM32L4" p@Peripheral{..}
     | name == "USART1"
     = p { registers = map usart1_cr1 registers }
-    | name == "USB"
+fixupPeripheral _ p@Peripheral{name="USB",..}
     = p { registers = filter (not . usb_buffer) registers }
-fixupPeripheral "STM32L5" p@Peripheral{..}
-    | name == "USB"
-    = p { registers = filter (not . usb_buffer) registers }
-fixupPeripheral "STM32WB" p@Peripheral{..}
-    | name == "USB"
-    = p { registers = filter (not . usb_buffer) registers }
+fixupPeripheral _ p@Peripheral{name="NVIC",..}
+    = p { registers = map nvic_iserx registers }
 fixupPeripheral _ p = p
 
 compx_csr :: Register -> Register
@@ -56,4 +52,9 @@ usb_buffer Register{..}
     | "ADDR" `T.isPrefixOf` name = True
     | "COUNT" `T.isPrefixOf` name = True
     | otherwise = False
+
+nvic_iserx :: Register -> Register
+nvic_iserx r@Register{..}
+    | name == "ISER" = r { name = "ISER0" }
+    | otherwise = r
 
