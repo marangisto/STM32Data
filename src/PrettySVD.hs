@@ -65,6 +65,7 @@ pad :: Text -> Int -> Maybe Int -> Maybe Text
 pad name addr next
     | Just n <- next, n < addr + 4
     = error $ "collission at register " <> T.unpack name
+    -- = Just $ "collission at register " <> name
     | Just n <- next, n > addr + 4 = Just $ T.concat
         [ "    "
         , "reserved_t<"
