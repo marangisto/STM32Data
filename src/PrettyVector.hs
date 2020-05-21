@@ -73,7 +73,7 @@ prettyInterrupt xs =
     , "struct interrupt"
     , "{"
     ] ++
-    map ("    "<>) (prettyInterruptBody xs) ++
+    map (T.stripEnd . ("    "<>)) (prettyInterruptBody xs) ++
     [ "};"
     , ""
     ]
