@@ -55,6 +55,7 @@ usb_buffer Register{..}
 
 nvic_iserx :: Register -> Register
 nvic_iserx r@Register{..}
-    | name == "ISER" = r { name = "ISER0" }
+    | name `elem` [ "ISER", "ICER", "ISPR", "ICPR" ]
+    = r { name = name <> "0" }
     | otherwise = r
 

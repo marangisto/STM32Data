@@ -89,7 +89,40 @@ prettyInterruptBody xs =
     [ "};"
     , ""
     , "template<interrupt_t INTERRUPT>"
-    , "static void enable() { helper<nvic_t, INTERRUPT>::enable(); }"
+    , "static bool get()"
+    , "{"
+    , "    return helper<nvic_t, INTERRUPT>::get();"
+    , "}"
+    , ""
+    , "template<interrupt_t INTERRUPT>"
+    , "static void set()"
+    , "{"
+    , "    helper<nvic_t, INTERRUPT>::set();"
+    , "}"
+    , ""
+    , "template<interrupt_t INTERRUPT>"
+    , "static void clear()"
+    , "{"
+    , "    helper<nvic_t, INTERRUPT>::clear();"
+    , "}"
+    , ""
+    , "template<interrupt_t INTERRUPT>"
+    , "static bool get_pending()"
+    , "{"
+    , "    return helper<nvic_t, INTERRUPT>::get_pending();"
+    , "}"
+    , ""
+    , "template<interrupt_t INTERRUPT>"
+    , "static void set_pending()"
+    , "{"
+    , "    helper<nvic_t, INTERRUPT>::set_pending();"
+    , "}"
+    , ""
+    , "template<interrupt_t INTERRUPT>"
+    , "static void clear_pending()"
+    , "{"
+    , "    helper<nvic_t, INTERRUPT>::clear_pending();"
+    , "}"
     , ""
     , "template<typename NVIC, interrupt_t I, typename = is_in_range<true>>"
     , "struct helper"
@@ -97,7 +130,7 @@ prettyInterruptBody xs =
     , "    static_assert(always_false_i<I>::value, \"no such interrupt\");"
     , "};"
     ] ++
-    concatMap enableInRange [0..maximum (map value xs) `div` 32]
+    concatMap helperInRange [0..maximum (map value xs) `div` 32]
     where f i Interrupt{..} = mconcat
               [ if i == 0 then "{ " else ", "
               , T.toUpper name
@@ -105,15 +138,21 @@ prettyInterruptBody xs =
               , T.pack $ show value
               ]
 
-enableInRange :: Int -> [Text]
-enableInRange i =
+helperInRange :: Int -> [Text]
+helperInRange i =
     [ ""
     , "template<typename NVIC, interrupt_t I>"
-    , "struct helper<NVIC, I, is_in_range<(" <> T.pack rng <> ")>>"
+    , "struct helper<NVIC, I, is_in_range<(" <> rng <> ")>>"
     , "{"
-    , "    static void enable() { NVIC::V.ISER" <> T.pack bit <> "; }"
+    , "    static bool get() { return " <> reg "ISER" <> " & " <> bit <> "; }"
+    , "    static void set() { " <> reg "ISER" <> " = " <> bit <> "; }"
+    , "    static void clear() { " <> reg "ICER" <> " = " <> bit <> "; }"
+    , "    static bool get_pending() { return " <> reg "ISPR" <> " & " <> bit <> "; }"
+    , "    static void set_pending() { " <> reg "ISPR" <> " = " <> bit <> "; }"
+    , "    static void clear_pending() { " <> reg "ICPR" <> " = " <> bit <> "; }"
     , "};"
     ]
-    where rng = show (i*32) <> " <= I && I < " <> show ((i+1)*32)
-          bit = show i <> " |= 1 << (I - " <> show (i*32) <> ")"
+    where rng = T.pack $ show (i*32) <> " <= I && I < " <> show ((i+1)*32)
+          bit = T.pack $ "1 << (I - " <> show (i*32) <> ")"
+          reg s = T.pack $ "NVIC::V." <> s <> show i
 
