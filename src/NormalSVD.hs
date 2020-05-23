@@ -7,6 +7,7 @@ import Data.List (sortOn, sort, nub)
 import Data.List.Extra (groupSort)
 import Data.Hashable
 import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Char (isDigit)
 import System.FilePath
 import System.Directory
 import Control.Monad
@@ -70,9 +71,11 @@ normalizeSVD
     :: FilePath
     -> FilePath
     -> Text
+    -> [(Text, [Text])]     -- [(peripheral, (alternate-function])]
     -> [(Text, FilePath)]
     -> IO ()
-normalizeSVD tmp dir family xs = do
+normalizeSVD tmp dir family pfs xs = do
+    mapM_ print pfs
     putStrLn $ T.unpack family <> " in " <> tmp
     (ys, rs, is) <- fmap unzip3 $ forM xs $ \(_, fn) -> do
         putStrLn $ "parsing " <> fn
@@ -88,7 +91,7 @@ normalizeSVD tmp dir family xs = do
             ]
     peripheralHeader dir family (concatMap snd ds)
     genPeripheralDefs dir family $ concatMap snd gs
-    mapM_ (uncurry $ genHeader dir family) gs
+    mapM_ (uncurry $ genHeader dir family pfs) gs
     comboHeader dir family $ map fst gs
     interruptHeader dir family $ concat is
     vectorHeader dir family $ concat is
@@ -97,17 +100,19 @@ normalizeSVD tmp dir family xs = do
 genHeader
     :: FilePath
     -> Text
+    -> [(Text, [Text])]
     -> Text
     -> [(Normalization, [(Text, Text, Int)])]
     -> IO ()
-genHeader dir family group rs = do
+genHeader dir family pfs group rs = do
     hs <- forM (sortOn f rs) $ \(Representative{..}, _) -> T.readFile text
     let header = dir </> lower group <.> "h"
     putStrLn $ "writing " <> header
     writeText header $ preamble ++ hs
         ++ concatMap (uncurry genTraits) rs
         ++ [ "" ]
-        ++ map genUsing (nub $ sort [ name | (_, name, _) <- concatMap snd rs ])
+        ++ map genUsing names
+        ++ genInstanceTraits pfs names
         ++ [ "" ]
     where f :: (Normalization, [(Text, Text, Int)]) -> Text
           f (Representative{..}, _) = name
@@ -115,6 +120,7 @@ genHeader dir family group rs = do
           preamble = "#pragma once" : banner
             [ family <> " " <> group <> " peripherals"
             ]
+          names = nub $ sort [ name | (_, name, _) <- concatMap snd rs ]
 
 genPeripheralDefs
     :: FilePath
@@ -268,6 +274,40 @@ genUsing name
     <> " = peripheral_t<mcu_svd, "
     <> name
     <> ">;"
+
+genInstanceTraits :: [(Text, [Text])] -> [Text] -> [Text]
+genInstanceTraits pfs names = concatMap (uncurry g) xs
+    where xs = groupSort [ p | p@(_, n) <- map f names, n /= "" ]
+          f s | Just x <- T.stripPrefix "I2C" s = ("I2C", x)
+              | otherwise = T.break isDigit s
+          g :: Text -> [Text] -> [Text]
+          g prefix insts =
+            [ ""
+            , "template<int INST> struct "
+            <> lprefix <> "_traits {};"
+            ] ++ concatMap h insts
+            where h inst =
+                    [ ""
+                    , "template<> struct "
+                    <> lprefix <> "_traits<" <> inst <> ">"
+                    , "{"
+                    , "    using " <> lprefix <> " = " <> lprefix
+                    <> inst <> "_t;"
+                    ] ++
+                    map (altfun inst) (fromMaybe [] $ lookup (prefix <> inst) pfs) ++
+                    [ "};"
+                    ]
+                  lprefix = T.toLower prefix
+                  altfun inst fun = T.concat
+                    [ "    "
+                    , "static constexpr alternate_function_t "
+                    , fun
+                    , " = "
+                    , prefix <> inst
+                    , "_"
+                    , fun
+                    , ";"
+                    ]
 
 processPeripheral
     :: FilePath

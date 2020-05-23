@@ -7,6 +7,7 @@ module IPMode
     , loadMCU
     , gpioConfigSet
     , gpioConfigs
+    , periFuns
     ) where
 
 import System.FilePath
@@ -114,4 +115,9 @@ extractGpioConfig' s0
     , (s2, _) <- break (=='_') s1
     , Just s3 <- stripSuffix "_Modes.xml" s1 = Just (s2, s3)
     | otherwise = Nothing
+
+periFuns :: Set.Set ((PIN, AF), Int) -> [(Text, Text)]
+periFuns = map (second f . T.breakOn "_" . unAF . snd . fst) . Set.toList
+    where f "" = ""
+          f s = T.tail s
 

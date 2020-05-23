@@ -10,7 +10,8 @@ import System.IO
 import System.IO.Temp
 import Control.Monad
 import Control.Monad.Extra
-import Data.List (sort, isPrefixOf)
+import Data.List (nub, sort, isPrefixOf)
+import Data.List.Extra (groupSort)
 import Family
 import IPMode
 import Pretty
@@ -86,9 +87,10 @@ main = do
         mcus <- mapM (loadMCU dbDir) $ controllers subFamilies
         gss <- mapM (\x -> (x,) <$> gpioConfigSet dbDir x)
             =<< gpioConfigs dbDir family
+        let pfs = groupSort $ nub $ sort $ concatMap (periFuns . snd) gss
         familyHeaders dir family mcus gss $ map fst svds
         withTempDirectory tmpDir (T.unpack family) $ \tmp ->
-          normalizeSVD tmp dir family svds
+          normalizeSVD tmp dir family pfs svds
 
 stm32Header :: FilePath -> [Text] -> IO ()
 stm32Header dir xs = do
