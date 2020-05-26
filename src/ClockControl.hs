@@ -52,19 +52,21 @@ prettyClockControl
     -> Text                         -- ^ peripheral
     -> [(BitOp, Text, Text, Text)]  -- ^ [(op, method, reg, field)]
     -> [Text]   
-prettyClockControl _ "CEC" _ = []       -- don't know how to handle
+prettyClockControl _ "CEC" _ = []       -- FIXME: still an issue?
 prettyClockControl _ "SRAM" _ = []      -- don't know how to handle
 prettyClockControl _ "RTCAPB" _ = []    -- don't know how to handle
 prettyClockControl svd periph xs =
     [ ""
     , "template<>"
     , "struct clock_control_t<peripheral_t<"
-    <> svd <> ", " <> periph <> ">>"
+    <> svd <> ", " <> f periph <> ">>"
     , "{"
     ] ++
     map (rccMethod svd) xs ++
     [ "};"
     ]
+    where f "FLITF" = "FLASH"
+          f x = x
 
 rccMethod :: Text -> (BitOp, Text, Text, Text) -> Text
 rccMethod svd (op, method, reg, field) = T.concat

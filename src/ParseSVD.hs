@@ -10,7 +10,7 @@ module ParseSVD
     ) where
 
 import Text.XML.HXT.Core
-import Data.Text (Text, pack, unpack)
+import Data.Text (Text, pack, unpack, toUpper)
 import Data.Maybe (fromMaybe)
 import Utils (fromHex)
 
@@ -88,12 +88,12 @@ getPeripheral = atTag "peripheral" >>>
         registers <- ( listA getRegister <<< list "registers"
                      ) `orElse` constA [] -< x
         returnA -< Peripheral
-            { name = pack name
+            { name = toUpper $ pack name
             , description = pack $ fromMaybe "" description
             , groupName = pack $ fromMaybe "" groupName
             , baseAddress = fromHex $ pack baseAddress
             , registers = registers
-            , derivedFrom = pack <$> derivedFrom
+            , derivedFrom = toUpper . pack <$> derivedFrom
             }
 
 getRegister = atTag "register" >>>
