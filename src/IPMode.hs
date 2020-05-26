@@ -53,6 +53,7 @@ altFun :: [Tag Text] -> Maybe AltFun
 altFun (t:ts)
     | Just r <- T.stripPrefix "GPIO_AF" s
     , (u, peripheral) <- second (T.drop 1) $ T.breakOn "_" r
+    , not ("Stingray" `T.isInfixOf` signalName)
     = let altFunction = read $ T.unpack u
        in Just AltFun{..}
     | (u:_) <- filter (~=="<RemapBlock>") ts
