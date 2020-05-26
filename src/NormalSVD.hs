@@ -80,7 +80,9 @@ normalizeSVD tmp dir family pfs xs = do
     (ys, rs, is) <- fmap unzip3 $ forM xs $ \(_, fn) -> do
         putStrLn $ "parsing " <> fn
         svd@SVD{..} <- parseSVD fn
-        ys <- mapM (processPeripheral tmp family name) peripherals
+        ys <- forM peripherals
+            $ processPeripheral tmp family name
+            . fixupPeripheral family
         let rs = mapMaybe (rccFlags name) peripherals
         return $! (ys, rs, interrupts)
     ys <- return $ concat ys
@@ -326,9 +328,7 @@ processPeripheral tmp family svdName p@Peripheral{..} = do
         return $! Duplicate{digest=h,..}
     else do
         putStr $ T.unpack name <> fn <> "..."
-        writeText fn
-            $ prettyPeripheral svdName
-            $ fixupPeripheral family p
+        writeText fn $ prettyPeripheral svdName p
         putStrLn $ "done"
         return $! Representative{digest=h,text=fn,..}
 

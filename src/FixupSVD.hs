@@ -19,6 +19,8 @@ fixupPeripheral _ p@Peripheral{name="USB",..}
     = p { registers = filter (not . usb_buffer) registers }
 fixupPeripheral _ p@Peripheral{name="NVIC",..}
     = p { registers = map nvic_iserx registers }
+fixupPeripheral _ p@Peripheral{name="CEC",..}
+    = p { name = "HDMI_CEC" }
 fixupPeripheral _ p = p
 
 compx_csr :: Register -> Register
