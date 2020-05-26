@@ -28,7 +28,7 @@ familyHeaders dir family mcus ys svds = do
     writeText h1 $ mcuHeader family mcus ys svds
     let h2 = dir </> "pin" <.> "h"
     putStrLn h2
-    writeText h2 $ pinHeader family mcus ys
+    writeText h2 $ pinHeader family svds mcus ys
 
 mcuHeader
     :: Text
@@ -53,10 +53,15 @@ mcuHeader family mcus ys svds = concat $
       , "static constexpr mcu_t target = MCU;"
       ]
     ]
-    where confs = map (cleanGPIOConf . fst) ys
+    where confs = map (cleanGPIOConf svds . fst) ys
 
-pinHeader :: Text -> [MCU] -> [(Text, Set.Set ((PIN, AF), Int))] -> [Text]
-pinHeader family mcus ys = concat $
+pinHeader
+    :: Text
+    -> [Text]
+    -> [MCU]
+    -> [(Text, Set.Set ((PIN, AF), Int))]
+    -> [Text]
+pinHeader family svds mcus ys = concat $
     [ [ "#pragma once"
       , ""
       , "////"
@@ -76,8 +81,8 @@ pinHeader family mcus ys = concat $
     , gpioTraitsDecl
     , map (gpioConfigTraitDecl confs) $ groupSort ss
     ]
-    where confs = map (cleanGPIOConf . fst) ys
-          ss = [ (p, (cleanGPIOConf conf, v))
+    where confs = map (cleanGPIOConf svds . fst) ys
+          ss = [ (p, (cleanGPIOConf svds conf, v))
                | (conf, s) <- ys
                , (p, v) <- Set.toList s
                ]
@@ -98,8 +103,11 @@ splitPin :: String -> Maybe (Char, Int)
 splitPin ('P':p:xs) = (p,) <$> readMaybe xs
 splitPin _ = Nothing
 
-cleanGPIOConf :: Text -> GPIOConf
-cleanGPIOConf = GPIOConf . fst . T.breakOn "_"
+cleanGPIOConf :: [Text] -> Text -> GPIOConf
+cleanGPIOConf svds s
+    | clean `elem` svds = GPIOConf $ clean <> "_" -- avoid conflict
+    | otherwise = GPIOConf clean
+    where clean = fst $ T.breakOn "_" s
 
 enumDecl :: Bool -> Text -> [Text] -> [Text]
 enumDecl bits name xs = concat
@@ -203,7 +211,7 @@ mcuTraitsDecl mcus svds =
             [ "    static constexpr gpio_conf_t gpio_conf = " <> gc <> ";"
             , "};"
             ]
-            where gc = unGPIOConf $ cleanGPIOConf gpioConfig
+            where gc = unGPIOConf $ cleanGPIOConf svds gpioConfig
 
 matchSVD :: [Text] -> Text -> Maybe Text
 matchSVD svds name = case filter p svds of
