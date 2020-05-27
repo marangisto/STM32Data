@@ -144,7 +144,7 @@ portTraitsDecl ports =
 gpioConfigTraitDecl :: [GPIOConf] -> ((PIN, AF), [(GPIOConf, Int)]) -> Text
 gpioConfigTraitDecl confs ((pin, altfun), confVals) = T.concat
     [ ""
-    , "template<> struct alt_fun_traits<"
+    , "template<gpio_conf_t CFG> struct alt_fun_traits<CFG, "
     , unPIN pin
     , ", "
     , unAF altfun
@@ -177,8 +177,8 @@ value p@(v, xs) (Just q@(u, ys))
 
 constraint :: [GPIOConf] -> Text
 constraint [] = "true"
-constraint [x] = "gpio_conf & " <> unGPIOConf x
-constraint xs = "gpio_conf & (" <> T.intercalate "|" (map unGPIOConf xs) <> ")"
+constraint [x] = "CFG & " <> unGPIOConf x
+constraint xs = "CFG & (" <> T.intercalate "|" (map unGPIOConf xs) <> ")"
 
 funDecl :: Int -> [Text]
 funDecl n = concat
@@ -240,7 +240,7 @@ matchSVD svds name = case filter p svds of
 gpioTraitsDecl :: [Text]
 gpioTraitsDecl =
    [ ""
-   , "template<gpio_pin_t PIN, alternate_function_t ALT>"
+   , "template<gpio_conf_t CFG, gpio_pin_t PIN, alternate_function_t ALT>"
    , "struct alt_fun_traits"
    , "{"
    , "    static constexpr alt_fun_t AF = AF0;"
