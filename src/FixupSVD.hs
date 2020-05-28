@@ -21,6 +21,12 @@ fixupPeripheral _ p@Peripheral{name="NVIC",..}
     = p { registers = map nvic_iserx registers }
 fixupPeripheral _ p@Peripheral{name="CEC",..}
     = p { name = "HDMI_CEC" }
+fixupPeripheral _ p@Peripheral{name="DAC",..}
+    = p { name = "DAC1" }
+fixupPeripheral _ p@Peripheral{name="SEC_DAC",derivedFrom=Just "DAC",..}
+    = p { name = "DAC2", derivedFrom = Just "DAC1" }
+fixupPeripheral _ p@Peripheral{name="LPUART",..}
+    = p { name = "LPUART1" }
 fixupPeripheral _ p = p
 
 compx_csr :: Register -> Register

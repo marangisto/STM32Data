@@ -79,10 +79,8 @@ normalizeSVD tmp dir family pfs xs = do
     putStrLn $ T.unpack family <> " in " <> tmp
     (ys, rs, is) <- fmap unzip3 $ forM xs $ \(_, fn) -> do
         putStrLn $ "parsing " <> fn
-        svd@SVD{..} <- parseSVD fn
-        ys <- forM peripherals
-            $ processPeripheral tmp family name
-            . fixupPeripheral family
+        svd@SVD{..} <- fixup <$> parseSVD fn
+        ys <- forM peripherals $ processPeripheral tmp family name
         let rs = mapMaybe (rccFlags name) peripherals
         return $! (ys, rs, interrupts)
     ys <- return $ concat ys
@@ -98,6 +96,9 @@ normalizeSVD tmp dir family pfs xs = do
     interruptHeader dir family $ concat is
     vectorHeader dir family $ concat is
     controlHeader dir family $ concat rs
+    where fixup s@SVD{..} = s
+            { peripherals = map (fixupPeripheral family) peripherals
+            }
 
 genHeader
     :: FilePath

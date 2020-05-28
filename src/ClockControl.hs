@@ -43,8 +43,6 @@ decodeField field
         ]
     | otherwise = []
     where f x | Just y <- T.stripPrefix "IOP" x = "GPIO" <> y
-              | x == "LPUART1" = "LPUART"   -- FIXME: depends on MCU!
-              | x == "DAC1" = "DAC"   -- FIXME: depends on MCU!
               | otherwise = x
 
 prettyClockControl
