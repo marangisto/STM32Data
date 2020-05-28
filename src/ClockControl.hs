@@ -55,8 +55,8 @@ prettyClockControl _ "SRAM" _ = []      -- don't know how to handle
 prettyClockControl _ "RTCAPB" _ = []    -- don't know how to handle
 prettyClockControl svd periph xs =
     [ ""
-    , "template<>"
-    , "struct clock_control_t<peripheral_t<"
+    , "template<typename RCC>"
+    , "struct clock_control_t<RCC, peripheral_t<"
     <> svd <> ", " <> f periph <> ">>"
     , "{"
     ] ++
@@ -73,7 +73,7 @@ rccMethod svd (op, method, reg, field) = T.concat
     , "rcc_t::V."
     , reg
     , if op == Set then " |= " else " &= ~"
-    , "rcc_t::T::"
+    , "RCC::T::"
     , reg
     , "_" 
     , field 

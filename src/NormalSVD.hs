@@ -218,7 +218,7 @@ controlHeader dir family xs = do
         $ "#pragma once"
         : banner [ family <> " peripheral clock control" ]
         ++ [ ""
-           , "template<typename PERIPHERAL>"
+           , "template<typename RCC, typename PERIPHERAL>"
            , "struct clock_control_t {};"
            ]
         ++ concatMap (uncurry prettyRCC) xs
