@@ -115,7 +115,7 @@ genHeader dir family pfs group rs = do
         ++ concatMap (uncurry genTraits) rs
         ++ [ "" ]
         ++ map genUsing names
-        ++ genInstanceTraits pfs names
+        ++ genInstanceTraits pfs (filter (`notElem` exclude) names)
         ++ [ "" ]
     where f :: (Normalization, [(Text, Text, Int)]) -> Text
           f (Representative{..}, _) = name
@@ -124,6 +124,9 @@ genHeader dir family pfs group rs = do
             [ family <> " " <> group <> " peripherals"
             ]
           names = nub $ sort [ name | (_, name, _) <- concatMap snd rs ]
+          exclude = [ "ADC12_COMMON"
+                    , "ADC345_COMMON"
+                    ]
 
 genPeripheralDefs
     :: FilePath
