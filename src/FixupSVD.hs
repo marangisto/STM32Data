@@ -32,6 +32,8 @@ fixupPeripheral _ p@Peripheral{name="LPTIMER1",..}
     = p { name = "LPTIM1" }
 fixupPeripheral "STM32G4" p@Peripheral{name="RCC",..}
     = p { registers = map rcc_adc registers }
+fixupPeripheral _ p@Peripheral{name="STK",..}
+    = p { registers = map stk_regs registers }
 fixupPeripheral _ p = p
 
 compx_csr :: Register -> Register
@@ -109,4 +111,9 @@ rcc_adc r@Register{..} = r { fields = map f fields }
             | name == "FLITFRST_" = x { name = "FLASHRST" }
             | otherwise = x
 
-
+stk_regs :: Register -> Register
+stk_regs r@Register{..}
+    | name == "CTRL" = r { name = "CSR" }
+    | name == "LOAD" = r { name = "RVR" }
+    | name == "VAL" = r { name = "CVR" }
+    | otherwise = r
