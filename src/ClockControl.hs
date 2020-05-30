@@ -52,7 +52,11 @@ prettyClockControl
     -> [Text]   
 prettyClockControl _ "CEC" _ = []       -- FIXME: still an issue?
 prettyClockControl _ "SRAM" _ = []      -- don't know how to handle
+prettyClockControl _ "SRAM1" _ = []     -- don't know how to handle
+prettyClockControl _ "SRAM2" _ = []     -- don't know how to handle
+prettyClockControl _ "SRAM3" _ = []     -- don't know how to handle
 prettyClockControl _ "RTCAPB" _ = []    -- don't know how to handle
+prettyClockControl _ "MATRIX" _ = []    -- don't know how to handle
 prettyClockControl svd periph xs =
     [ ""
     , "template<typename RCC>"
