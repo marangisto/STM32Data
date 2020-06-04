@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 79b792f8c23a930d73cd1456e55ecfe33bf72c77c75789fd5c0a72e8e4715a2e
+-- hash: aed8387ea3913cda6ce3089ce337422d1f486403b26f94807bc20db63c151d1a
 
 name:           STM32Data
 version:        0.1.0.0
@@ -34,6 +34,7 @@ library
       IPMode
       MCU
       NormalSVD
+      ParseMCU
       ParseSVD
       Pretty
       PrettySVD

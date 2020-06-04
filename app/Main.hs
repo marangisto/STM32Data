@@ -13,6 +13,7 @@ import Control.Monad.Extra
 import Data.List (nub, sort, isPrefixOf)
 import Data.List.Extra (groupSort)
 import Family
+import ParseMCU
 import IPMode
 import Pretty
 import ParseSVD
@@ -22,6 +23,7 @@ import Utils
 data Options = Options
     { list_mcus     :: Bool
     , build_rules   :: Bool
+    , new_core      :: Bool
     , headers       :: Maybe FilePath
     , family        :: [String]
     , sub_family    :: [String]
@@ -33,6 +35,7 @@ options :: Main.Options
 options = Main.Options
     { list_mcus = def &= help "list available MCUs by family"
     , build_rules = def &= help "generate source for build rules"
+    , new_core = def &= help "run new core"
     , family = def &= help "filter on family"
     , sub_family = def &= help "filter on sub-family"
     , package = def &= help "filter on package"
@@ -75,6 +78,17 @@ main = do
 
     families' <- parseFamilies (dbDir </> familiesXML)
     families <- return $ prune fs families'
+
+    when new_core $
+      forM_ families $ \(family, subFamilies) -> do
+        let mcuSpecs = nub $ sort
+                [ name
+                | Controller{..} <- controllers subFamilies
+                ]
+        mcuSpecs <- forM mcuSpecs $ \name ->
+            parseMCU (dbDir </> T.unpack name <.> "xml")
+        mapM_ print mcuSpecs
+
     when list_mcus $ mcuList families
     when build_rules
         $ mapM_ (putStrLn . T.unpack)
