@@ -9,10 +9,10 @@ module ParseSVD
     , parseSVD
     ) where
 
-import Text.XML.HXT.Core
 import Data.Text (Text, pack, unpack, toUpper)
 import Data.Maybe (fromMaybe)
 import Utils (fromHex)
+import HXT
 
 data SVD = SVD
     { name          :: !Text
@@ -141,25 +141,3 @@ getInterrupt = atTag "interrupt" >>>
             , value = read value
             }
  
-atTag tag = deep (isElem >>> hasName tag)
-
-attrTextMay tag
-    = (hasAttr tag >>> getAttrValue tag >>> arr Just)
-    `orElse` constA Nothing
-
-elemText tag
-    = getChildren
-    >>> isElem
-    >>> hasName tag
-    >>> getChildren
-    >>> getText
-
-elemTextMay tag
-    = (elemText tag >>> arr Just)
-    `orElse` constA Nothing
-
-list tag
-    = getChildren
-    >>> isElem
-    >>> hasName tag
-

@@ -73,10 +73,12 @@ main = do
             , map (Package . T.pack) package
             ]
 
-    families' <- parseFamilies <$> T.readFile (dbDir </> familiesXML)
+    families' <- parseFamilies (dbDir </> familiesXML)
     families <- return $ prune fs families'
     when list_mcus $ mcuList families
-    when build_rules $ mapM_ (putStrLn . T.unpack) $ buildRules families
+    when build_rules
+        $ mapM_ (putStrLn . T.unpack)
+        $ buildRules families
 
     whenJust headers $ \top -> do
       stm32Header top $ map fst families'
