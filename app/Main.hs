@@ -45,26 +45,46 @@ options = Main.Options
     } &=
     verbosity &=
     help "Generate pin descriptions from STM32CubeMX xml files" &=
-    summary "STM32Data v0.1.0, (c) Bengt Marten Agren 2020" &=
+    summary "STM32Data v0.2.0, (c) Bengt Marten Agren 2020" &=
     details [ "STM32Data generate device header files for STM32"
             , "MCUs based on vendor XML files from SMT32CubeMX."
             ]
 
 stm32CubeMX :: FilePath
-stm32CubeMX = "C:/Program Files (x86)/STMicroelectronics/STM32Cube/STM32CubeMX"
+stm32CubeMX = "C:/"
+  </> "Program Files (x86)"
+  </> "STMicroelectronics"
+  </> "STM32Cube"
+  </> "STM32CubeMX"
 
 stm32DbDir :: FilePath
-stm32DbDir = "db/mcu"
+stm32DbDir = "db" </> "mcu"
 
 familiesXML :: FilePath
 familiesXML = "families.xml"
 
 svdDir, svdDir' :: FilePath
-svdDir = "C:/ST/STM32CubeIDE_1.3.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.productdb.debug_1.3.0.202002181050/resources/cmsis/STMicroelectronics_CMSIS_SVD"
-svdDir' = "C:/ST/STM32CubeIDE_1.3.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mpu.productdb.debug_1.3.0.202002181049/resources/cmsis/STMicroelectronics_CMSIS_SVD"
+svdDir = "C:/"
+    </> "ST"
+    </> "STM32CubeIDE_1.3.0"
+    </> "STM32CubeIDE"
+    </> "plugins"
+    </> "com.st.stm32cube.ide.mcu.productdb.debug_1.3.0.202002181050"
+    </> "resources"
+    </> "cmsis"
+    </> "STMicroelectronics_CMSIS_SVD"
+svdDir' = "C:/"
+    </> "ST"
+    </> "STM32CubeIDE_1.3.0"
+    </> "STM32CubeIDE"
+    </> "plugins"
+    </> "com.st.stm32cube.ide.mpu.productdb.debug_1.3.0.202002181049"
+    </> "resources"
+    </> "cmsis"
+    </> "STMicroelectronics_CMSIS_SVD"
 
 tmpDir :: FilePath
-tmpDir = "C:/tmp"
+tmpDir = "C:" </> "tmp"
 
 main :: IO ()
 main = do
