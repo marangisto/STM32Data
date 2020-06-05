@@ -14,6 +14,7 @@ import Data.List (nub, sort, isPrefixOf)
 import Data.List.Extra (groupSort)
 import Family
 import ParseMCU
+import ParseIpGPIO
 import IPMode
 import Pretty
 import ParseSVD
@@ -87,7 +88,19 @@ main = do
                 ]
         mcuSpecs <- forM mcuSpecs $ \name ->
             parseMCU (dbDir </> T.unpack name <.> "xml")
-        mapM_ print mcuSpecs
+        let ipGPIOs = nub $ sort
+                [ version
+                | MCU{..} <- mcuSpecs
+                , IP{name="GPIO",..} <- ips
+                ]
+        ipGPIOs <- forM ipGPIOs $ \name ->
+            parseIpGPIO
+                ( dbDir
+                </> "IP"
+                </> "GPIO-" <> T.unpack name <> "_Modes"
+                <.> "xml"
+                )
+        mapM_ print ipGPIOs
 
     when list_mcus $ mcuList families
     when build_rules
