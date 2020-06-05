@@ -54,10 +54,11 @@ getGPIOPin = atTag "GPIO_Pin" >>> proc x -> do
 
 getPinSignal = atTag "PinSignal" >>> proc x -> do
     name <- arr pack <<< attrText "Name" -< x
-    gpioAF <- getGpioAF -< x
+    gpioAF <- getGpioAF `orElse` getRemapBlock -< x
     returnA -< PinSignal{..}
 
-getGpioAF = atTag "SpecificParameter" >>> proc x -> do
-    name <- arr pack <<< elemText "PossibleValue" -< x
-    returnA -< name
+getGpioAF = atTag "SpecificParameter" >>> proc x ->
+    arr pack <<< elemText "PossibleValue" -< x
 
+getRemapBlock = atTag "RemapBlock" >>> proc x ->
+    arr pack <<< attrText "Name" -< x
