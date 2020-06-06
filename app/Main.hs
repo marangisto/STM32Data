@@ -15,6 +15,7 @@ import Data.List.Extra (groupSort)
 import Family
 import ParseMCU
 import ParseIpGPIO
+import Normalize
 import IPMode
 import Pretty
 import ParseSVD
@@ -102,6 +103,14 @@ main = do
 
     when new_core $
       forM_ families $ \(family, subFamilies) -> do
+        svds <- svdFiles family
+        svds <- mapM parseSVD $ map snd svds
+        let ps = normalize svds
+        forM_ ps $ \(PeriphType{..}, insts) -> do
+            print typeRef
+            mapM_ (putStrLn . ("    "<>) . show) insts
+
+    {-
         let mcuSpecs = nub $ sort
                 [ name
                 | Controller{..} <- controllers subFamilies
@@ -121,6 +130,7 @@ main = do
                 <.> "xml"
                 )
         mapM_ print ipGPIOs
+        -}
 
     when list_mcus $ mcuList families
     when build_rules
