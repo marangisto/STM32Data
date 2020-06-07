@@ -7,6 +7,8 @@ module Utils
     , hex
     , fromHex
     , unPlus
+    , packUpper
+    , packWords
     , cleanWords
     , writeText
     ) where
@@ -63,6 +65,12 @@ unPlus :: Text -> Text
 unPlus s
     | Just x <- T.stripSuffix "+" s = x <> "Plus"
     | otherwise = s
+
+packUpper :: String -> Text
+packUpper = T.toUpper . T.pack
+
+packWords :: String -> Text
+packWords = cleanWords . T.pack
 
 cleanWords :: Text -> Text
 cleanWords = T.unwords . T.words . T.filter isAscii

@@ -1,5 +1,6 @@
 {-# LANGUAGE Arrows, NoMonomorphismRestriction #-}
 {-# LANGUAGE RecordWildCards, DuplicateRecordFields #-}
+{-# LANGUAGE OverloadedStrings #-}
 module ParseSVD
     ( SVD(..)
     , Peripheral(..)
@@ -9,9 +10,9 @@ module ParseSVD
     , parseSVD
     ) where
 
-import Data.Text (Text, pack, unpack, toUpper)
 import Data.Maybe (fromMaybe)
-import Utils (fromHex, cleanWords)
+import Data.Text (Text, pack, unpack, toUpper)
+import Utils (fromHex, cleanWords, packUpper, packWords)
 import HXT
 
 data SVD = SVD
@@ -63,81 +64,45 @@ parseSVD fn = do
         [x] -> return x
         _ -> error "failed to parse SVD"
 
-getSVD = atTag "device" >>>
-    proc x -> do
-        name <- elemText "name" -< x
-        version <- elemText "version" -< x
-        description <- elemText "description" -< x
-        peripherals <- listA getPeripheral <<< list "peripherals" -< x
-        interrupts <- listA getInterrupt -< x
-        returnA -< SVD
-            { name = toUpper $ pack name
-            , version = pack version
-            , description = cleanWords $ pack description
-            , peripherals = peripherals
-            , interrupts = interrupts
-            }
+getSVD = atTag "device" >>> proc x -> do
+    name <- arr packUpper <<< elemText "name" -< x
+    version <- arr pack <<< elemText "version" -< x
+    description <- arr packWords <<< elemText "description" -< x
+    peripherals <- listA getPeripheral <<< list "peripherals" -< x
+    interrupts <- listA getInterrupt -< x
+    returnA -< SVD{..}
 
-getPeripheral = atTag "peripheral" >>>
-    proc x -> do
-        derivedFrom <- attrTextMay "derivedFrom" -< x
-        name <- elemText "name" -< x
-        description <- elemTextMay "description" -< x
-        groupName <- elemTextMay "groupName" -< x
-        baseAddress <- elemText "baseAddress" -< x
-        registers <- ( listA getRegister <<< list "registers"
-                     ) `orElse` constA [] -< x
-        returnA -< Peripheral
-            { name = toUpper $ pack name
-            , description = pack $ fromMaybe "" description
-            , groupName = pack $ fromMaybe "" groupName
-            , baseAddress = fromHex $ pack baseAddress
-            , registers = registers
-            , derivedFrom = toUpper . pack <$> derivedFrom
-            }
+getPeripheral = atTag "peripheral" >>> proc x -> do
+    derivedFrom <- arr (fmap packUpper) <<< attrTextMay "derivedFrom" -< x
+    name <- arr packUpper <<< elemText "name" -< x
+    description <- arr (maybe "" packWords) <<< elemTextMay "description" -< x
+    groupName <- arr (maybe "" packUpper) <<< elemTextMay "groupName" -< x
+    baseAddress <- arr (fromHex . pack) <<< elemText "baseAddress" -< x
+    registers <- ( listA getRegister <<< list "registers"
+                 ) `orElse` constA [] -< x
+    returnA -< Peripheral{..}
 
-getRegister = atTag "register" >>>
-    proc x -> do
-        name <- elemText "name" -< x
-        displayName <- elemText "displayName" -< x
-        description <- elemText "description" -< x
-        addressOffset <- elemText "addressOffset" -< x
-        size <- elemText "size" -< x
-        access <- elemTextMay "access" -< x
-        resetValue <- elemText "resetValue" -< x
-        fields <- listA getField <<< list "fields" -< x
-        returnA -< Register
-            { name = toUpper $ pack name
-            , displayName = pack displayName
-            , description = cleanWords $ pack description
-            , addressOffset = fromHex $ pack addressOffset
-            , size = fromHex $ pack size
-            , access = pack <$> access
-            , resetValue = fromHex $ pack resetValue
-            , fields = fields
-            }
+getRegister = atTag "register" >>> proc x -> do
+    name <- arr packUpper <<< elemText "name" -< x
+    displayName <- arr pack <<< elemText "displayName" -< x
+    description <- arr packWords <<< elemText "description" -< x
+    addressOffset <- arr (fromHex . pack) <<< elemText "addressOffset" -< x
+    size <- arr (fromHex . pack) <<< elemText "size" -< x
+    access <- arr (fmap pack) <<< elemTextMay "access" -< x
+    resetValue <- arr (fromHex . pack) <<< elemText "resetValue" -< x
+    fields <- listA getField <<< list "fields" -< x
+    returnA -< Register{..}
 
-getField = atTag "field" >>>
-    proc x -> do
-        name <- elemText "name" -< x
-        description <- elemText "description" -< x
-        bitOffset <- elemText "bitOffset" -< x
-        bitWidth <- elemText "bitWidth" -< x
-        returnA -< Field
-            { name = toUpper $ pack name
-            , description = cleanWords $ pack description
-            , bitOffset = read bitOffset
-            , bitWidth = read bitWidth
-            }
+getField = atTag "field" >>> proc x -> do
+    name <- arr packUpper <<< elemText "name" -< x
+    description <- arr packWords <<< elemText "description" -< x
+    bitOffset <- arr read <<< elemText "bitOffset" -< x
+    bitWidth <- arr read <<< elemText "bitWidth" -< x
+    returnA -< Field{..}
 
-getInterrupt = atTag "interrupt" >>>
-    proc x -> do
-        name <- elemText "name" -< x
-        description <- elemText "description" -< x
-        value <- elemText "value" -< x
-        returnA -< Interrupt
-            { name = toUpper $ pack name
-            , description = cleanWords $ pack description
-            , value = read value
-            }
- 
+getInterrupt = atTag "interrupt" >>> proc x -> do
+    name <- arr packUpper <<< elemText "name" -< x
+    description <- arr packWords <<< elemText "description" -< x
+    value <- arr read <<< elemText "value" -< x
+    returnA -< Interrupt{..}
+
