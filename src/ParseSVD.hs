@@ -11,7 +11,7 @@ module ParseSVD
 
 import Data.Text (Text, pack, unpack, toUpper)
 import Data.Maybe (fromMaybe)
-import Utils (fromHex)
+import Utils (fromHex, cleanWords)
 import HXT
 
 data SVD = SVD
@@ -71,9 +71,9 @@ getSVD = atTag "device" >>>
         peripherals <- listA getPeripheral <<< list "peripherals" -< x
         interrupts <- listA getInterrupt -< x
         returnA -< SVD
-            { name = pack name
+            { name = toUpper $ pack name
             , version = pack version
-            , description = pack description
+            , description = cleanWords $ pack description
             , peripherals = peripherals
             , interrupts = interrupts
             }
@@ -107,9 +107,9 @@ getRegister = atTag "register" >>>
         resetValue <- elemText "resetValue" -< x
         fields <- listA getField <<< list "fields" -< x
         returnA -< Register
-            { name = pack name
+            { name = toUpper $ pack name
             , displayName = pack displayName
-            , description = pack description
+            , description = cleanWords $ pack description
             , addressOffset = fromHex $ pack addressOffset
             , size = fromHex $ pack size
             , access = pack <$> access
@@ -124,8 +124,8 @@ getField = atTag "field" >>>
         bitOffset <- elemText "bitOffset" -< x
         bitWidth <- elemText "bitWidth" -< x
         returnA -< Field
-            { name = pack name
-            , description = pack description
+            { name = toUpper $ pack name
+            , description = cleanWords $ pack description
             , bitOffset = read bitOffset
             , bitWidth = read bitWidth
             }
@@ -136,8 +136,8 @@ getInterrupt = atTag "interrupt" >>>
         description <- elemText "description" -< x
         value <- elemText "value" -< x
         returnA -< Interrupt
-            { name = pack name
-            , description = pack description
+            { name = toUpper $ pack name
+            , description = cleanWords $ pack description
             , value = read value
             }
  
