@@ -105,8 +105,8 @@ main = do
       forM_ families $ \(family, subFamilies) -> do
         svds <- svdFiles family
         svds <- mapM parseSVD $ map snd svds
-        let ps = normalize svds
-        forM_ ps $ \PeriphType{..} -> do
+        let NormalSVD{..} = normalize svds
+        forM_ periphTypes $ \PeriphType{..} -> do
             print typeRef
             mapM_ (putStrLn . ("    "<>) . show) instances
 

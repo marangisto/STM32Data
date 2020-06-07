@@ -1,6 +1,7 @@
 {-# LANGUAGE RecordWildCards, DuplicateRecordFields #-}
 module Normalize
-    ( PeriphType(..)
+    ( NormalSVD(..)
+    , PeriphType(..)
     , PeriphRef(..)
     , PeriphInst(..)
     , normalize
@@ -15,6 +16,10 @@ import Data.Maybe (fromMaybe, isNothing)
 import qualified Data.Map.Strict as Map
 import Control.Arrow (second)
 import Utils
+
+data NormalSVD = NormalSVD
+    { periphTypes :: [PeriphType]
+    } deriving (Show)
 
 data PeriphType = PeriphType
     { typeRef       :: !PeriphRef
@@ -36,14 +41,14 @@ data PeriphInst = PeriphInst
 
 type Index = Map.Map PeriphRef PeriphRef
 
-normalize :: [SVD] -> [PeriphType]
-normalize xs = mergeInstances moreInsts typeInsts
+normalize :: [SVD] -> NormalSVD
+normalize xs = NormalSVD $ mergeInstances moreInsts periphTypes
     where (outright, derived) = partition (isOutright . snd) allPerips
           isOutright = isNothing . derivedFrom
           allPerips = [ (name, p) | SVD{..} <- xs, p <- peripherals ]
           canon = groupSortOn (hash . snd) outright
-          typeInsts = map periphTypeInsts canon
-          moreInsts = map (fromDerived $ index typeInsts) derived
+          periphTypes = map periphType canon
+          moreInsts = map (fromDerived $ index periphTypes) derived
 
 mergeInstances
     :: [(PeriphRef, PeriphInst)]
@@ -67,8 +72,8 @@ index = Map.fromList . concatMap f
     where f PeriphType{..} = map (g typeRef) instances
           g typeRef PeriphInst{..} = (instRef, typeRef)
 
-periphTypeInsts :: [(Text, Peripheral)] -> PeriphType
-periphTypeInsts xs@((svd, Peripheral{..}):_) = PeriphType{..}
+periphType :: [(Text, Peripheral)] -> PeriphType
+periphType xs@((svd, Peripheral{..}):_) = PeriphType{..}
     where instances = map (periphInst typeRef) xs
           typeRef = PeriphRef{..}
 
