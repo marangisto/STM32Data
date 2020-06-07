@@ -1,7 +1,7 @@
 {-# LANGUAGE RecordWildCards, DuplicateRecordFields #-}
 module Normalize
-    ( PeriphRef(..)
-    , PeriphType(..)
+    ( PeriphType(..)
+    , PeriphRef(..)
     , PeriphInst(..)
     , normalize
     ) where
@@ -16,17 +16,18 @@ import qualified Data.Map.Strict as Map
 import Control.Arrow (second)
 import Utils
 
-data PeriphRef = PeriphRef
-    { svd           :: !Text
-    , name          :: !Text
-    } deriving (Eq, Ord, Show)
-
 data PeriphType = PeriphType
     { typeRef       :: !PeriphRef
     , description   :: !Text
     , groupName     :: !Text
     , registers     :: ![Register]
+    , instances     :: ![PeriphInst]
     } deriving (Show)
+
+data PeriphRef = PeriphRef
+    { svd           :: !Text
+    , name          :: !Text
+    } deriving (Eq, Ord, Show)
 
 data PeriphInst = PeriphInst
     { instRef       :: !PeriphRef
@@ -35,7 +36,7 @@ data PeriphInst = PeriphInst
 
 type Index = Map.Map PeriphRef PeriphRef
 
-normalize :: [SVD] -> [(PeriphType, [PeriphInst])]
+normalize :: [SVD] -> [PeriphType]
 normalize xs = mergeInstances moreInsts typeInsts
     where (outright, derived) = partition (isOutright . snd) allPerips
           isOutright = isNothing . derivedFrom
@@ -46,11 +47,12 @@ normalize xs = mergeInstances moreInsts typeInsts
 
 mergeInstances
     :: [(PeriphRef, PeriphInst)]
-    -> [(PeriphType, [PeriphInst])]
-    -> [(PeriphType, [PeriphInst])]
-mergeInstances xs = map (second (sortOn instRef) . f)
-    where f (t@PeriphType{..}, ys) = (t, ys ++ g typeRef)
+    -> [PeriphType]
+    -> [PeriphType]
+mergeInstances xs = map f
+    where f t@PeriphType{..} = t { instances = h $ instances ++ g typeRef }
           g typeRef = fromMaybe [] $ lookup typeRef $ groupSort xs
+          h = sortOn instRef
 
 fromDerived :: Index -> (Text, Peripheral) -> (PeriphRef, PeriphInst)
 fromDerived index (svd, Peripheral{..}) = (typeRef, PeriphInst{..})
@@ -60,15 +62,15 @@ fromDerived index (svd, Peripheral{..}) = (typeRef, PeriphInst{..})
               _ -> error $ "failed to derive " <> show instRef
           periphRef = PeriphRef svd $ fromMaybe (error "!!!") derivedFrom
 
-index :: [(PeriphType, [PeriphInst])] -> Index
+index :: [PeriphType] -> Index
 index = Map.fromList . concatMap f
-    where f (PeriphType{..}, xs) = map (g typeRef) xs
+    where f PeriphType{..} = map (g typeRef) instances
           g typeRef PeriphInst{..} = (instRef, typeRef)
 
-periphTypeInsts :: [(Text, Peripheral)] -> (PeriphType, [PeriphInst])
-periphTypeInsts xs@((svd, Peripheral{..}):_) = (PeriphType{..}, insts)
-    where typeRef = PeriphRef{..}
-          insts = map (periphInst typeRef) xs
+periphTypeInsts :: [(Text, Peripheral)] -> PeriphType
+periphTypeInsts xs@((svd, Peripheral{..}):_) = PeriphType{..}
+    where instances = map (periphInst typeRef) xs
+          typeRef = PeriphRef{..}
 
 periphInst :: PeriphRef -> (Text, Peripheral) -> PeriphInst
 periphInst typeRef (svd, Peripheral{..}) = PeriphInst{..}

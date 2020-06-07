@@ -106,9 +106,9 @@ main = do
         svds <- svdFiles family
         svds <- mapM parseSVD $ map snd svds
         let ps = normalize svds
-        forM_ ps $ \(PeriphType{..}, insts) -> do
+        forM_ ps $ \PeriphType{..} -> do
             print typeRef
-            mapM_ (putStrLn . ("    "<>) . show) insts
+            mapM_ (putStrLn . ("    "<>) . show) instances
 
     {-
         let mcuSpecs = nub $ sort
