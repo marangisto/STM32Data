@@ -109,6 +109,12 @@ main = do
         forM_ periphTypes $ \PeriphType{..} -> do
             print typeRef
             mapM_ (putStrLn . ("    "<>) . show) instances
+        forM_ interrupts $ \Interrupt{..} ->
+            putStrLn $ unwords
+                [ show value
+                , T.unpack name
+                , T.unpack description
+                ]
 
     {-
         let mcuSpecs = nub $ sort

@@ -4,21 +4,25 @@ module Normalize
     , PeriphType(..)
     , PeriphRef(..)
     , PeriphInst(..)
+    , Interrupt(..)
     , normalize
     ) where
 
 import NormalSVD ()
 import ParseSVD
 import Data.Hashable
+import Data.Ord (Down(..))
 import Data.List (sortOn, partition)
 import Data.List.Extra (groupSort, groupSortOn)
 import Data.Maybe (fromMaybe, isNothing)
+import qualified Data.Text as T
 import qualified Data.Map.Strict as Map
 import Control.Arrow (second)
 import Utils
 
 data NormalSVD = NormalSVD
-    { periphTypes :: [PeriphType]
+    { periphTypes   :: ![PeriphType]
+    , interrupts    :: ![Interrupt]
     } deriving (Show)
 
 data PeriphType = PeriphType
@@ -42,7 +46,8 @@ data PeriphInst = PeriphInst
 type Index = Map.Map PeriphRef PeriphRef
 
 normalize :: [SVD] -> NormalSVD
-normalize xs = NormalSVD $ mergeInstances moreInsts periphTypes
+normalize xs = NormalSVD (mergeInstances moreInsts periphTypes)
+             $ mergeInterrupts $ concat [ interrupts | SVD{..} <- xs ]
     where (outright, derived) = partition (isOutright . snd) allPerips
           isOutright = isNothing . derivedFrom
           allPerips = [ (name, p) | SVD{..} <- xs, p <- peripherals ]
@@ -80,4 +85,8 @@ periphType xs@((svd, Peripheral{..}):_) = PeriphType{..}
 periphInst :: PeriphRef -> (Text, Peripheral) -> PeriphInst
 periphInst typeRef (svd, Peripheral{..}) = PeriphInst{..}
     where instRef = PeriphRef{..}
+
+mergeInterrupts :: [Interrupt] -> [Interrupt]
+mergeInterrupts = map f . groupSortOn value
+    where f = head . sortOn (Down . T.length . \Interrupt{..} -> name)
 
