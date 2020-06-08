@@ -8,7 +8,6 @@ module Normalize
     , normalize
     ) where
 
-import NormalSVD ()
 import ParseSVD
 import Data.Hashable
 import Data.Ord (Down(..))

@@ -18,33 +18,6 @@ import PrettySVD
 import PrettyVector
 import Utils
 
-instance Hashable Peripheral where
-    hashWithSalt h Peripheral{..} = hashWithSalt h
-        ( sortOn addressOffset registers
-        , derivedFrom
-        )
-
-instance Hashable Interrupt where
-    hashWithSalt h Interrupt{..} = hashWithSalt h
-        ( name
-        , value
-        )
-
-instance Hashable Register where
-    hashWithSalt h Register{..} = hashWithSalt h
-        ( name
-        , addressOffset
-        , resetValue
-        , sortOn bitOffset fields
-        )
-
-instance Hashable Field where
-    hashWithSalt h Field{..} = hashWithSalt h
-        ( name
-        , bitOffset
-        , bitWidth
-        )
-
 data Normalization
     = Representative
     { svdName       :: !Text
