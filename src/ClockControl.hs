@@ -35,7 +35,7 @@ clockControl
     . rccPeripherals
 
 mkCC :: Text -> [(Text, (Text, Text))] -> (Text, ClockControl)
-mkCC periphName xs = (periphName, ClockControl{..})
+mkCC periphName xs = (rename periphName, ClockControl{..})
     where enable = lookup "enable" xs
           enableSM = lookup "enableSM" xs
           reset = lookup "reset" xs
@@ -56,6 +56,11 @@ rccPeripherals = filter p . periphTypes
 periphNames :: NormalSVD -> [Text]
 periphNames = map (f . instRef) . concatMap periphInsts . periphTypes
     where f PeriphRef{..} = name
+
+rename :: Text -> Text
+rename x
+    | Just y <- T.stripPrefix "IOP" x = "GPIO" <> y
+    | otherwise = x
 
 rccFlags :: Text -> Peripheral -> Maybe (Text, [(Text, Text)])
 rccFlags svd Peripheral{name="RCC",..} = Just . (svd,) $

@@ -108,7 +108,7 @@ main = do
       forM_ families $ \(family, subFamilies) -> do
         svds <- svdFiles family
         svds <- mapM parseSVD $ map snd svds
-        let nsvd@NormalSVD{..} = normalize svds
+        let nsvd@NormalSVD{..} = normalize family svds
             ccs = clockControl nsvd
             pnames = nub $ sort
                 [ name

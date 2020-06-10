@@ -20,7 +20,8 @@ import Control.Arrow (second)
 import Utils
 
 data NormalSVD = NormalSVD
-    { periphTypes   :: ![PeriphType]
+    { family        :: !Text
+    , periphTypes   :: ![PeriphType]
     , interrupts    :: ![Interrupt]
     } deriving (Show)
 
@@ -44,9 +45,10 @@ data PeriphInst = PeriphInst
 
 type Index = Map.Map PeriphRef PeriphRef
 
-normalize :: [SVD] -> NormalSVD
-normalize xs = NormalSVD (mergeInstances moreInsts periphTypes)
-             $ mergeInterrupts $ concat [ interrupts | SVD{..} <- xs ]
+normalize :: Text -> [SVD] -> NormalSVD
+normalize family xs
+    = NormalSVD family (mergeInstances moreInsts periphTypes)
+    $ mergeInterrupts $ concat [ interrupts | SVD{..} <- xs ]
     where (outright, derived) = partition (isOutright . snd) allPerips
           isOutright = isNothing . derivedFrom
           allPerips = [ (name, p) | SVD{..} <- xs, p <- peripherals ]
