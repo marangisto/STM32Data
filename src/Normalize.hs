@@ -29,7 +29,7 @@ data PeriphType = PeriphType
     , description   :: !Text
     , groupName     :: !Text
     , registers     :: ![Register]
-    , instances     :: ![PeriphInst]
+    , periphInsts   :: ![PeriphInst]
     } deriving (Show)
 
 data PeriphRef = PeriphRef
@@ -59,7 +59,9 @@ mergeInstances
     -> [PeriphType]
     -> [PeriphType]
 mergeInstances xs = map f
-    where f t@PeriphType{..} = t { instances = h $ instances ++ g typeRef }
+    where f t@PeriphType{..} = t
+              { periphInsts = h $ periphInsts ++ g typeRef
+              }
           g typeRef = fromMaybe [] $ lookup typeRef $ groupSort xs
           h = sortOn instRef
 
@@ -73,12 +75,12 @@ fromDerived index (svd, Peripheral{..}) = (typeRef, PeriphInst{..})
 
 index :: [PeriphType] -> Index
 index = Map.fromList . concatMap f
-    where f PeriphType{..} = map (g typeRef) instances
+    where f PeriphType{..} = map (g typeRef) periphInsts
           g typeRef PeriphInst{..} = (instRef, typeRef)
 
 periphType :: [(Text, Peripheral)] -> PeriphType
 periphType xs@((svd, Peripheral{..}):_) = PeriphType{..}
-    where instances = map (periphInst typeRef) xs
+    where periphInsts = map (periphInst typeRef) xs
           typeRef = PeriphRef{..}
 
 periphInst :: PeriphRef -> (Text, Peripheral) -> PeriphInst

@@ -1,12 +1,61 @@
 {-# LANGUAGE RecordWildCards, OverloadedStrings, TupleSections #-}
-module ClockControl (rccFlags, prettyRCC) where
+module ClockControl
+    ( ClockControl(..)
+    , clockControl
+    , rccFlags
+    , prettyRCC
+    ) where
 
 import Control.Arrow (second)
 import qualified Data.Text as T
-import Data.List (sort)
+import Data.List (nub, sort)
 import Data.List.Extra (groupSort)
+import Data.Maybe (fromMaybe)
+import Data.Map.Strict (Map, fromList)
+import Normalize
 import ParseSVD
 import Utils
+
+data ClockControl = ClockControl
+    { enable        :: !(Maybe RegFlag)
+    , enableSM      :: !(Maybe RegFlag)
+    , reset         :: !(Maybe RegFlag)
+    } deriving (Show)
+
+type RegFlag = (Text, Text)
+
+clockControl :: NormalSVD -> Map Text ClockControl
+clockControl
+    = fromList
+    . map (uncurry mkCC)
+    . groupSort
+    . nub
+    . sort
+    . concatMap rccRegFlags
+    . rccPeripherals
+
+mkCC :: Text -> [(Text, (Text, Text))] -> (Text, ClockControl)
+mkCC periphName xs = (periphName, ClockControl{..})
+    where enable = lookup "enable" xs
+          enableSM = lookup "enableSM" xs
+          reset = lookup "reset" xs
+
+rccRegFlags :: PeriphType -> [(Text, (Text, (Text, Text)))]
+rccRegFlags PeriphType{..} =
+    [ (periphName, (method, (regName, fldName)))
+    | Register{name=regName,..} <-registers
+    , any (`T.isPrefixOf` regName) [ "AHB", "APB", "IOP" ]
+    , Field{name=fldName} <- fields
+    , Just (periphName, method) <- [ decode fldName ]
+    ]
+
+rccPeripherals :: NormalSVD -> [PeriphType]
+rccPeripherals = filter p . periphTypes
+    where p PeriphType{typeRef=PeriphRef{..}} = name == "RCC"
+
+periphNames :: NormalSVD -> [Text]
+periphNames = map (f . instRef) . concatMap periphInsts . periphTypes
+    where f PeriphRef{..} = name
 
 rccFlags :: Text -> Peripheral -> Maybe (Text, [(Text, Text)])
 rccFlags svd Peripheral{name="RCC",..} = Just . (svd,) $
@@ -27,6 +76,15 @@ prettyRCC svd regFields
                ]
 
 data BitOp = Set | Clear deriving (Eq, Ord, Show)
+
+decode :: Text -> Maybe (Text, Text)
+decode field
+    | Just x <- T.stripSuffix "SMEN" field = Just (f x, "enableSM")
+    | Just x <- T.stripSuffix "EN" field = Just (f x, "enable")
+    | Just x <- T.stripSuffix "RST" field = Just (f x, "reset")
+    | otherwise = Nothing
+    where f x -- | Just y <- T.stripPrefix "IOP" x = "GPIO" <> y
+              | otherwise = x
 
 decodeField :: Text -> [(Text, Text, BitOp)]
 decodeField field

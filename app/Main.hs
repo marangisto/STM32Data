@@ -1,8 +1,10 @@
-{-# LANGUAGE DeriveDataTypeable, RecordWildCards, TupleSections, DuplicateRecordFields, OverloadedStrings #-}
+{-# LANGUAGE DeriveDataTypeable, TupleSections, RecordWildCards #-}
+{-# LANGUAGE DuplicateRecordFields, OverloadedStrings #-}
 module Main where
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
+import qualified Data.Map.Strict as Map
 import System.Console.CmdArgs hiding (name, enum)
 import System.FilePath
 import System.Directory
@@ -16,6 +18,7 @@ import Family
 import ParseMCU
 import ParseIpGPIO
 import Normalize
+import ClockControl
 import IPMode
 import Pretty
 import ParseSVD
@@ -105,16 +108,30 @@ main = do
       forM_ families $ \(family, subFamilies) -> do
         svds <- svdFiles family
         svds <- mapM parseSVD $ map snd svds
-        let NormalSVD{..} = normalize svds
+        let nsvd@NormalSVD{..} = normalize svds
+            ccs = clockControl nsvd
+            pnames = nub $ sort
+                [ name
+                | PeriphType{..} <- periphTypes
+                , PeriphInst{..} <- periphInsts
+                , PeriphRef{..} <- [ instRef ]
+                ]
+        forM_ pnames $ \x -> case Map.lookup x ccs of
+            Just cc -> return () --print (x, cc)
+            _ -> T.putStrLn $ x <> " " <> family
+
+
+            {-
         forM_ periphTypes $ \PeriphType{..} -> do
             print typeRef
-            mapM_ (putStrLn . ("    "<>) . show) instances
+            mapM_ (putStrLn . ("    "<>) . show) periphInsts
         forM_ interrupts $ \Interrupt{..} ->
             putStrLn $ unwords
                 [ show value
                 , T.unpack name
                 , T.unpack description
                 ]
+                -}
 
     {-
         let mcuSpecs = nub $ sort
