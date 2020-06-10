@@ -105,10 +105,10 @@ main = do
     families <- return $ prune fs families'
 
     when new_core $
-      forM_ families $ \(family, subFamilies) -> do
-        svds <- svdFiles family
+      forM_ families $ \(family', subFamilies) -> do
+        svds <- svdFiles family'
         svds <- mapM parseSVD $ map snd svds
-        let nsvd@NormalSVD{..} = normalize family svds
+        let nsvd@NormalSVD{..} = normalize family' svds
             ccs = clockControl nsvd
             pnames = nub $ sort
                 [ name
