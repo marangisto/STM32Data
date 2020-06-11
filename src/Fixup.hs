@@ -11,21 +11,58 @@ fixup x@NormalSVD{..} = x { periphTypes = ps }
     where ps = map (editPeriphType family) periphTypes
 
 editPeriphType :: Text -> PeriphType -> PeriphType
-editPeriphType family p@PeriphType{..} = p { registers = registers' }
-    where registers' = map (editRegister family periphName) registers
+editPeriphType f periph@PeriphType{..} = periph'
+    { registers = registers'
+    , periphInsts = periphInsts'
+    }
+    where periph' = runPeriphTypeEdits periphTypeEdits f periph
+          registers' = map (editRegister f periphName) registers
+          periphInsts' = map (editPeriphInst f periphName) periphInsts
           PeriphRef{name=periphName} = typeRef
 
+editPeriphInst :: Text -> Text -> PeriphInst -> PeriphInst
+editPeriphInst = runPeriphInstEdits periphInstEdits
+
 editRegister :: Text -> Text -> Register -> Register
-editRegister f p r@Register{..} = r { fields = fields' }
-    where fields' = map (editField f p name) fields
+editRegister f p reg@Register{..} = reg' { fields = fields' }
+    where reg' = runRegisterEdits registerEdits f p reg
+          fields' = map (editField f p name) fields
 
 editField :: Text -> Text -> Text -> Field -> Field
 editField = runFieldEdits fieldEdits
 
+type PeriphTypeEdit = Text -> PeriphType -> PeriphType
+type PeriphInstEdit = Text -> Text -> PeriphInst -> PeriphInst
+type RegisterEdit = Text -> Text -> Register -> Register
 type FieldEdit = Text -> Text -> Text -> Field -> Field
 
+runPeriphTypeEdits :: [PeriphTypeEdit] -> PeriphTypeEdit
+runPeriphTypeEdits xs f = foldl (.) id (map ($f) xs)
+
+runPeriphInstEdits :: [PeriphInstEdit] -> PeriphInstEdit
+runPeriphInstEdits xs f p = foldl (.) id (map (($p) . ($f)) xs)
+
+runRegisterEdits :: [RegisterEdit] -> RegisterEdit
+runRegisterEdits xs f p = foldl (.) id (map (($p) . ($f)) xs)
+
 runFieldEdits :: [FieldEdit] -> FieldEdit
-runFieldEdits fs f p r = foldl (.) id (map (($r) . ($p) . ($f)) fs)
+runFieldEdits xs f p r = foldl (.) id (map (($r) . ($p) . ($f)) xs)
+
+
+periphTypeEdits :: [PeriphTypeEdit]
+periphTypeEdits =
+    [
+    ]
+
+periphInstEdits :: [PeriphInstEdit]
+periphInstEdits =
+    [
+    ]
+
+registerEdits :: [RegisterEdit]
+registerEdits =
+    [
+    ]
 
 fieldEdits :: [FieldEdit]
 fieldEdits =
