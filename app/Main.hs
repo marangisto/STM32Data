@@ -18,6 +18,7 @@ import Family
 import ParseMCU
 import ParseIpGPIO
 import Normalize
+import Fixup
 import ClockControl
 import IPMode
 import Pretty
@@ -108,7 +109,7 @@ main = do
       forM_ families $ \(family', subFamilies) -> do
         svds <- svdFiles family'
         svds <- mapM parseSVD $ map snd svds
-        let nsvd@NormalSVD{..} = normalize family' svds
+        let nsvd@NormalSVD{..} = fixup $ normalize family' svds
             ccs = clockControl nsvd
             pnames = nub $ sort
                 [ name

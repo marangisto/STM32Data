@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 833762e2e8b82c4eb7172c36266c75d37515b5cd3b054488f7e77dba52b268f1
+-- hash: 6be9bdc2d881553167e0fab3a71f0f62b604c5109674bfad1d11516c786b8755
 
 name:           STM32Data
 version:        0.1.0.0
@@ -29,6 +29,7 @@ library
   exposed-modules:
       ClockControl
       Family
+      Fixup
       FixupSVD
       HXT
       IPMode

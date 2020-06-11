@@ -4,6 +4,8 @@ module Normalize
     , PeriphType(..)
     , PeriphRef(..)
     , PeriphInst(..)
+    , Register(..)
+    , Field(..)
     , Interrupt(..)
     , normalize
     ) where
