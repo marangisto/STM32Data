@@ -56,7 +56,7 @@ periphTypeEdits =
 
 periphInstEdits :: [PeriphInstEdit]
 periphInstEdits =
-    [
+    [ inst_name
     ]
 
 registerEdits :: [RegisterEdit]
@@ -69,6 +69,15 @@ fieldEdits =
     [ compx_csr
     , rcc_fields
     ]
+
+inst_name :: PeriphInstEdit
+inst_name _ _ x@PeriphInst{instRef=r@PeriphRef{..}}
+    | name == "LPTIMER1" = x { instRef = r { name = "LPTIM1" } }
+    | name == "CEC" = x { instRef = r { name = "HDMI_CEC" } }
+    | name == "USB_FS_DEVICE" = x { instRef = r { name = "USB" } }
+    | name `elem` [ "DAC", "LPUART", "SAI", "QUADSPI" ]
+        = x { instRef = r { name = name <> "1" } }
+    | otherwise = x
 
 compx_csr :: FieldEdit
 compx_csr _ p r x@Field{..}
@@ -114,10 +123,6 @@ rcc_fields _ "RCC" _ x@Field{..}
 rcc_fields _ _ _ x = x
 
 {-
-fixupPeriphType _ p@PeriphType{..}
-    | name typeRef `elem` [ "DAC", "LPUART", "SAI", "QUADSPI" ]
-    = p { name = name <> "1" }
-
 fixupPeriphType "STM32G0" p@PeriphType{..}
     | name == "ADC"
     = p { registers = map adc_hwcfgr6 registers }
@@ -128,14 +133,8 @@ fixupPeriphType _ p@PeriphType{name="USB",..}
     = p { registers = filter (not . usb_buffer) registers }
 fixupPeriphType _ p@PeriphType{name="NVIC",..}
     = p { registers = map nvic_iserx registers }
-fixupPeriphType _ p@PeriphType{name="USB_FS_DEVICE",..}
-    = p { name = "USB" }
-fixupPeriphType _ p@PeriphType{name="CEC",..}
-    = p { name = "HDMI_CEC" }
 fixupPeriphType _ p@PeriphType{name="SEC_DAC",derivedFrom=Just "DAC",..}
     = p { name = "DAC2", derivedFrom = Just "DAC1" }
-fixupPeriphType _ p@PeriphType{name="LPTIMER1",..}
-    = p { name = "LPTIM1" }
 fixupPeriphType _ p@PeriphType{name="STK",..}
     = p { registers = map stk_regs registers }
 fixupPeriphType _ p = p
@@ -173,3 +172,4 @@ stk_regs r@Register{..}
     | otherwise = r
 
 -}
+
