@@ -5,28 +5,27 @@ module Fixup (fixup) where
 import Normalize
 import Utils
 import qualified Data.Text as T
+import Data.List (sortOn)
 
 fixup :: NormalSVD -> NormalSVD
 fixup x@NormalSVD{..} = x { periphTypes = ps }
     where ps = map (editPeriphType family) periphTypes
 
 editPeriphType :: Text -> PeriphType -> PeriphType
-editPeriphType f periph@PeriphType{..} = periph'
-    { registers = registers'
-    , periphInsts = periphInsts'
-    }
-    where periph' = runPeriphTypeEdits periphTypeEdits f periph
-          registers' = map (editRegister f periphName) registers
-          periphInsts' = map (editPeriphInst f periphName) periphInsts
-          PeriphRef{name=periphName} = typeRef
+editPeriphType f p@PeriphType{..}
+    = runPeriphTypeEdits periphTypeEdits f
+    $ p { registers = map (editRegister f name) registers
+        , periphInsts = map (editPeriphInst f name) periphInsts
+        }
+    where PeriphRef{..} = typeRef
 
 editPeriphInst :: Text -> Text -> PeriphInst -> PeriphInst
 editPeriphInst = runPeriphInstEdits periphInstEdits
 
 editRegister :: Text -> Text -> Register -> Register
-editRegister f p reg@Register{..} = reg' { fields = fields' }
-    where reg' = runRegisterEdits registerEdits f p reg
-          fields' = map (editField f p name) fields
+editRegister f p r@Register{..}
+    = runRegisterEdits registerEdits f p
+    $ r { fields = map (editField f p name) fields }
 
 editField :: Text -> Text -> Text -> Field -> Field
 editField = runFieldEdits fieldEdits
@@ -48,7 +47,6 @@ runRegisterEdits xs f p = foldl (.) id (map (($p) . ($f)) xs)
 runFieldEdits :: [FieldEdit] -> FieldEdit
 runFieldEdits xs f p r = foldl (.) id (map (($r) . ($p) . ($f)) xs)
 
-
 periphTypeEdits :: [PeriphTypeEdit]
 periphTypeEdits =
     [
@@ -61,7 +59,7 @@ periphInstEdits =
 
 registerEdits :: [RegisterEdit]
 registerEdits =
-    [
+    [ gpio_fields
     ]
 
 fieldEdits :: [FieldEdit]
@@ -78,6 +76,14 @@ inst_name _ _ x@PeriphInst{instRef=r@PeriphRef{..}}
     | name `elem` [ "DAC", "LPUART", "SAI", "QUADSPI" ]
         = x { instRef = r { name = name <> "1" } }
     | otherwise = x
+
+gpio_fields :: RegisterEdit
+gpio_fields "STM32F0" "RCC" x@Register{fields=fs,..}
+    | name == "AHBENR" = x { fields = sortOn bitOffset $ en : fs }
+    | name == "AHBRSTR" = x { fields = sortOn bitOffset $ rst : fs }
+    | otherwise = x
+    where en = Field "IOPEEN" "I/O port E clock enable" 21 1
+          rst = Field "IOPERST" "I/O port E reset" 21 1
 
 compx_csr :: FieldEdit
 compx_csr _ p r x@Field{..}
