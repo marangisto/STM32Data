@@ -8,12 +8,13 @@ module Normalize
     , Field(..)
     , Interrupt(..)
     , normalize
+    , peripheralNames
     ) where
 
 import ParseSVD
 import Data.Hashable
 import Data.Ord (Down(..))
-import Data.List (sortOn, partition)
+import Data.List (nub, sort, sortOn, partition)
 import Data.List.Extra (groupSort, groupSortOn)
 import Data.Maybe (fromMaybe, isNothing)
 import qualified Data.Text as T
@@ -94,4 +95,12 @@ periphInst typeRef (svd, Peripheral{..}) = PeriphInst{..}
 mergeInterrupts :: [Interrupt] -> [Interrupt]
 mergeInterrupts = map f . groupSortOn value
     where f = head . sortOn (Down . T.length . \Interrupt{..} -> name)
+
+peripheralNames :: NormalSVD -> [Text]
+peripheralNames NormalSVD{..} = nub $ sort
+    [ name
+    | PeriphType{..} <- periphTypes
+    , PeriphInst{..} <- periphInsts
+    , PeriphRef{..} <- [ instRef ]
+    ]
 

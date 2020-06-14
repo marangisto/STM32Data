@@ -84,6 +84,7 @@ gpio_fields "STM32F0" "RCC" x@Register{fields=fs,..}
     | otherwise = x
     where en = Field "IOPEEN" "I/O port E clock enable" 21 1
           rst = Field "IOPERST" "I/O port E reset" 21 1
+gpio_fields _ _ x = x
 
 compx_csr :: FieldEdit
 compx_csr _ p r x@Field{..}

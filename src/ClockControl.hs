@@ -2,6 +2,8 @@
 module ClockControl
     ( ClockControl(..)
     , clockControl
+    , clockControlMissing
+    , clockControlUnused
     , rccFlags
     , prettyRCC
     ) where
@@ -10,8 +12,9 @@ import Control.Arrow (second)
 import qualified Data.Text as T
 import Data.List (nub, sort)
 import Data.List.Extra (groupSort)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Map.Strict (Map, fromList)
+import qualified Data.Map.Strict as Map
 import Normalize
 import ParseSVD
 import Utils
@@ -53,14 +56,18 @@ rccPeripherals :: NormalSVD -> [PeriphType]
 rccPeripherals = filter p . periphTypes
     where p PeriphType{typeRef=PeriphRef{..}} = name == "RCC"
 
-periphNames :: NormalSVD -> [Text]
-periphNames = map (f . instRef) . concatMap periphInsts . periphTypes
-    where f PeriphRef{..} = name
-
 rename :: Text -> Text
 rename x
     | Just y <- T.stripPrefix "IOP" x = "GPIO" <> y
     | otherwise = x
+
+clockControlMissing :: NormalSVD -> Map Text ClockControl -> [Text]
+clockControlMissing nsvd ccs = mapMaybe f $ peripheralNames nsvd
+    where f x = maybe (Just x) (const Nothing) $ Map.lookup x ccs
+
+clockControlUnused :: NormalSVD -> Map Text ClockControl -> [Text]
+clockControlUnused nsvd ccs = Map.keys ccs'
+    where ccs' = foldr Map.delete ccs $ peripheralNames nsvd
 
 rccFlags :: Text -> Peripheral -> Maybe (Text, [(Text, Text)])
 rccFlags svd Peripheral{name="RCC",..} = Just . (svd,) $

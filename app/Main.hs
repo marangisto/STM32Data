@@ -30,6 +30,7 @@ data Options = Options
     { list_mcus     :: Bool
     , build_rules   :: Bool
     , new_core      :: Bool
+    , clock_control :: Bool
     , headers       :: Maybe FilePath
     , family        :: [String]
     , sub_family    :: [String]
@@ -42,6 +43,7 @@ options = Main.Options
     { list_mcus = def &= help "list available MCUs by family"
     , build_rules = def &= help "generate source for build rules"
     , new_core = def &= help "run new core"
+    , clock_control = def &= help "report missing and unused clock control"
     , family = def &= help "filter on family"
     , sub_family = def &= help "filter on sub-family"
     , package = def &= help "filter on package"
@@ -111,16 +113,14 @@ main = do
         svds <- mapM parseSVD $ map snd svds
         let nsvd@NormalSVD{..} = fixup $ normalize family' svds
             ccs = clockControl nsvd
-            pnames = nub $ sort
-                [ name
-                | PeriphType{..} <- periphTypes
-                , PeriphInst{..} <- periphInsts
-                , PeriphRef{..} <- [ instRef ]
-                ]
-        forM_ pnames $ \x -> case Map.lookup x ccs of
-            Just cc -> return () --print (x, cc)
-            _ -> T.putStrLn $ x <> " " <> family
 
+        when clock_control $ do
+            T.putStrLn "========================================="
+            T.putStrLn family
+            T.putStrLn "-----------------------------------------"
+            let putWords s = T.putStrLn . T.unwords . (T.pack s:)
+            putWords "missing:" $ clockControlMissing nsvd ccs
+            putWords "unused:" $ clockControlUnused nsvd ccs
 
             {-
         forM_ periphTypes $ \PeriphType{..} -> do
