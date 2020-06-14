@@ -7,11 +7,13 @@ module Normalize
     , Register(..)
     , Field(..)
     , Interrupt(..)
+    , Void
     , normalize
     , peripheralNames
     ) where
 
 import ParseSVD
+import Data.Void
 import Data.Hashable
 import Data.Ord (Down(..))
 import Data.List (nub, sort, sortOn, partition)
@@ -22,10 +24,11 @@ import qualified Data.Map.Strict as Map
 import Control.Arrow (second)
 import Utils
 
-data NormalSVD = NormalSVD
+data NormalSVD cc = NormalSVD
     { family        :: !Text
     , periphTypes   :: ![PeriphType]
     , interrupts    :: ![Interrupt]
+    , clockControl  :: !(Map.Map Text cc)
     } deriving (Show)
 
 data PeriphType = PeriphType
@@ -48,16 +51,18 @@ data PeriphInst = PeriphInst
 
 type Index = Map.Map PeriphRef PeriphRef
 
-normalize :: Text -> [SVD] -> NormalSVD
-normalize family xs
-    = NormalSVD family (mergeInstances moreInsts periphTypes)
-    $ mergeInterrupts $ concat [ interrupts | SVD{..} <- xs ]
-    where (outright, derived) = partition (isOutright . snd) allPerips
+normalize :: Text -> [SVD] -> NormalSVD Void
+normalize family xs = NormalSVD{..}
+    where periphTypes = mergeInstances moreInsts periphTypes'
+          interrupts =  mergeInterrupts
+                     $ concat [ interrupts | SVD{..} <- xs ]
+          clockControl = Map.empty
+          (outright, derived) = partition (isOutright . snd) allPerips
           isOutright = isNothing . derivedFrom
           allPerips = [ (name, p) | SVD{..} <- xs, p <- peripherals ]
           canon = groupSortOn (hash . snd) outright
-          periphTypes = map periphType canon
-          moreInsts = map (fromDerived $ index periphTypes) derived
+          periphTypes' = map periphType canon
+          moreInsts = map (fromDerived $ index periphTypes') derived
 
 mergeInstances
     :: [(PeriphRef, PeriphInst)]
@@ -96,7 +101,7 @@ mergeInterrupts :: [Interrupt] -> [Interrupt]
 mergeInterrupts = map f . groupSortOn value
     where f = head . sortOn (Down . T.length . \Interrupt{..} -> name)
 
-peripheralNames :: NormalSVD -> [Text]
+peripheralNames :: NormalSVD a -> [Text]
 peripheralNames NormalSVD{..} = nub $ sort
     [ name
     | PeriphType{..} <- periphTypes

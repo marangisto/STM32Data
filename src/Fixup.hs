@@ -7,7 +7,7 @@ import Utils
 import qualified Data.Text as T
 import Data.List (sortOn)
 
-fixup :: NormalSVD -> NormalSVD
+fixup :: NormalSVD Void -> NormalSVD Void
 fixup x@NormalSVD{..} = x { periphTypes = ps }
     where ps = map (editPeriphType family) periphTypes
 

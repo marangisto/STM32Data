@@ -1,9 +1,9 @@
 {-# LANGUAGE RecordWildCards, OverloadedStrings, TupleSections #-}
 module ClockControl
     ( ClockControl(..)
-    , clockControl
-    , clockControlMissing
-    , clockControlUnused
+    , resolveCC
+    , missingCC
+    , unusedCC
     , rccFlags
     , prettyRCC
     ) where
@@ -27,8 +27,11 @@ data ClockControl = ClockControl
 
 type RegFlag = (Text, Text)
 
-clockControl :: NormalSVD -> Map Text ClockControl
-clockControl
+resolveCC :: NormalSVD Void -> NormalSVD ClockControl
+resolveCC x@NormalSVD{..} = x { clockControl = resolveCC' x }
+
+resolveCC' :: NormalSVD Void -> Map Text ClockControl
+resolveCC'
     = fromList
     . map (uncurry mkCC)
     . groupSort
@@ -52,7 +55,7 @@ rccRegFlags PeriphType{..} =
     , Just (periphName, method) <- [ decode fldName ]
     ]
 
-rccPeripherals :: NormalSVD -> [PeriphType]
+rccPeripherals :: NormalSVD a -> [PeriphType]
 rccPeripherals = filter p . periphTypes
     where p PeriphType{typeRef=PeriphRef{..}} = name == "RCC"
 
@@ -61,13 +64,13 @@ rename x
     | Just y <- T.stripPrefix "IOP" x = "GPIO" <> y
     | otherwise = x
 
-clockControlMissing :: NormalSVD -> Map Text ClockControl -> [Text]
-clockControlMissing nsvd ccs = mapMaybe f $ peripheralNames nsvd
-    where f x = maybe (Just x) (const Nothing) $ Map.lookup x ccs
+missingCC :: NormalSVD ClockControl -> [Text]
+missingCC nsvd@NormalSVD{..} = mapMaybe f $ peripheralNames nsvd
+    where f x = maybe (Just x) (const Nothing) $ Map.lookup x clockControl
 
-clockControlUnused :: NormalSVD -> Map Text ClockControl -> [Text]
-clockControlUnused nsvd ccs = Map.keys ccs'
-    where ccs' = foldr Map.delete ccs $ peripheralNames nsvd
+unusedCC :: NormalSVD ClockControl -> [Text]
+unusedCC nsvd@NormalSVD{..} = Map.keys ccs'
+    where ccs' = foldr Map.delete clockControl $ peripheralNames nsvd
 
 rccFlags :: Text -> Peripheral -> Maybe (Text, [(Text, Text)])
 rccFlags svd Peripheral{name="RCC",..} = Just . (svd,) $

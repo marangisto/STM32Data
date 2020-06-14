@@ -111,16 +111,15 @@ main = do
       forM_ families $ \(family', subFamilies) -> do
         svds <- svdFiles family'
         svds <- mapM parseSVD $ map snd svds
-        let nsvd@NormalSVD{..} = fixup $ normalize family' svds
-            ccs = clockControl nsvd
+        let nsvd@NormalSVD{..} = resolveCC $ fixup $ normalize family' svds
 
         when clock_control $ do
             T.putStrLn "========================================="
             T.putStrLn family
             T.putStrLn "-----------------------------------------"
             let putWords s = T.putStrLn . T.unwords . (T.pack s:)
-            putWords "missing:" $ clockControlMissing nsvd ccs
-            putWords "unused:" $ clockControlUnused nsvd ccs
+            putWords "missing:" $ missingCC nsvd
+            putWords "unused:" $ unusedCC nsvd
 
             {-
         forM_ periphTypes $ \PeriphType{..} -> do
