@@ -88,8 +88,8 @@ altFunMap xml = Map.fromList
              $ dropWhile (~/="<GPIO_Pin>")
              $ parseTags xml
 
-loadMCU :: FilePath -> Controller -> IO MCU
-loadMCU dbDir c@Controller{..} = do
+loadMCU :: FilePath -> Mcu -> IO MCU
+loadMCU dbDir c@Mcu{..} = do
     mcu@MCU{..} <- parseMCU c <$> T.readFile (dbDir </> T.unpack name <.> "xml")
     afmap <- altFunMap <$> T.readFile (dbDir </> "IP" </> "GPIO-" <> T.unpack gpioConfig <> "_Modes" <.> "xml")
     return $ mcu { pins = map (resolveFunctions afmap) pins }

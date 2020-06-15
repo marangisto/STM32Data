@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings, RecordWildCards, TupleSections #-}
 module Pretty
     ( familyHeaders
+    , matchSVD
     ) where
 
 import Numeric (showHex)
@@ -224,15 +225,13 @@ matchSVD svds name = case filter p svds of
     [] | "STM32F437" `T.isPrefixOf` name -> Just "STM32F427"
     [] | "STM32F439" `T.isPrefixOf` name -> Just "STM32F429"
     [] | "STM32F479" `T.isPrefixOf` name -> Just "STM32F469"
-    [] | "STM32GBK1" `T.isPrefixOf` name -> Nothing
-    [] | "STM32H745BG" `T.isPrefixOf` name -> Nothing
     [] ->  error $ "failed to match svd for " <> T.unpack name
     [ svd ] -> Just svd
     xs -> case filter tame xs of
         [ svd ] -> Just svd
         _ -> error $ T.unpack name <> " matches " <> show xs
     where p = all match . zip (T.unpack name) . T.unpack . chooseM4
-          match (n, s) = n == s || s == 'x'
+          match (n, s) = n == s || s == 'x' || n == 'x'
           chooseM4 svd | Just x <- T.stripSuffix "_CM4" svd = x
                        | otherwise = svd
           tame = not . any (=='x') . T.unpack

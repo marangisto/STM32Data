@@ -5,12 +5,13 @@ module Family
     ( Family
     , SubFamily
     , Peripheral
-    , Controller(..)
+    , Mcu(..)
     , Filter(..)
     , parseFamilies
     , prune
     , flatten
     , mcuList
+    , mcuNames
     , controllers
     , preAmble
     , buildRules
@@ -27,9 +28,9 @@ import HXT
 
 type Family = (Text, [SubFamily])
 
-type SubFamily = (Text, [Controller])
+type SubFamily = (Text, [Mcu])
 
-data Controller = Controller
+data Mcu = Mcu
     { name          :: !Text
     , package       :: !Text
     , refName       :: !Text
@@ -78,7 +79,7 @@ getMCU = atTag "Mcu" >>> proc x -> do
     temperature <- ( arr Just <<< getTemperature
                    ) `orElse` constA Nothing -< x
     peripherals <- listA getPeripheral -< x
-    returnA -< Controller{..}
+    returnA -< Mcu{..}
 
 getVoltage = atTag "Voltage" >>> proc x -> do
     min <- arr read <<< attrText "Min" -< x
@@ -121,11 +122,11 @@ subFamilyPred :: [Filter] -> SubFamily -> Bool
 subFamilyPred fs (name, _) = null xs || name `elem` xs
     where xs = [ x | SubFamily x <- fs ]
 
-mcuPred :: [Filter] -> Controller -> Bool
-mcuPred fs Controller{..} = null xs || package `elem` xs
+mcuPred :: [Filter] -> Mcu -> Bool
+mcuPred fs Mcu{..} = null xs || package `elem` xs
     where xs = [ x | Package x <- fs ]
 
-flatten :: [Family] -> [(Text, Text, Controller)]
+flatten :: [Family] -> [(Text, Text, Mcu)]
 flatten families = 
     [ (family, subFamily, controller)
     | (family, subFamilies) <- families
@@ -142,7 +143,7 @@ mcuList families =
             putStrLn $ replicate 80 '-'
             putStrLn $ "    " <> unpack name
             putStrLn $ replicate 80 '-'
-            forM_ mcus $ \Controller{..} -> do
+            forM_ mcus $ \Mcu{..} -> do
                 putStrLn $ "        " <> unwords
                     [ unpack name
                     , unpack package
@@ -151,11 +152,14 @@ mcuList families =
                     , show flash <> "/" <> show ram
                     ]
 
-controllers :: [SubFamily] -> [Controller]
+mcuNames :: [SubFamily] -> [Text]
+mcuNames = nub . sort . map (\Mcu{..} -> name) . concatMap snd
+
+controllers :: [SubFamily] -> [Mcu]
 controllers subFamilies = [ c | (_, cs) <- subFamilies, c <- cs ]
 
-preAmble :: Controller -> [Text]
-preAmble Controller{..} =
+preAmble :: Mcu -> [Text]
+preAmble Mcu{..} =
     [ "#pragma once"
     , ""
     , "###"
@@ -209,7 +213,7 @@ buildRules families =
                     ]
                | (family, subFamilies) <- families
                , (_, mcus) <- subFamilies
-               , Controller{..} <- mcus
+               , Mcu{..} <- mcus
                ]
           cleanCore s | Just r <- stripPrefix "arm " $ toLower s = r
                       | otherwise = error $ unpack $ "unexpected core format: " <> s

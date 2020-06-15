@@ -110,17 +110,31 @@ main = do
     when new_core $
       forM_ families $ \(family', subFamilies) -> do
         svds <- svdFiles family'
-        svds <- mapM parseSVD $ map snd svds
-        let nsvd@NormalSVD{..} = resolveCC $ fixup $ normalize family' svds
+        nsvd <- resolveCC . fixup . normalize family'
+            <$> mapM parseSVD (map snd svds)
 
         when clock_control $ do
             T.putStrLn "========================================="
-            T.putStrLn family
+            T.putStrLn $ (\NormalSVD{..} -> family) nsvd
             T.putStrLn "-----------------------------------------"
             let putWords s = T.putStrLn . T.unwords . (T.pack s:)
             putWords "missing:" $ missingCC nsvd
             putWords "unused:" $ unusedCC nsvd
 
+        mcuSpecs <- forM (mcuNames subFamilies) $ \name ->
+            parseMCU (dbDir </> T.unpack name <.> "xml")
+
+    {-
+        -- Mcu.name refers to MCU.refName
+        let f Mcu{..} = (name, refName, rpn)
+        mapM_ (print . f) $ controllers subFamilies
+        let g MCU{..} = refName
+        mapM_ (print . g) mcuSpecs
+    -}
+
+        mapM_ (T.putStrLn . fst) svds
+        print $ svdMap svds $ map (\MCU{..} -> refName) mcuSpecs
+        -- matchSVD :: [Text] -> Text -> Maybe Text
             {-
         forM_ periphTypes $ \PeriphType{..} -> do
             print typeRef
@@ -134,12 +148,6 @@ main = do
                 -}
 
     {-
-        let mcuSpecs = nub $ sort
-                [ name
-                | Controller{..} <- controllers subFamilies
-                ]
-        mcuSpecs <- forM mcuSpecs $ \name ->
-            parseMCU (dbDir </> T.unpack name <.> "xml")
         let ipGPIOs = nub $ sort
                 [ version
                 | MCU{..} <- mcuSpecs
@@ -190,6 +198,7 @@ svdFiles family = do
     where isSVD x = takeExtension x == ".svd"
           pred x
             | fam == "STM32L4+" = isL4plus x
+            | fam == "STM32G4" = any (`isPrefixOf` x) [ fam, "STM32GBK1" ]
             | otherwise = fam `isPrefixOf` x && not (isL4plus x)
             where fam = T.unpack family
           dir = case T.unpack family of
@@ -201,4 +210,9 @@ isL4plus x = any (`isPrefixOf`x) $ map ("STM32L4"<>) [ "P", "Q", "R", "S" ]
 
 svdHeader :: FilePath -> SVD -> FilePath
 svdHeader dir SVD{..} = dir </> T.unpack (T.toLower name) <.> "h"
+
+svdMap :: [(Text, FilePath)] -> [Text] -> Map.Map Text Text
+svdMap xs = Map.fromList . map f
+    where f name = maybe (error $ "unmatched " <> T.unpack name) (name,) 
+                 $ matchSVD (map fst xs) name
 

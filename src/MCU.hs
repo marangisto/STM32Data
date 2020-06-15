@@ -20,13 +20,13 @@ import qualified Data.Text as T
 import TagSoup
 
 data MCU = MCU
-    { name          :: Text                 -- from Controller
-    , core          :: Text                 -- from Controller
-    , frequency     :: Int                  -- from Controller
-    , flash         :: Int                  -- from Controller
-    , ram           :: Int                  -- from Controller
-    , numIO         :: Int                  -- from Controller
-    , peripherals   :: [(Peripheral, Int)]  -- from Controller
+    { name          :: Text                 -- from Mcu
+    , core          :: Text                 -- from Mcu
+    , frequency     :: Int                  -- from Mcu
+    , flash         :: Int                  -- from Mcu
+    , ram           :: Int                  -- from Mcu
+    , numIO         :: Int                  -- from Mcu
+    , peripherals   :: [(Peripheral, Int)]  -- from Mcu
     , clockTree     :: Text
     , family        :: Text
     , line          :: Text
@@ -116,8 +116,8 @@ resolveFunctions af p@IOPin{..} = p { signals = map f signals }
           f _ = error "guru meditation"
 resolveFunctions _ p = p
 
-parseMCU :: Controller -> Text -> MCU
-parseMCU Controller{..} xml = MCU{..}
+parseMCU :: Mcu -> Text -> MCU
+parseMCU Mcu{..} xml = MCU{..}
     where name = refName -- from family file
           clockTree = fromAttrib "ClockTree" t
           family = fromAttrib "Family" t
