@@ -4,7 +4,6 @@ module Main where
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import qualified Data.Map.Strict as Map
 import System.Console.CmdArgs hiding (name, enum)
 import System.FilePath
 import System.Directory
@@ -122,8 +121,9 @@ main = do
             putWords "unused:" $ unusedCC nsvd
 
         mcuSpecs <- forM (mcuNames subFamilies) $ \name ->
-            parseMCU (dbDir </> T.unpack name <.> "xml")
+            parseMCU (map fst svds) (dbDir </> T.unpack name <.> "xml")
 
+        mapM_ (T.putStrLn . (\MCU{..} -> refName <> " " <> svd)) mcuSpecs
     {-
         -- Mcu.name refers to MCU.refName
         let f Mcu{..} = (name, refName, rpn)
@@ -132,8 +132,6 @@ main = do
         mapM_ (print . g) mcuSpecs
     -}
 
-        mapM_ (T.putStrLn . fst) svds
-        print $ svdMap svds $ map (\MCU{..} -> refName) mcuSpecs
         -- matchSVD :: [Text] -> Text -> Maybe Text
             {-
         forM_ periphTypes $ \PeriphType{..} -> do
@@ -210,9 +208,4 @@ isL4plus x = any (`isPrefixOf`x) $ map ("STM32L4"<>) [ "P", "Q", "R", "S" ]
 
 svdHeader :: FilePath -> SVD -> FilePath
 svdHeader dir SVD{..} = dir </> T.unpack (T.toLower name) <.> "h"
-
-svdMap :: [(Text, FilePath)] -> [Text] -> Map.Map Text Text
-svdMap xs = Map.fromList . map f
-    where f name = maybe (error $ "unmatched " <> T.unpack name) (name,) 
-                 $ matchSVD (map fst xs) name
 

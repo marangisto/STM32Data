@@ -1,5 +1,6 @@
 {-# LANGUAGE Arrows, NoMonomorphismRestriction #-}
 {-# LANGUAGE RecordWildCards, DuplicateRecordFields #-}
+{-# LANGUAGE OverloadedStrings #-}
 module ParseMCU
     ( MCU(..)
     , IP(..)
@@ -8,7 +9,7 @@ module ParseMCU
     , parseMCU
     ) where
 
-import Data.Text (Text, pack, unpack, toUpper)
+import Data.Text (Text, pack, unpack, toUpper, isPrefixOf, stripSuffix)
 import Data.Maybe (fromMaybe)
 import Text.Read (readMaybe)
 import Utils (fromHex)
@@ -16,6 +17,7 @@ import HXT
 
 data MCU = MCU
     { refName           :: !Text
+    , svd               :: !Text
     , dbVersion         :: !Text
     , clockTree         :: !Text
     , family            :: !Text
@@ -47,15 +49,15 @@ data Signal = Signal
     , ioModes           :: !(Maybe Text)
     } deriving (Show)
 
-parseMCU :: FilePath -> IO MCU
-parseMCU fn = do
+parseMCU :: [Text] -> FilePath -> IO MCU
+parseMCU svds fn = do
     s <- readFile fn
-    xs <- runX (readString [ withValidate yes ] s >>> getMCU)
+    xs <- runX (readString [ withValidate yes ] s >>> getMCU svds)
     case xs of
         [x] -> return x
         _ -> error "failed to parse MCU"
 
-getMCU = atTag "Mcu" >>> proc x -> do
+getMCU svds = atTag "Mcu" >>> proc x -> do
     refName <- arr pack <<< attrText "RefName" -< x
     dbVersion <- arr pack <<< attrText "DBVersion" -< x
     clockTree <- arr pack <<< attrText "ClockTree" -< x
@@ -67,7 +69,7 @@ getMCU = atTag "Mcu" >>> proc x -> do
     -- skip core, freq, etc as they are already in family data
     ips <- listA getIP -< x
     pins <- listA getPin -< x
-    returnA -< MCU{..}
+    returnA -< MCU{svd=matchSVD svds refName,..}
 
 getIP = atTag "IP" >>> proc x -> do
     name <- arr pack <<< attrText "Name" -< x
@@ -96,4 +98,26 @@ readBool s = error $ "bad bool: '" <> s <> "'"
 
 readPosition :: String -> Either Text Int
 readPosition s = maybe (Left $ pack s) Right $ readMaybe s
+
+matchSVD :: [Text] -> Text -> Text
+matchSVD svds name = case filter p svds of
+    [] | "STM32F105" `isPrefixOf` name -> "STM32F107"
+    [] | "STM32F205" `isPrefixOf` name -> "STM32F215"
+    [] | "STM32F207" `isPrefixOf` name -> "STM32F217"
+    [] | "STM32F415" `isPrefixOf` name -> "STM32F405"
+    [] | "STM32F417" `isPrefixOf` name -> "STM32F407"
+    [] | "STM32F423" `isPrefixOf` name -> "STM32F413"
+    [] | "STM32F437" `isPrefixOf` name -> "STM32F427"
+    [] | "STM32F439" `isPrefixOf` name -> "STM32F429"
+    [] | "STM32F479" `isPrefixOf` name -> "STM32F469"
+    [] ->  error $ "failed to match svd for " <> unpack name
+    [ svd ] -> svd
+    xs -> case filter tame xs of
+        [ svd ] -> svd
+        _ -> error $ unpack name <> " matches " <> show xs
+    where p = all match . zip (unpack name) . unpack . chooseM4
+          match (n, s) = n == s || s == 'x' || n == 'x'
+          chooseM4 svd | Just x <- stripSuffix "_CM4" svd = x
+                       | otherwise = svd
+          tame = not . any (=='x') . unpack
 
