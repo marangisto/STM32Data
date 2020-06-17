@@ -120,10 +120,11 @@ main = do
             putWords "missing:" $ missingCC nsvd
             putWords "unused:" $ unusedCC nsvd
 
-        mcuSpecs <- forM (mcuNames subFamilies) $ \name ->
-            parseMCU (map fst svds) (dbDir </> T.unpack name <.> "xml")
-
+        mcuSpecs <- mapM (parseMCU $ map fst svds) $ mcuFiles subFamilies
         mapM_ (T.putStrLn . (\MCU{..} -> refName <> " " <> svd)) mcuSpecs
+        ipGPIOs <- mapM parseIpGPIO $ ipGPIOFiles mcuSpecs
+        mapM_ print ipGPIOs
+
     {-
         -- Mcu.name refers to MCU.refName
         let f Mcu{..} = (name, refName, rpn)
@@ -188,6 +189,17 @@ stm32Header dir xs = do
     writeText header
         $ banner [ "STM32 MCU families" ]
         ++ enum "mcu_family_t" (map unPlus xs)
+
+ipGPIOFiles :: [MCU] -> [FilePath]
+ipGPIOFiles mcus = map f $ nub $ sort
+    [ version | MCU{..} <- mcus , IP{name="GPIO",..} <- ips ]
+    where f x = dir </> "IP" </> "GPIO-" <> T.unpack x <> "_Modes" <.> "xml"
+          dir = stm32CubeMX </> stm32DbDir
+
+mcuFiles :: [SubFamily] -> [FilePath]
+mcuFiles = map f . mcuNames
+    where f x = dir </> T.unpack x <.> "xml"
+          dir = stm32CubeMX </> stm32DbDir
 
 svdFiles :: Text -> IO [(Text, FilePath)]
 svdFiles family = do
