@@ -13,6 +13,7 @@ import Control.Monad
 import Control.Monad.Extra
 import Data.List (nub, sort, isPrefixOf)
 import Data.List.Extra (groupSort)
+import Data.Maybe (fromMaybe)
 import Family
 import ParseMCU
 import ParseIpGPIO
@@ -24,6 +25,7 @@ import Pretty
 import ParseSVD
 import NormalSVD
 import Utils
+import FrontEnd
 
 data Options = Options
     { list_mcus     :: Bool
@@ -51,43 +53,10 @@ options = Main.Options
     } &=
     verbosity &=
     help "Generate pin descriptions from STM32CubeMX xml files" &=
-    summary "STM32Data v0.2.0, (c) Bengt Marten Agren 2020" &=
+    summary "STM32Data v0.3.0, (c) Bengt Marten Agren 2020" &=
     details [ "STM32Data generate device header files for STM32"
             , "MCUs based on vendor XML files from SMT32CubeMX."
             ]
-
-stm32CubeMX :: FilePath
-stm32CubeMX = "C:/"
-  </> "Program Files (x86)"
-  </> "STMicroelectronics"
-  </> "STM32Cube"
-  </> "STM32CubeMX"
-
-stm32DbDir :: FilePath
-stm32DbDir = "db" </> "mcu"
-
-familiesXML :: FilePath
-familiesXML = "families.xml"
-
-svdDir, svdDir' :: FilePath
-svdDir = "C:/"
-    </> "ST"
-    </> "STM32CubeIDE_1.3.0"
-    </> "STM32CubeIDE"
-    </> "plugins"
-    </> "com.st.stm32cube.ide.mcu.productdb.debug_1.3.0.202002181050"
-    </> "resources"
-    </> "cmsis"
-    </> "STMicroelectronics_CMSIS_SVD"
-svdDir' = "C:/"
-    </> "ST"
-    </> "STM32CubeIDE_1.3.0"
-    </> "STM32CubeIDE"
-    </> "plugins"
-    </> "com.st.stm32cube.ide.mpu.productdb.debug_1.3.0.202002181049"
-    </> "resources"
-    </> "cmsis"
-    </> "STMicroelectronics_CMSIS_SVD"
 
 tmpDir :: FilePath
 tmpDir = "C:" </> "tmp"
@@ -96,19 +65,20 @@ main :: IO ()
 main = do
     Options{..} <- cmdArgs options
     hSetNewlineMode stdout noNewlineTranslation
-    let dbDir = stm32CubeMX </> stm32DbDir
-        fs = concat
+    let fs = concat
             [ map (Family . T.pack) family
             , map (SubFamily . T.pack) sub_family
             , map (Package . T.pack) package
             ]
-
-    families' <- parseFamilies (dbDir </> familiesXML)
+    famXML <- familiesFile "C:/Program Files (x86)/STMicroelectronics/STM32Cube"
+    families' <- parseFamilies $ fromMaybe (error "no families file") famXML
     families <- return $ prune fs families'
+    allSVDs <- svdFiles $ "C:/ST/STM32CubeIDE_1.3.0/STM32CubeIDE/plugins"
+    let dbDir = takeDirectory $ fromMaybe (error "!!!") famXML
 
     when new_core $
       forM_ families $ \(family', subFamilies) -> do
-        svds <- svdFiles family'
+        let svds = familySVDs family' allSVDs
         nsvd <- resolveCC . fixup . normalize family'
             <$> mapM parseSVD (map snd svds)
 
@@ -120,9 +90,9 @@ main = do
             putWords "missing:" $ missingCC nsvd
             putWords "unused:" $ unusedCC nsvd
 
-        mcuSpecs <- mapM (parseMCU $ map fst svds) $ mcuFiles subFamilies
+        mcuSpecs <- mapM (parseMCU $ map fst svds) $ mcuFiles dbDir subFamilies
+        ipGPIOs <- mapM parseIpGPIO $ ipGPIOFiles dbDir mcuSpecs
         mapM_ (T.putStrLn . (\MCU{..} -> refName <> " " <> svd)) mcuSpecs
-        ipGPIOs <- mapM parseIpGPIO $ ipGPIOFiles mcuSpecs
         mapM_ print ipGPIOs
 
     {-
@@ -172,7 +142,7 @@ main = do
       forM_ families $ \(family, subFamilies) -> do
         let dir = top </> T.unpack (T.toLower family) </> "device"
         createDirectoryIfMissing True dir
-        svds <- svdFiles family
+        let svds = familySVDs family allSVDs
         mcus <- mapM (loadMCU dbDir) $ controllers subFamilies
         gss <- mapM (\x -> (x,) <$> gpioConfigSet dbDir x)
             =<< gpioConfigs dbDir family
@@ -190,34 +160,41 @@ stm32Header dir xs = do
         $ banner [ "STM32 MCU families" ]
         ++ enum "mcu_family_t" (map unPlus xs)
 
-ipGPIOFiles :: [MCU] -> [FilePath]
-ipGPIOFiles mcus = map f $ nub $ sort
+ipGPIOFiles :: FilePath -> [MCU] -> [FilePath]
+ipGPIOFiles dir mcus = map f $ nub $ sort
     [ version | MCU{..} <- mcus , IP{name="GPIO",..} <- ips ]
     where f x = dir </> "IP" </> "GPIO-" <> T.unpack x <> "_Modes" <.> "xml"
-          dir = stm32CubeMX </> stm32DbDir
 
-mcuFiles :: [SubFamily] -> [FilePath]
-mcuFiles = map f . mcuNames
+mcuFiles :: FilePath -> [SubFamily] -> [FilePath]
+mcuFiles dir = map f . mcuNames
     where f x = dir </> T.unpack x <.> "xml"
-          dir = stm32CubeMX </> stm32DbDir
 
-svdFiles :: Text -> IO [(Text, FilePath)]
-svdFiles family = do
-    xs <- sort . filter pred . filter isSVD <$> getDirectoryContents dir
-    return $ map (\s -> (T.pack $ dropExtension s, dir </> s)) xs
-    where isSVD x = takeExtension x == ".svd"
-          pred x
+familySVDs :: Text -> [FilePath] -> [(Text, FilePath)]
+familySVDs family = sort . filter pred . map f
+    where f s = (T.pack $ dropExtension $ takeFileName s, s)
+          pred (x, _)
             | fam == "STM32L4+" = isL4plus x
-            | fam == "STM32G4" = any (`isPrefixOf` x) [ fam, "STM32GBK1" ]
-            | otherwise = fam `isPrefixOf` x && not (isL4plus x)
-            where fam = T.unpack family
-          dir = case T.unpack family of
-              "STM32MP1" -> svdDir'
-              _ -> svdDir
+            | fam == "STM32G4" = any (`T.isPrefixOf` x) [ fam, "STM32GBK1" ]
+            | otherwise = fam `T.isPrefixOf` x && not (isL4plus x)
+            where fam = family
 
-isL4plus :: String -> Bool
-isL4plus x = any (`isPrefixOf`x) $ map ("STM32L4"<>) [ "P", "Q", "R", "S" ]
+isL4plus :: Text -> Bool
+isL4plus x = any (`T.isPrefixOf`x) $ map ("STM32L4"<>) [ "P", "Q", "R", "S" ]
 
 svdHeader :: FilePath -> SVD -> FilePath
 svdHeader dir SVD{..} = dir </> T.unpack (T.toLower name) <.> "h"
+
+svdFiles :: FilePath -> IO [FilePath]
+svdFiles = traverseDir (\_ -> True) accept []
+    where accept :: [FilePath] -> FilePath -> IO [FilePath]
+          accept xs fp
+            | takeExtension fp == ".svd" = return $ fp : xs
+            | otherwise = return xs
+
+familiesFile :: FilePath -> IO (Maybe FilePath)
+familiesFile = traverseDir (\_ -> True) accept Nothing
+    where accept :: Maybe FilePath -> FilePath -> IO (Maybe FilePath)
+          accept x fp
+            | takeFileName fp == "families.xml" = return $ Just fp
+            | otherwise = return x
 

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 6be9bdc2d881553167e0fab3a71f0f62b604c5109674bfad1d11516c786b8755
+-- hash: b4185b9dc6d2e976c5c9f7fa864e10ce59c442b2f0ce87d3743bbef8083852c1
 
 name:           STM32Data
 version:        0.1.0.0
@@ -31,6 +31,7 @@ library
       Family
       Fixup
       FixupSVD
+      FrontEnd
       HXT
       IPMode
       MCU

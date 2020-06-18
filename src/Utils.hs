@@ -11,6 +11,7 @@ module Utils
     , packWords
     , cleanWords
     , writeText
+    , traverseDir
     ) where
 
 import qualified Data.Text as T
@@ -18,6 +19,10 @@ import qualified Data.Text.IO as T
 import Data.Char (isAscii)
 import Numeric (readHex, showHex)
 import System.IO
+import System.Directory
+import System.FilePath
+import Control.Monad.Extra
+import Control.Monad
 
 type Text = T.Text
 
@@ -80,4 +85,18 @@ writeText :: FilePath -> [Text] -> IO ()
 writeText fn xs = withFile fn WriteMode $ \f -> do
     hSetNewlineMode f noNewlineTranslation
     T.hPutStr f $ T.unlines xs
+
+traverseDir
+    :: (FilePath -> Bool)       -- directory selector
+    -> (b -> FilePath -> IO b)  -- transition function
+    -> b
+    -> FilePath
+    -> IO b
+traverseDir validDir transition = go
+    where go state dirPath = do
+              names <- listDirectory dirPath
+              let paths = map (dirPath </>) names
+              (dirPaths, filePaths) <- partitionM doesDirectoryExist paths
+              state' <- foldM transition state filePaths
+              foldM go state' (filter validDir dirPaths)
 
