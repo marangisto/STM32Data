@@ -14,6 +14,7 @@ import Control.Monad.Extra
 import Data.List (nub, sort, isPrefixOf)
 import Data.List.Extra (groupSort)
 import Data.Maybe (fromMaybe)
+import Data.Hashable
 import Family
 import ParseMCU
 import ParseIpGPIO
@@ -70,11 +71,11 @@ main = do
             , map (SubFamily . T.pack) sub_family
             , map (Package . T.pack) package
             ]
-    famXML <- familiesFile "C:/Program Files (x86)/STMicroelectronics/STM32Cube"
-    families' <- parseFamilies $ fromMaybe (error "no families file") famXML
+    [famXML] <- cached familiesFile "C:/Program Files (x86)/STMicroelectronics/STM32Cube"
+    families' <- parseFamilies famXML
     families <- return $ prune fs families'
-    allSVDs <- svdFiles $ "C:/ST/STM32CubeIDE_1.3.0/STM32CubeIDE/plugins"
-    let dbDir = takeDirectory $ fromMaybe (error "!!!") famXML
+    allSVDs <- cached svdFiles "C:/ST/STM32CubeIDE_1.3.0/STM32CubeIDE/plugins"
+    let dbDir = takeDirectory famXML
 
     when new_core $
       forM_ families $ \(family', subFamilies) -> do
@@ -191,10 +192,23 @@ svdFiles = traverseDir (\_ -> True) accept []
             | takeExtension fp == ".svd" = return $ fp : xs
             | otherwise = return xs
 
-familiesFile :: FilePath -> IO (Maybe FilePath)
-familiesFile = traverseDir (\_ -> True) accept Nothing
-    where accept :: Maybe FilePath -> FilePath -> IO (Maybe FilePath)
-          accept x fp
-            | takeFileName fp == "families.xml" = return $ Just fp
-            | otherwise = return x
+familiesFile :: FilePath -> IO [FilePath]
+familiesFile = traverseDir (\_ -> True) accept []
+    where accept :: [FilePath] -> FilePath -> IO [FilePath]
+          accept xs fp
+            | takeFileName fp == "families.xml" = return $ fp : xs
+            | otherwise = return xs
+
+cached :: (FilePath -> IO [FilePath]) -> FilePath -> IO [FilePath]
+cached act fp = do
+    dir <- getTemporaryDirectory
+    let fn = dir </> show (hash fp) <.> "tmp"
+    b <- doesFileExist fn
+    if b
+       then lines <$> readFile fn
+       else do
+           xs <- act fp
+           writeFile fn $ unlines xs
+           putStrLn $ "cached " <> fp <> " results in " <> fn
+           return xs
 
