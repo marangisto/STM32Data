@@ -15,7 +15,7 @@ import Data.List (nub, sort, isPrefixOf)
 import Data.List.Extra (groupSort)
 import Data.Maybe (fromMaybe)
 import Data.Hashable
-import Family
+import Families
 import ParseMCU
 import ParseIpGPIO
 import Normalize

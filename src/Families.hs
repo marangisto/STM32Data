@@ -1,8 +1,8 @@
 {-# LANGUAGE Arrows, NoMonomorphismRestriction #-}
 {-# LANGUAGE RecordWildCards, DuplicateRecordFields #-}
 {-# LANGUAGE TupleSections, OverloadedStrings #-}
-module Family
-    ( Family
+module Families
+    ( Families
     , SubFamily
     , Peripheral
     , Mcu(..)
@@ -26,7 +26,7 @@ import Control.Monad
 import Control.Arrow
 import HXT
 
-type Family = (Text, [SubFamily])
+type Families = [(Text, [SubFamily])]
 
 type SubFamily = (Text, [Mcu])
 
@@ -49,7 +49,7 @@ data Mcu = Mcu
 
 type Peripheral = Text
 
-parseFamilies :: FilePath -> IO [Family]
+parseFamilies :: FilePath -> IO Families
 parseFamilies fn = do
     s <- readFile fn
     runX (readString [ withValidate yes ] s >>> getFamily)
@@ -106,16 +106,16 @@ data Filter
     | SubFamily Text
     | Package Text
 
-prune :: [Filter] -> [Family] -> [Family]
+prune :: [Filter] -> Families -> Families
 prune fs
     = filter (not . null . snd)
     . map (second $ filter (not . null . snd))
     . map (second $ map (second $ filter (mcuPred fs)))
     . map (second $ filter (subFamilyPred fs))
-    . filter (familyPred fs)
+    . filter (uncurry $ familyPred fs)
 
-familyPred :: [Filter] -> Family -> Bool
-familyPred fs (name, _) = null xs || name `elem` xs
+familyPred :: [Filter] -> Text -> [SubFamily] -> Bool
+familyPred fs name _ = null xs || name `elem` xs
     where xs = [ x | Family x <- fs ]
 
 subFamilyPred :: [Filter] -> SubFamily -> Bool
@@ -126,7 +126,7 @@ mcuPred :: [Filter] -> Mcu -> Bool
 mcuPred fs Mcu{..} = null xs || package `elem` xs
     where xs = [ x | Package x <- fs ]
 
-flatten :: [Family] -> [(Text, Text, Mcu)]
+flatten :: Families -> [(Text, Text, Mcu)]
 flatten families = 
     [ (family, subFamily, controller)
     | (family, subFamilies) <- families
@@ -134,7 +134,7 @@ flatten families =
     , controller <- controllers
     ]
 
-mcuList :: [Family] -> IO ()
+mcuList :: Families -> IO ()
 mcuList families = 
     forM_ families $ \(name, subFamilies) -> do
         putStrLn $ replicate 80 '='
@@ -183,7 +183,7 @@ preAmble Mcu{..} =
                     <> pack (replicate (12 - (length $ unpack l)) ' ')
                     <> ": " <> s
 
-buildRules :: [Family] -> [Text]
+buildRules :: Families -> [Text]
 buildRules families =
     [ "module STM32 (MCU(..), mcuList) where"
     , ""
