@@ -19,6 +19,8 @@ import Normalize
 import ParseSVD
 import Utils
 
+type CCMap = Map Text ClockControl
+
 data ClockControl = ClockControl
     { enable        :: !(Maybe RegFlag)
     , enableSM      :: !(Maybe RegFlag)
@@ -27,10 +29,10 @@ data ClockControl = ClockControl
 
 type RegFlag = (Text, Text)
 
-resolveCC :: NormalSVD Void -> NormalSVD ClockControl
+resolveCC :: NormalSVD () -> NormalSVD CCMap
 resolveCC x@NormalSVD{..} = x { clockControl = resolveCC' x }
 
-resolveCC' :: NormalSVD Void -> Map Text ClockControl
+resolveCC' :: NormalSVD () -> CCMap
 resolveCC'
     = fromList
     . map (uncurry mkCC)
@@ -64,11 +66,11 @@ rename x
     | Just y <- T.stripPrefix "IOP" x = "GPIO" <> y
     | otherwise = x
 
-missingCC :: NormalSVD ClockControl -> [Text]
+missingCC :: NormalSVD CCMap -> [Text]
 missingCC nsvd@NormalSVD{..} = mapMaybe f $ peripheralNames nsvd
     where f x = maybe (Just x) (const Nothing) $ Map.lookup x clockControl
 
-unusedCC :: NormalSVD ClockControl -> [Text]
+unusedCC :: NormalSVD CCMap -> [Text]
 unusedCC nsvd@NormalSVD{..} = Map.keys ccs'
     where ccs' = foldr Map.delete clockControl $ peripheralNames nsvd
 

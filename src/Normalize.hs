@@ -7,7 +7,6 @@ module Normalize
     , Register(..)
     , Field(..)
     , Interrupt(..)
-    , Void
     , normalize
     , peripheralNames
     ) where
@@ -28,7 +27,7 @@ data NormalSVD cc = NormalSVD
     { family        :: !Text
     , periphTypes   :: ![PeriphType]
     , interrupts    :: ![Interrupt]
-    , clockControl  :: !(Map.Map Text cc)
+    , clockControl  :: !cc
     } deriving (Show)
 
 data PeriphType = PeriphType
@@ -51,12 +50,12 @@ data PeriphInst = PeriphInst
 
 type Index = Map.Map PeriphRef PeriphRef
 
-normalize :: Text -> [SVD] -> NormalSVD Void
+normalize :: Text -> [SVD] -> NormalSVD ()
 normalize family xs = NormalSVD{..}
     where periphTypes = mergeInstances moreInsts periphTypes'
           interrupts =  mergeInterrupts
                      $ concat [ interrupts | SVD{..} <- xs ]
-          clockControl = Map.empty
+          clockControl = ()
           (outright, derived) = partition (isOutright . snd) allPerips
           isOutright = isNothing . derivedFrom
           allPerips = [ (name, p) | SVD{..} <- xs, p <- peripherals ]
