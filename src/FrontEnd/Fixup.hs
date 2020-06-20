@@ -1,8 +1,8 @@
 {-# LANGUAGE RecordWildCards, OverloadedStrings #-}
 {-# LANGUAGE DuplicateRecordFields #-}
-module Fixup (fixup) where
+module FrontEnd.Fixup (fixup) where
 
-import Normalize
+import FrontEnd.Normalize
 import Utils
 import qualified Data.Text as T
 import Data.List (sortOn)

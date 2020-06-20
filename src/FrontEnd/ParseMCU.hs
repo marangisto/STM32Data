@@ -1,7 +1,7 @@
 {-# LANGUAGE Arrows, NoMonomorphismRestriction #-}
 {-# LANGUAGE RecordWildCards, DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
-module ParseMCU
+module FrontEnd.ParseMCU
     ( MCU(..)
     , IP(..)
     , Pin(..)

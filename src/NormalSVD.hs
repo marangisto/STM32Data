@@ -11,9 +11,9 @@ import Data.Char (isDigit)
 import System.FilePath
 import System.Directory
 import Control.Monad
-import ParseSVD
+import FrontEnd.ParseSVD
 import FixupSVD
-import ClockControl
+import FrontEnd.ClockControl
 import PrettySVD
 import PrettyVector
 import Utils

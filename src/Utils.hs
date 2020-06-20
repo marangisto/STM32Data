@@ -12,11 +12,13 @@ module Utils
     , cleanWords
     , writeText
     , traverseDir
+    , cacheLines
     ) where
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import Data.Char (isAscii)
+import Data.Hashable
 import Numeric (readHex, showHex)
 import System.IO
 import System.Directory
@@ -99,4 +101,14 @@ traverseDir validDir transition = go
               (dirPaths, filePaths) <- partitionM doesDirectoryExist paths
               state' <- foldM transition state filePaths
               foldM go state' (filter validDir dirPaths)
+
+cacheLines :: (FilePath -> IO [String]) -> FilePath -> IO [String]
+cacheLines act fp = do
+    dir <- getTemporaryDirectory
+    let fn = dir </> show (hash fp) <.> "tmp"
+    b <- doesFileExist fn
+    if b then lines <$> readFile fn else do
+        xs <- act fp
+        writeFile fn $ unlines xs
+        return xs
 

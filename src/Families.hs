@@ -102,9 +102,9 @@ getPeripheral = atTag "Peripheral" >>> proc x -> do
     returnA -< (name, count)
 
 data Filter
-    = Family Text
-    | SubFamily Text
-    | Package Text
+    = OnFamily Text
+    | OnSubFamily Text
+    | OnPackage Text
 
 prune :: [Filter] -> Families -> Families
 prune fs
@@ -116,15 +116,15 @@ prune fs
 
 familyPred :: [Filter] -> Text -> [SubFamily] -> Bool
 familyPred fs name _ = null xs || name `elem` xs
-    where xs = [ x | Family x <- fs ]
+    where xs = [ x | OnFamily x <- fs ]
 
 subFamilyPred :: [Filter] -> SubFamily -> Bool
 subFamilyPred fs (name, _) = null xs || name `elem` xs
-    where xs = [ x | SubFamily x <- fs ]
+    where xs = [ x | OnSubFamily x <- fs ]
 
 mcuPred :: [Filter] -> Mcu -> Bool
 mcuPred fs Mcu{..} = null xs || package `elem` xs
-    where xs = [ x | Package x <- fs ]
+    where xs = [ x | OnPackage x <- fs ]
 
 flatten :: Families -> [(Text, Text, Mcu)]
 flatten families = 

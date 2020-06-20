@@ -6,7 +6,7 @@ import Data.List (sortOn)
 import Data.List.Extra (nubOn, groupSortOn)
 import Data.Bits (shift)
 import Data.Maybe (isJust)
-import ParseSVD
+import FrontEnd.ParseSVD
 import Utils
 
 prettyPeripheral :: Text -> Peripheral -> [Text]

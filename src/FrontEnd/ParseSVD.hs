@@ -1,7 +1,7 @@
 {-# LANGUAGE Arrows, NoMonomorphismRestriction #-}
 {-# LANGUAGE RecordWildCards, DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
-module ParseSVD
+module FrontEnd.ParseSVD
     ( SVD(..)
     , Peripheral(..)
     , Interrupt(..)

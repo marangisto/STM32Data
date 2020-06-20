@@ -1,6 +1,6 @@
 {-# LANGUAGE Arrows, NoMonomorphismRestriction #-}
 {-# LANGUAGE RecordWildCards, DuplicateRecordFields #-}
-module ParseIpGPIO
+module FrontEnd.ParseIpGPIO
     ( IpGPIO(..)
     , parseIpGPIO
     ) where

@@ -2,7 +2,7 @@
 module FixupSVD (fixupPeripheral) where
 
 import qualified Data.Text as T
-import ParseSVD
+import FrontEnd.ParseSVD
 import Utils
 
 fixupPeripheral :: Text -> Peripheral -> Peripheral

@@ -3,7 +3,7 @@ module PrettyVector (prettyVector, prettyInterrupt) where
 
 import qualified Data.Text as T
 import Data.List.Extra (sortOn, nubOn)
-import ParseSVD
+import FrontEnd.ParseSVD
 import Utils
 
 prettyVector :: [Interrupt] -> [Text]

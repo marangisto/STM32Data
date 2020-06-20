@@ -1,6 +1,7 @@
 {-# LANGUAGE RecordWildCards, OverloadedStrings, TupleSections #-}
-module ClockControl
+module FrontEnd.ClockControl
     ( ClockControl(..)
+    , CCMap
     , resolveCC
     , missingCC
     , unusedCC
@@ -15,8 +16,8 @@ import Data.List.Extra (groupSort)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Map.Strict (Map, fromList)
 import qualified Data.Map.Strict as Map
-import Normalize
-import ParseSVD
+import FrontEnd.Normalize
+import FrontEnd.ParseSVD
 import Utils
 
 type CCMap = Map Text ClockControl

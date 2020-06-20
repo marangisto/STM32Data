@@ -16,14 +16,9 @@ import Data.List.Extra (groupSort)
 import Data.Maybe (fromMaybe)
 import Data.Hashable
 import Families
-import ParseMCU
-import ParseIpGPIO
-import Normalize
-import Fixup
-import ClockControl
 import IPMode
 import Pretty
-import ParseSVD
+import FrontEnd.ParseSVD
 import NormalSVD
 import Utils
 import FrontEnd
@@ -62,23 +57,29 @@ options = Main.Options
 tmpDir :: FilePath
 tmpDir = "C:" </> "tmp"
 
+famDir = "C:/Program Files (x86)/STMicroelectronics/STM32Cube"
+svdDir = "C:/ST/STM32CubeIDE_1.3.0/STM32CubeIDE/plugins"
+
 main :: IO ()
 main = do
     Options{..} <- cmdArgs options
     hSetNewlineMode stdout noNewlineTranslation
     let fs = concat
-            [ map (Family . T.pack) family
-            , map (SubFamily . T.pack) sub_family
-            , map (Package . T.pack) package
+            [ map (OnFamily . T.pack) family
+            , map (OnSubFamily . T.pack) sub_family
+            , map (OnPackage . T.pack) package
             ]
-    [famXML] <- cached familiesFile "C:/Program Files (x86)/STMicroelectronics/STM32Cube"
+    [famXML] <- cached familiesFile famDir
     families' <- parseFamilies famXML
     families <- return $ prune fs families'
-    allSVDs <- cached svdFiles "C:/ST/STM32CubeIDE_1.3.0/STM32CubeIDE/plugins"
+    allSVDs <- cached svdFiles svdDir
     let dbDir = takeDirectory famXML
 
     when new_core $
       forM_ families $ \(family', subFamilies) -> do
+        Family{..} <- parseFamily svdDir dbDir family' subFamilies
+        print $ (\NormalSVD{..} -> family) svd
+    {-
         let svds = familySVDs family' allSVDs
         nsvd <- resolveCC . fixup . normalize family'
             <$> mapM parseSVD (map snd svds)
@@ -95,6 +96,7 @@ main = do
         ipGPIOs <- mapM parseIpGPIO $ ipGPIOFiles dbDir mcuSpecs
         mapM_ (T.putStrLn . (\MCU{..} -> refName <> " " <> svd)) mcuSpecs
         mapM_ print ipGPIOs
+        -}
 
     {-
         -- Mcu.name refers to MCU.refName
@@ -160,15 +162,6 @@ stm32Header dir xs = do
     writeText header
         $ banner [ "STM32 MCU families" ]
         ++ enum "mcu_family_t" (map unPlus xs)
-
-ipGPIOFiles :: FilePath -> [MCU] -> [FilePath]
-ipGPIOFiles dir mcus = map f $ nub $ sort
-    [ version | MCU{..} <- mcus , IP{name="GPIO",..} <- ips ]
-    where f x = dir </> "IP" </> "GPIO-" <> T.unpack x <> "_Modes" <.> "xml"
-
-mcuFiles :: FilePath -> [SubFamily] -> [FilePath]
-mcuFiles dir = map f . mcuNames
-    where f x = dir </> T.unpack x <.> "xml"
 
 familySVDs :: Text -> [FilePath] -> [(Text, FilePath)]
 familySVDs family = sort . filter pred . map f

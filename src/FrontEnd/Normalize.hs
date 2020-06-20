@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards, DuplicateRecordFields #-}
-module Normalize
+module FrontEnd.Normalize
     ( NormalSVD(..)
     , PeriphType(..)
     , PeriphRef(..)
@@ -11,7 +11,7 @@ module Normalize
     , peripheralNames
     ) where
 
-import ParseSVD
+import FrontEnd.ParseSVD
 import Data.Void
 import Data.Hashable
 import Data.Ord (Down(..))
