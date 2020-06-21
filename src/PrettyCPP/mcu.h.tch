@@ -20,7 +20,7 @@ enum svd_t
 
 enum gpio_conf_t
 {{#ipGPIOs}}
-    {{#first}}{ {{/first}}{{^first}}, {{/first}}{{name}}
+    {{#first}}{ {{/first}}{{^first}}, {{/first}}{{name}} = {{enumValue}}
 {{/ipGPIOs}}
     };
 
@@ -35,3 +35,6 @@ template<> struct mcu_traits<{{refName}}>
 };
 
 {{/mcus}}
+// Set target from command-line -DMCU= option
+static constexpr mcu_t target = MCU;
+

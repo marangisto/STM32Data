@@ -2,19 +2,21 @@
 {-# LANGUAGE TemplateHaskell, ApplicativeDo #-}
 module PrettyCPP (prettyCPP) where
 
-import FrontEnd
-import Utils (writeText')
 import Text.Mustache
 import qualified Text.Mustache.Compile.TH as TH
 import qualified Data.Text.Lazy as TL
 import Data.Aeson hiding (Options)
 import Data.HashMap.Strict (fromList)
 import Data.List (nub, sort, find)
+import Data.List.Extra (zipWithFrom)
 import Data.Text as T (Text, toLower, unpack)
 import Data.Maybe (fromMaybe)
+import Data.Bits (shift)
 import System.Directory
 import System.FilePath
 import Control.Monad
+import Utils (writeText', hex)
+import FrontEnd
 
 prettyCPP :: FilePath -> Family -> IO ()
 prettyCPP root family@Family{family=familyName} = do
@@ -30,7 +32,7 @@ familyInfo Family{..} = object
     [ "family"  .= family
     , "mcus" .= (markEnds $ map (mcuInfo specs) mcus)
     , "svds" .= (markEnds $ svdsInfo svd)
-    , "ipGPIOs" .= (markEnds $ map ipGPIOInfo $ ipGPIOs)
+    , "ipGPIOs" .= (markEnds $ zipWithFrom ipGPIOInfo 0 ipGPIOs)
     ]
 
 mcuInfo :: [MCU] -> Mcu -> Value
@@ -47,9 +49,10 @@ mcuInfo mcus Mcu{..} = object
 svdsInfo :: NormalSVD a -> [Value]
 svdsInfo = map (\svd -> object [ "svd" .= svd ]) . svdNames
 
-ipGPIOInfo :: IpGPIO -> Value
-ipGPIOInfo IpGPIO{..} = object
+ipGPIOInfo :: Int -> IpGPIO -> Value
+ipGPIOInfo i IpGPIO{..} = object
     [ "name" .= name
+    , "enumValue" .= hex (shift 1 i)
     ]
 
 markEnds :: [Value] -> [Value]
