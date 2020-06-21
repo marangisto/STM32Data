@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards, OverloadedStrings #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 module FrontEnd
     ( Family(..)
     , Mcu(..)
@@ -15,11 +16,13 @@ module FrontEnd
     , Signal(..)
     , IpGPIO(..)
     , parseFamily
+    , svdNames
+    , ipGPIOName
     ) where
 
 import System.FilePath
-import Data.List (sort, nub)
-import Data.Text (pack, unpack, isPrefixOf)
+import Data.List (find, sort, nub)
+import Data.Text as T (pack, unpack, isPrefixOf, break)
 import Families
 import FrontEnd.ParseSVD
 import FrontEnd.ParseMCU
@@ -32,7 +35,7 @@ import Utils
 data Family = Family
     { family    :: Text
     , mcus      :: [Mcu]
-    , svd       :: (NormalSVD CCMap)
+    , svd       :: NormalSVD CCMap
     , specs     :: [MCU]
     , ipGPIOs   :: [IpGPIO]
     }
@@ -49,7 +52,8 @@ parseFamily svdDir dbDir family subFamilies = do
     svd <- resolveCC . fixup . normalize family
        <$> mapM parseSVD (map snd svds)
     specs <- mapM (parseMCU $ map fst svds) $ mcuFiles dbDir subFamilies
-    ipGPIOs <- mapM parseIpGPIO $ ipGPIOFiles dbDir specs
+    ipGPIOs <- map (fixupIpGPIO $ svdNames svd)
+           <$> mapM parseIpGPIO (ipGPIOFiles dbDir specs)
     return Family{..}
 
 familySVDs :: Text -> [FilePath] -> [(Text, FilePath)]
@@ -79,4 +83,20 @@ ipGPIOFiles :: FilePath -> [MCU] -> [FilePath]
 ipGPIOFiles dir mcus = map f $ nub $ sort
     [ version | MCU{..} <- mcus , IP{name="GPIO",..} <- ips ]
     where f x = dir </> "IP" </> "GPIO-" <> unpack x <> "_Modes" <.> "xml"
+
+ipGPIOName :: MCU -> Text
+ipGPIOName MCU{..}
+    | Just IP{..} <- find (\IP{..} -> name == "GPIO") ips
+    = fst $ T.break (=='_') version
+    | otherwise = error $ "failed to detepmine IpGPIO for " <> unpack refName
+
+svdNames :: NormalSVD a -> [Text]
+svdNames NormalSVD{..} = nub $ sort
+    [ svd | PeriphType{..} <- periphTypes, PeriphRef{..} <- [ typeRef ] ]
+
+fixupIpGPIO :: [Text] -> IpGPIO -> IpGPIO
+fixupIpGPIO svds x@IpGPIO{..}
+    | name' `elem` svds = x { name = name' <> "_" } -- to avoid collissions
+    | otherwise = x { name = name' }
+    where name' = fst $ T.break (=='_') version
 

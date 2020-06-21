@@ -22,6 +22,7 @@ import FrontEnd.ParseSVD
 import NormalSVD
 import Utils
 import FrontEnd
+import PrettyCPP
 
 data Options = Options
     { list_mcus     :: Bool
@@ -77,8 +78,9 @@ main = do
 
     when new_core $
       forM_ families $ \(family', subFamilies) -> do
-        Family{..} <- parseFamily svdDir dbDir family' subFamilies
-        print $ (\NormalSVD{..} -> family) svd
+        fam@Family{..} <- parseFamily svdDir dbDir family' subFamilies
+        whenJust headers $ flip prettyCPP fam
+
     {-
         let svds = familySVDs family' allSVDs
         nsvd <- resolveCC . fixup . normalize family'
@@ -140,7 +142,7 @@ main = do
         $ mapM_ (putStrLn . T.unpack)
         $ buildRules families
 
-    whenJust headers $ \top -> do
+    when (not new_core) $ whenJust headers $ \top -> do
       stm32Header top $ map fst families'
       forM_ families $ \(family, subFamilies) -> do
         let dir = top </> T.unpack (T.toLower family) </> "device"

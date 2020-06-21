@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 14b719025eb286cadd367b2ead95f85f7b66da2b086e311ea6355a727fcd8b52
+-- hash: 4b16f57a0e032e889c9b70d92c6dd48a4920497abe5337c1aeed317cbfe344e9
 
 name:           STM32Data
 version:        0.1.0.0
@@ -41,6 +41,7 @@ library
       MCU
       NormalSVD
       Pretty
+      PrettyCPP
       PrettySVD
       PrettyVector
       TagSoup
@@ -50,7 +51,8 @@ library
   hs-source-dirs:
       src
   build-depends:
-      base >=4.7 && <5
+      aeson
+    , base >=4.7 && <5
     , bytestring
     , cmdargs
     , containers
@@ -60,6 +62,7 @@ library
     , filepath
     , hashable
     , hxt
+    , stache
     , tagsoup
     , temporary
     , text
@@ -75,6 +78,7 @@ executable STM32Data
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       STM32Data
+    , aeson
     , base >=4.7 && <5
     , bytestring
     , cmdargs
@@ -85,6 +89,7 @@ executable STM32Data
     , filepath
     , hashable
     , hxt
+    , stache
     , tagsoup
     , temporary
     , text
@@ -101,6 +106,7 @@ test-suite STM32Data-test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       STM32Data
+    , aeson
     , base >=4.7 && <5
     , bytestring
     , cmdargs
@@ -111,6 +117,7 @@ test-suite STM32Data-test
     , filepath
     , hashable
     , hxt
+    , stache
     , tagsoup
     , temporary
     , text

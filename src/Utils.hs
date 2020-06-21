@@ -11,12 +11,14 @@ module Utils
     , packWords
     , cleanWords
     , writeText
+    , writeText'
     , traverseDir
     , cacheLines
     ) where
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
+import qualified Data.Text.Lazy as TL
 import Data.Char (isAscii)
 import Data.Hashable
 import Numeric (readHex, showHex)
@@ -87,6 +89,13 @@ writeText :: FilePath -> [Text] -> IO ()
 writeText fn xs = withFile fn WriteMode $ \f -> do
     hSetNewlineMode f noNewlineTranslation
     T.hPutStr f $ T.unlines xs
+
+-- | Does the right thing to not get crlf in output
+writeText' :: FilePath -> TL.Text -> IO ()
+writeText' fn x = withFile fn WriteMode $ \f -> do
+    putStrLn fn
+    hSetNewlineMode f noNewlineTranslation
+    T.hPutStr f $ TL.toStrict x
 
 traverseDir
     :: (FilePath -> Bool)       -- directory selector
