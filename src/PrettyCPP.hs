@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards, OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell, ApplicativeDo #-}
+{-# LANGUAGE TemplateHaskell #-}
 module PrettyCPP (prettyCPP) where
 
 import Text.Mustache
@@ -54,6 +54,47 @@ ipGPIOInfo :: Int -> IpGPIO -> Value
 ipGPIOInfo i IpGPIO{..} = object
     [ "name" .= name
     , "enumValue" .= hex (shift 1 i)
+    ]
+
+periphGroupInfo :: [PeriphType] -> Value
+periphGroupInfo xs = object
+    [
+    ]
+
+periphTypeInfo :: PeriphType -> Value
+periphTypeInfo PeriphType{..} = object
+    [ "typeRef"     .= periphRefInfo typeRef
+    , "description" .= description
+    , "registers"   .= map registerInfo registers
+    , "periphInsts" .= map periphInstInfo periphInsts
+    ]
+
+periphInstInfo :: PeriphInst -> Value
+periphInstInfo PeriphInst{..} = object
+    [ "instRef"     .= periphRefInfo instRef
+    , "baseAddress" .= hex baseAddress
+    ]
+
+periphRefInfo :: PeriphRef -> Value
+periphRefInfo PeriphRef{..} = object
+    [ "svd"         .= svd
+    , "name"        .= name
+    ]
+
+registerInfo :: Register -> Value
+registerInfo Register{..} = object
+    [ "name"        .= name
+    , "description" .= description
+    , "resetValue"  .= hex resetValue
+    , "fields"      .= map fieldInfo fields
+    ]
+
+fieldInfo :: Field -> Value
+fieldInfo Field{..} = object
+    [ "name"        .= name
+    , "description" .= description
+    , "bitOffset"   .= show bitOffset
+    , "bitWidth"    .= show bitWidth
     ]
 
 interruptInfo :: NormalSVD a -> Value
