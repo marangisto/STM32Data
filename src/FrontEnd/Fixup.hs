@@ -4,11 +4,14 @@ module FrontEnd.Fixup (fixup) where
 
 import FrontEnd.Normalize
 import Utils
-import qualified Data.Text as T
+import Data.Text (isPrefixOf, isSuffixOf, toUpper)
 import Data.List (sortOn)
 
 fixup :: NormalSVD () -> NormalSVD ()
-fixup x@NormalSVD{..} = x { periphTypes = ps }
+fixup x@NormalSVD{..} = x
+    { periphTypes = ps
+    , interrupts = exceptions ++ interrupts
+    }
     where ps = map (editPeriphType family) periphTypes
 
 editPeriphType :: Text -> PeriphType -> PeriphType
@@ -88,8 +91,8 @@ gpio_fields _ _ x = x
 
 compx_csr :: FieldEdit
 compx_csr _ p r x@Field{..}
-    | p == "SYSCFG_COMP_OPAMP", "COMP" `T.isPrefixOf` r
-    , "_CSR" `T.isSuffixOf` r, "INMSEL" `T.isSuffixOf` name
+    | p == "SYSCFG_COMP_OPAMP", "COMP" `isPrefixOf` r
+    , "_CSR" `isSuffixOf` r, "INMSEL" `isSuffixOf` name
     , bitOffset == 22 = x { name = name <> "3" }
     | otherwise = x
 
@@ -161,8 +164,8 @@ usart1_cr1 r@Register{..}
 
 usb_buffer :: Register -> Bool
 usb_buffer Register{..}
-    | "ADDR" `T.isPrefixOf` name = True
-    | "COUNT" `T.isPrefixOf` name = True
+    | "ADDR" `isPrefixOf` name = True
+    | "COUNT" `isPrefixOf` name = True
     | otherwise = False
 
 nvic_iserx :: Register -> Register
@@ -180,3 +183,19 @@ stk_regs r@Register{..}
 
 -}
 
+exceptions :: [Interrupt]
+exceptions = map f
+    [ (-15, "Reset", "Reset [fixed]")
+    , (-14, "NMI", "Non maskable interrupt [fixed]")
+    , (-13, "HardFault", "All class of fault [fixed]")
+    , (-12, "MemManage", "Memory management [settable]")
+    , (-11, "BusFault", "Pre-fetch fault, memory access fault [settable]")
+    , (-10, "UsageFault", "Undefined instruction or illegal state [settable]")
+    , (-5, "SVCall", "System service call via SWI instruction [settable]")
+    , (-4, "Debug", "Monitor Debug Monitor [settable]")
+    , (-2, "PendSV", "Pendable request for system service [settable]")
+    , (-1, "SysTick", "System tick timer [settable]")
+    ]
+    where f (value, name', description) =
+            let name = toUpper name'
+             in Interrupt{..}

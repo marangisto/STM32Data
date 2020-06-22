@@ -33,6 +33,7 @@ familyInfo Family{..} = object
     , "mcus" .= (markEnds $ map (mcuInfo specs) mcus)
     , "svds" .= (markEnds $ svdsInfo svd)
     , "ipGPIOs" .= (markEnds $ zipWithFrom ipGPIOInfo 0 ipGPIOs)
+    , "interrupt" .= interruptInfo svd
     ]
 
 mcuInfo :: [MCU] -> Mcu -> Value
@@ -55,6 +56,23 @@ ipGPIOInfo i IpGPIO{..} = object
     , "enumValue" .= hex (shift 1 i)
     ]
 
+interruptInfo :: NormalSVD a -> Value
+interruptInfo NormalSVD{..} = object
+    [ "interrupts" .= (markEnds $ map f interrupts)
+    , "registers"  .= (map g xs)
+    ]
+    where f Interrupt{..} = object
+            [ "name"        .= name
+            , "value"       .= show value
+            , "description" .= description
+            ]
+          g i = object
+            [ "suffix" .= show i
+            , "lbound" .= show (i * 32)
+            , "hbound" .= show ((i+1) * 32)
+            ]
+          xs = [0..maximum (map value interrupts) `div` 32]
+
 markEnds :: [Value] -> [Value]
 markEnds [] = []
 markEnds (x:xs) = f x : xs
@@ -62,7 +80,8 @@ markEnds (x:xs) = f x : xs
 
 templates :: Family -> [(FilePath, Template)]
 templates Family{..} =
-    [ ("device/mcu.h", $(TH.compileMustacheFile "src/PrettyCPP/mcu.h.tch"))
+    [ ("device/mcu.h", $(TH.compileMustacheFile $ "src/PrettyCPP/mcu.h"))
+    , ("device/interrupt.h", $(TH.compileMustacheFile $ "src/PrettyCPP/interrupt.h"))
     ]
     where fam = toLower family
 
