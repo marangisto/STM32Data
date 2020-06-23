@@ -29,20 +29,20 @@ prettyCPP root family@Family{family=familyName} = do
 
 familyInfo :: Family -> Value
 familyInfo Family{..} = object
-    [ "family"  .= family
-    , "mcus" .= (markEnds $ map (mcuInfo specs) mcus)
-    , "svds" .= (markEnds $ svdsInfo svd)
-    , "ipGPIOs" .= (markEnds $ zipWithFrom ipGPIOInfo 0 ipGPIOs)
-    , "interrupt" .= interruptInfo svd
+    [ "family"      .= family
+    , "mcus"        .= (markEnds $ map (mcuInfo specs) mcus)
+    , "svds"        .= (markEnds $ svdsInfo svd)
+    , "ipGPIOs"     .= (markEnds $ zipWithFrom ipGPIOInfo 0 ipGPIOs)
+    , "interrupt"   .= interruptInfo svd
     ]
 
 mcuInfo :: [MCU] -> Mcu -> Value
 mcuInfo mcus Mcu{..} = object
-    [ "name" .= name
-    , "refName" .= refName
-    , "rpn" .= rpn
-    , "svd" .= (\MCU{..} -> svd) mcu
-    , "gpioConf" .= ipGPIOName mcu
+    [ "name"        .= name
+    , "refName"     .= refName
+    , "rpn"         .= rpn
+    , "svd"         .= (\MCU{..} -> svd) mcu
+    , "gpioConf"    .= ipGPIOName mcu
     ]
     where mcu = fromMaybe (error $ "can't find MCU for " <> unpack name)
               $ find (\MCU{..} -> refName == name) mcus
@@ -52,8 +52,8 @@ svdsInfo = map (\svd -> object [ "svd" .= svd ]) . svdNames
 
 ipGPIOInfo :: Int -> IpGPIO -> Value
 ipGPIOInfo i IpGPIO{..} = object
-    [ "name" .= name
-    , "enumValue" .= hex (shift 1 i)
+    [ "name"        .= name
+    , "enumValue"   .= hex (shift 1 i)
     ]
 
 periphGroupInfo :: [PeriphType] -> Value
