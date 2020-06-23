@@ -8,7 +8,7 @@ import qualified Data.Text.Lazy as TL
 import Data.Aeson hiding (Options)
 import Data.HashMap.Strict (fromList)
 import Data.List (nub, sort, find)
-import Data.List.Extra (zipWithFrom)
+import Data.List.Extra (zipWithFrom, groupSortOn)
 import Data.Text as T (Text, toLower, unpack)
 import Data.Maybe (fromMaybe)
 import Data.Bits (shift)
@@ -19,12 +19,19 @@ import Utils (writeText', hex)
 import FrontEnd
 
 prettyCPP :: FilePath -> Family -> IO ()
-prettyCPP root family@Family{family=familyName} = do
+prettyCPP root family@Family{family=familyName,..} = do
     let dir = root </> "stm32" </> unpack (toLower familyName)
         values = familyInfo family
     forM_ (templates family) $ \(fname, template) -> do
         let fn = dir </> fname
         createDirectoryIfMissing True $ takeDirectory fn
+        writeText' fn $ renderMustache template values
+    let periphGroups = groupSortOn groupName $ periphTypes svd
+        template = $(TH.compileMustacheFile $ "src/PrettyCPP/peripheral.h")
+    forM_ periphGroups $ \periphGroup -> do
+        let group = groupName $ head periphGroup
+            fn = dir </> "device" </> unpack (toLower group) <.> "h"
+            values = periphGroupInfo familyName group periphGroup
         writeText' fn $ renderMustache template values
 
 familyInfo :: Family -> Value
@@ -56,9 +63,11 @@ ipGPIOInfo i IpGPIO{..} = object
     , "enumValue"   .= hex (shift 1 i)
     ]
 
-periphGroupInfo :: [PeriphType] -> Value
-periphGroupInfo xs = object
-    [
+periphGroupInfo :: Text -> Text -> [PeriphType] -> Value
+periphGroupInfo family group xs = object
+    [ "family"      .= family
+    , "group"       .= group
+    , "periphTypes" .= map periphTypeInfo xs
     ]
 
 periphTypeInfo :: PeriphType -> Value
