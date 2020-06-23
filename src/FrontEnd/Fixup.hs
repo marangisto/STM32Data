@@ -4,8 +4,9 @@ module FrontEnd.Fixup (Reserve(..), fixup) where
 
 import FrontEnd.Normalize
 import Utils
-import Data.Text (isPrefixOf, isSuffixOf, toUpper)
+import Data.Text (isPrefixOf, isSuffixOf, stripSuffix, toUpper)
 import Data.List (sortOn, mapAccumL)
+import Data.List.Extra (nubOn)
 
 data Reserve = Reserve
     { name          :: !Text
@@ -69,6 +70,7 @@ periphInstEdits =
 registerEdits :: [RegisterEdit]
 registerEdits =
     [ gpio_fields
+    , tim_ccmr
     ]
 
 fieldEdits :: [FieldEdit]
@@ -94,6 +96,13 @@ gpio_fields "STM32F0" "RCC" x@Register{fields=fs,..}
     where en = Field "IOPEEN" "I/O port E clock enable" 21 1
           rst = Field "IOPERST" "I/O port E reset" 21 1
 gpio_fields _ _ x = x
+
+tim_ccmr :: RegisterEdit
+tim_ccmr _ p x@Register{..}
+    | tim, Just s <- stripSuffix "_INPUT" name = x { name = s }
+    | tim, Just s <- stripSuffix "_OUTPUT" name = x { name = s }
+    | otherwise = x
+    where tim = "TIM" `isPrefixOf` p
 
 compx_csr :: FieldEdit
 compx_csr _ p r x@Field{..}
@@ -207,9 +216,10 @@ exceptions = map f
              in Interrupt{..}
 
 reserve :: [Either Void Register] -> [Either Reserve Register]
-reserve = concat . snd . mapAccumL pad 0 . sortOn addr
+reserve = concat . snd . mapAccumL pad 0 . nubOn addr . sortOn addr
     where pad i (Right r@Register{..})
               | n > 0 = (j, [ Left p, Right r ])
+              | n < 0 = error $ "collission at " <> show r
               | otherwise = (j, [ Right r ])
               where n = addressOffset - i
                     j = i + n + size `div` 8
