@@ -18,6 +18,7 @@ import Data.Ord (Down(..))
 import Data.List (nub, sort, sortOn, partition)
 import Data.List.Extra (groupSort, groupSortOn)
 import Data.Maybe (fromMaybe, isNothing)
+import Data.Char (isDigit)
 import qualified Data.Text as T
 import qualified Data.Map.Strict as Map
 import Control.Arrow (second)
@@ -53,8 +54,7 @@ type Index = Map.Map PeriphRef PeriphRef
 normalize :: Text -> [SVD] -> NormalSVD ()
 normalize family xs = NormalSVD{..}
     where periphTypes = mergeInstances moreInsts periphTypes'
-          interrupts =  mergeInterrupts
-                     $ concat [ interrupts | SVD{..} <- xs ]
+          interrupts = mergeInterrupts $ concat [ interrupts | SVD{..} <- xs ]
           clockControl = ()
           (outright, derived) = partition (isOutright . snd) allPerips
           isOutright = isNothing . derivedFrom
@@ -67,12 +67,12 @@ mergeInstances
     :: [(PeriphRef, PeriphInst)]
     -> [PeriphType]
     -> [PeriphType]
-mergeInstances xs = map f
+mergeInstances xs = sortOn h . map f
     where f t@PeriphType{..} = t
-              { periphInsts = h $ periphInsts ++ g typeRef
+              { periphInsts = sortOn instRef $ periphInsts ++ g typeRef
               }
           g typeRef = fromMaybe [] $ lookup typeRef $ groupSort xs
-          h = sortOn instRef
+          h PeriphType{typeRef=PeriphRef{..}} = (nameNum name, svd)
 
 fromDerived :: Index -> (Text, Peripheral) -> (PeriphRef, PeriphInst)
 fromDerived index (svd, Peripheral{..}) = (typeRef, PeriphInst{..})
@@ -107,4 +107,11 @@ peripheralNames NormalSVD{..} = nub $ sort
     , PeriphInst{..} <- periphInsts
     , PeriphRef{..} <- [ instRef ]
     ]
+
+nameNum :: Text -> (Text, Int)
+nameNum s
+    | T.null t = (v, 0)
+    | otherwise = (v, read $ T.unpack $ T.reverse t)
+        where (t, u) = T.break (not . isDigit) $ T.reverse s
+              v = T.reverse u
 
