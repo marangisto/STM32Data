@@ -5,7 +5,7 @@ module FrontEnd.Fixup (Reserve(..), fixup) where
 import FrontEnd.Normalize
 import Utils
 import Data.Text (isPrefixOf, isSuffixOf, toUpper)
-import Data.List (sortOn)
+import Data.List (sortOn, mapAccumL)
 
 data Reserve = Reserve
     { name          :: !Text
@@ -207,5 +207,12 @@ exceptions = map f
              in Interrupt{..}
 
 reserve :: [Either Void Register] -> [Either Reserve Register]
-reserve = map (either undefined Right)
+reserve = concat . snd . mapAccumL pad 0 . sortOn addr
+    where pad i (Right r@Register{..})
+              | n > 0 = (j, [ Left p, Right r ])
+              | otherwise = (j, [ Right r ])
+              where n = addressOffset - i
+                    j = i + n + size `div` 8
+                    p = Reserve "res" i $ n * 8
+          addr (Right Register{..}) = addressOffset
 

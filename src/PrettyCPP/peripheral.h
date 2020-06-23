@@ -10,7 +10,12 @@
 struct {{#typeRef}}{{svdLC}}_{{nameLC}}_t{{/typeRef}}
 {
 {{#registers}}
-    volatile uint32_t {{name}}; // {{description}}
+  {{#reserve}}
+    reserved_t<{{size}}> {{name}};
+  {{/reserve}}
+  {{^reserve}}
+    {{type}} {{name}}; // {{description}}
+  {{/reserve}}
 {{/registers}}
 };
 {{/periphTypes}}

@@ -9,7 +9,7 @@ import Data.Aeson hiding (Options)
 import Data.HashMap.Strict (fromList)
 import Data.List (nub, sort, find)
 import Data.List.Extra (zipWithFrom, groupSortOn)
-import Data.Text as T (Text, toLower, unpack)
+import Data.Text as T (Text, toLower, pack, unpack)
 import Data.Maybe (fromMaybe)
 import Data.Bits (shift)
 import System.Directory
@@ -95,9 +95,17 @@ periphRefInfo PeriphRef{..} = object
 registerInfo :: Either Reserve Register -> Value
 registerInfo (Right Register{..}) = object
     [ "name"        .= name
+    , "type"        .= case size of
+        32  -> pack "volatile uint32_t"
+        n   -> error $ "unsupported register size: " <> show n
     , "description" .= description
     , "resetValue"  .= hex resetValue
     , "fields"      .= map fieldInfo fields
+    ]
+registerInfo (Left Reserve{..}) = object
+    [ "name"        .= ("_" <> hex addressOffset)
+    , "size"        .= hex (size `div` 32)
+    , "reserve"     .= True
     ]
 
 fieldInfo :: Field -> Value
