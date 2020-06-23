@@ -30,10 +30,10 @@ data ClockControl = ClockControl
 
 type RegFlag = (Text, Text)
 
-resolveCC :: NormalSVD () -> NormalSVD CCMap
+resolveCC :: NormalSVD () a -> NormalSVD CCMap a
 resolveCC x@NormalSVD{..} = x { clockControl = resolveCC' x }
 
-resolveCC' :: NormalSVD () -> CCMap
+resolveCC' :: NormalSVD () a -> CCMap
 resolveCC'
     = fromList
     . map (uncurry mkCC)
@@ -49,16 +49,16 @@ mkCC periphName xs = (rename periphName, ClockControl{..})
           enableSM = lookup "enableSM" xs
           reset = lookup "reset" xs
 
-rccRegFlags :: PeriphType -> [(Text, (Text, (Text, Text)))]
+rccRegFlags :: PeriphType a -> [(Text, (Text, (Text, Text)))]
 rccRegFlags PeriphType{..} =
     [ (periphName, (method, (regName, fldName)))
-    | Register{name=regName,..} <-registers
+    | Right Register{name=regName,..} <- registers
     , any (`T.isPrefixOf` regName) [ "AHB", "APB", "IOP" ]
     , Field{name=fldName} <- fields
     , Just (periphName, method) <- [ decode fldName ]
     ]
 
-rccPeripherals :: NormalSVD a -> [PeriphType]
+rccPeripherals :: NormalSVD a b -> [PeriphType b]
 rccPeripherals = filter p . periphTypes
     where p PeriphType{typeRef=PeriphRef{..}} = name == "RCC"
 
@@ -67,11 +67,11 @@ rename x
     | Just y <- T.stripPrefix "IOP" x = "GPIO" <> y
     | otherwise = x
 
-missingCC :: NormalSVD CCMap -> [Text]
+missingCC :: NormalSVD CCMap b -> [Text]
 missingCC nsvd@NormalSVD{..} = mapMaybe f $ peripheralNames nsvd
     where f x = maybe (Just x) (const Nothing) $ Map.lookup x clockControl
 
-unusedCC :: NormalSVD CCMap -> [Text]
+unusedCC :: NormalSVD CCMap b -> [Text]
 unusedCC nsvd@NormalSVD{..} = Map.keys ccs'
     where ccs' = foldr Map.delete clockControl $ peripheralNames nsvd
 

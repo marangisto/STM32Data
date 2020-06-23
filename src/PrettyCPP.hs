@@ -54,7 +54,7 @@ mcuInfo mcus Mcu{..} = object
     where mcu = fromMaybe (error $ "can't find MCU for " <> unpack name)
               $ find (\MCU{..} -> refName == name) mcus
 
-svdsInfo :: NormalSVD a -> [Value]
+svdsInfo :: NormalSVD a b -> [Value]
 svdsInfo = map (\svd -> object [ "svd" .= svd ]) . svdNames
 
 ipGPIOInfo :: Int -> IpGPIO -> Value
@@ -63,14 +63,14 @@ ipGPIOInfo i IpGPIO{..} = object
     , "enumValue"   .= hex (shift 1 i)
     ]
 
-periphGroupInfo :: Text -> Text -> [PeriphType] -> Value
+periphGroupInfo :: Text -> Text -> [PeriphType Reserve] -> Value
 periphGroupInfo family group xs = object
     [ "family"      .= family
     , "group"       .= group
     , "periphTypes" .= map periphTypeInfo xs
     ]
 
-periphTypeInfo :: PeriphType -> Value
+periphTypeInfo :: PeriphType Reserve -> Value
 periphTypeInfo PeriphType{..} = object
     [ "typeRef"     .= periphRefInfo typeRef
     , "description" .= description
@@ -92,8 +92,8 @@ periphRefInfo PeriphRef{..} = object
     , "nameLC"      .= toLower name
     ]
 
-registerInfo :: Register -> Value
-registerInfo Register{..} = object
+registerInfo :: Either Reserve Register -> Value
+registerInfo (Right Register{..}) = object
     [ "name"        .= name
     , "description" .= description
     , "resetValue"  .= hex resetValue
@@ -108,7 +108,7 @@ fieldInfo Field{..} = object
     , "bitWidth"    .= show bitWidth
     ]
 
-interruptInfo :: NormalSVD a -> Value
+interruptInfo :: NormalSVD a b -> Value
 interruptInfo NormalSVD{..} = object
     [ "interrupts" .= (markEnds $ map f interrupts)
     , "registers"  .= (map g xs)

@@ -8,6 +8,7 @@ module FrontEnd
     , PeriphRef(..)
     , PeriphInst(..)
     , Register(..)
+    , Reserve(..)
     , Field(..)
     , Interrupt(..)
     , CCMap
@@ -35,7 +36,7 @@ import Utils
 data Family = Family
     { family    :: Text
     , mcus      :: [Mcu]
-    , svd       :: NormalSVD CCMap
+    , svd       :: NormalSVD CCMap Reserve
     , specs     :: [MCU]
     , ipGPIOs   :: [IpGPIO]
     }
@@ -90,7 +91,7 @@ ipGPIOName MCU{..}
     = fst $ T.break (=='_') version
     | otherwise = error $ "failed to detepmine IpGPIO for " <> unpack refName
 
-svdNames :: NormalSVD a -> [Text]
+svdNames :: NormalSVD a b -> [Text]
 svdNames NormalSVD{..} = nub $ sort
     [ svd | PeriphType{..} <- periphTypes, PeriphRef{..} <- [ typeRef ] ]
 

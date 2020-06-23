@@ -1,23 +1,29 @@
 {-# LANGUAGE RecordWildCards, OverloadedStrings #-}
 {-# LANGUAGE DuplicateRecordFields #-}
-module FrontEnd.Fixup (fixup) where
+module FrontEnd.Fixup (Reserve(..), fixup) where
 
 import FrontEnd.Normalize
 import Utils
 import Data.Text (isPrefixOf, isSuffixOf, toUpper)
 import Data.List (sortOn)
 
-fixup :: NormalSVD () -> NormalSVD ()
+data Reserve = Reserve
+    { name          :: !Text
+    , addressOffset :: !Int
+    , size          :: !Int
+    } deriving (Show)
+
+fixup :: NormalSVD () Void -> NormalSVD () Reserve
 fixup x@NormalSVD{..} = x
     { periphTypes = ps
     , interrupts = exceptions ++ interrupts
     }
     where ps = map (editPeriphType family) periphTypes
 
-editPeriphType :: Text -> PeriphType -> PeriphType
+editPeriphType :: Text -> PeriphType Void -> PeriphType Reserve
 editPeriphType f p@PeriphType{..}
     = runPeriphTypeEdits periphTypeEdits f
-    $ p { registers = map (editRegister f name) registers
+    $ p { registers = reserve $ map (fmap $ editRegister f name) registers
         , periphInsts = map (editPeriphInst f name) periphInsts
         }
     where PeriphRef{..} = typeRef
@@ -33,12 +39,12 @@ editRegister f p r@Register{..}
 editField :: Text -> Text -> Text -> Field -> Field
 editField = runFieldEdits fieldEdits
 
-type PeriphTypeEdit = Text -> PeriphType -> PeriphType
+type PeriphTypeEdit b = Text -> PeriphType b -> PeriphType b
 type PeriphInstEdit = Text -> Text -> PeriphInst -> PeriphInst
 type RegisterEdit = Text -> Text -> Register -> Register
 type FieldEdit = Text -> Text -> Text -> Field -> Field
 
-runPeriphTypeEdits :: [PeriphTypeEdit] -> PeriphTypeEdit
+runPeriphTypeEdits :: [PeriphTypeEdit b] -> PeriphTypeEdit b
 runPeriphTypeEdits xs f = foldl (.) id (map ($f) xs)
 
 runPeriphInstEdits :: [PeriphInstEdit] -> PeriphInstEdit
@@ -50,7 +56,7 @@ runRegisterEdits xs f p = foldl (.) id (map (($p) . ($f)) xs)
 runFieldEdits :: [FieldEdit] -> FieldEdit
 runFieldEdits xs f p r = foldl (.) id (map (($r) . ($p) . ($f)) xs)
 
-periphTypeEdits :: [PeriphTypeEdit]
+periphTypeEdits :: [PeriphTypeEdit b]
 periphTypeEdits =
     [
     ]
@@ -199,3 +205,7 @@ exceptions = map f
     where f (value, name', description) =
             let name = toUpper name'
              in Interrupt{..}
+
+reserve :: [Either Void Register] -> [Either Reserve Register]
+reserve = map (either undefined Right)
+

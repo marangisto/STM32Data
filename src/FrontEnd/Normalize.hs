@@ -7,6 +7,7 @@ module FrontEnd.Normalize
     , Register(..)
     , Field(..)
     , Interrupt(..)
+    , Void
     , normalize
     , peripheralNames
     ) where
@@ -19,23 +20,24 @@ import Data.List (nub, sort, sortOn, partition)
 import Data.List.Extra (groupSort, groupSortOn)
 import Data.Maybe (fromMaybe, isNothing)
 import Data.Char (isDigit)
+import Data.Void (Void)
 import qualified Data.Text as T
 import qualified Data.Map.Strict as Map
 import Control.Arrow (second)
 import Utils
 
-data NormalSVD cc = NormalSVD
+data NormalSVD cc pad = NormalSVD
     { family        :: !Text
-    , periphTypes   :: ![PeriphType]
+    , periphTypes   :: ![PeriphType pad]
     , interrupts    :: ![Interrupt]
     , clockControl  :: !cc
     } deriving (Show)
 
-data PeriphType = PeriphType
+data PeriphType pad = PeriphType
     { typeRef       :: !PeriphRef
     , description   :: !Text
     , groupName     :: !Text
-    , registers     :: ![Register]
+    , registers     :: ![Either pad Register]
     , periphInsts   :: ![PeriphInst]
     } deriving (Show)
 
@@ -51,7 +53,7 @@ data PeriphInst = PeriphInst
 
 type Index = Map.Map PeriphRef PeriphRef
 
-normalize :: Text -> [SVD] -> NormalSVD ()
+normalize :: Text -> [SVD] -> NormalSVD () Void
 normalize family xs = NormalSVD{..}
     where periphTypes = mergeInstances moreInsts periphTypes'
           interrupts = mergeInterrupts $ concat [ interrupts | SVD{..} <- xs ]
@@ -65,8 +67,8 @@ normalize family xs = NormalSVD{..}
 
 mergeInstances
     :: [(PeriphRef, PeriphInst)]
-    -> [PeriphType]
-    -> [PeriphType]
+    -> [PeriphType b]
+    -> [PeriphType b]
 mergeInstances xs = sortOn h . map f
     where f t@PeriphType{..} = t
               { periphInsts = sortOn instRef $ periphInsts ++ g typeRef
@@ -82,14 +84,15 @@ fromDerived index (svd, Peripheral{..}) = (typeRef, PeriphInst{..})
               _ -> error $ "failed to derive " <> show instRef
           periphRef = PeriphRef svd $ fromMaybe (error "!!!") derivedFrom
 
-index :: [PeriphType] -> Index
+index :: [PeriphType b] -> Index
 index = Map.fromList . concatMap f
     where f PeriphType{..} = map (g typeRef) periphInsts
           g typeRef PeriphInst{..} = (instRef, typeRef)
 
-periphType :: [(Text, Peripheral)] -> PeriphType
-periphType xs@((svd, Peripheral{..}):_) = PeriphType{..}
-    where periphInsts = map (periphInst typeRef) xs
+periphType :: [(Text, Peripheral)] -> PeriphType b
+periphType xs@((svd, Peripheral{registers=regs,..}):_) = PeriphType{..}
+    where registers = map Right regs
+          periphInsts = map (periphInst typeRef) xs
           typeRef = PeriphRef{..}
 
 periphInst :: PeriphRef -> (Text, Peripheral) -> PeriphInst
@@ -100,7 +103,7 @@ mergeInterrupts :: [Interrupt] -> [Interrupt]
 mergeInterrupts = map f . groupSortOn value
     where f = head . sortOn (Down . T.length . \Interrupt{..} -> name)
 
-peripheralNames :: NormalSVD a -> [Text]
+peripheralNames :: NormalSVD a b -> [Text]
 peripheralNames NormalSVD{..} = nub $ sort
     [ name
     | PeriphType{..} <- periphTypes
