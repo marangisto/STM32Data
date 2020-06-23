@@ -87,7 +87,9 @@ periphInstInfo PeriphInst{..} = object
 periphRefInfo :: PeriphRef -> Value
 periphRefInfo PeriphRef{..} = object
     [ "svd"         .= svd
+    , "svdLC"       .= toLower svd
     , "name"        .= name
+    , "nameLC"      .= toLower name
     ]
 
 registerInfo :: Register -> Value

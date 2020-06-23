@@ -7,7 +7,7 @@
 ///
 {{#periphTypes}}
 
-struct {{#typeRef}}{{svd}}_{{name}}_t{{/typeRef}}
+struct {{#typeRef}}{{svdLC}}_{{nameLC}}_t{{/typeRef}}
 {
 {{#registers}}
     volatile uint32_t {{name}}; // {{description}}
