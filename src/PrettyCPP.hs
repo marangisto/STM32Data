@@ -96,6 +96,7 @@ registerInfo :: Either Reserve Register -> Value
 registerInfo (Right Register{..}) = object
     [ "name"        .= name
     , "type"        .= case size of
+        16  -> pack "volatile uint16_t"
         32  -> pack "volatile uint32_t"
         n   -> error $ "unsupported register size: " <> show n
     , "description" .= description

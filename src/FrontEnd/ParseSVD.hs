@@ -89,7 +89,7 @@ getRegister = atTag "register" >>> proc x -> do
     displayName <- arr pack <<< elemText "displayName" -< x
     description <- arr packWords <<< elemText "description" -< x
     addressOffset <- arr (fromHex . pack) <<< elemText "addressOffset" -< x
-    size <- arr (fromHex . pack) <<< elemText "size" -< x
+    size <- arr (read) <<< elemText "size" -< x
     access <- arr (fmap pack) <<< elemTextMay "access" -< x
     resetValue <- arr (fromHex . pack) <<< elemText "resetValue" -< x
     fields <- listA getField <<< list "fields" -< x

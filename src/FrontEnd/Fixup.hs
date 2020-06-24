@@ -19,12 +19,13 @@ fixup x@NormalSVD{..} = x
     { periphTypes = ps
     , interrupts = exceptions ++ interrupts
     }
-    where ps = map (editPeriphType family) periphTypes
+    where ps = map (f . editPeriphType family) periphTypes
+          f p@PeriphType{..} = PeriphType{registers = reserve registers,..}
 
-editPeriphType :: Text -> PeriphType Void -> PeriphType Reserve
+editPeriphType :: Text -> PeriphType Void -> PeriphType Void
 editPeriphType f p@PeriphType{..}
     = runPeriphTypeEdits periphTypeEdits f
-    $ p { registers = reserve $ map (fmap $ editRegister f name) registers
+    $ p { registers = map (fmap $ editRegister f name) registers
         , periphInsts = map (editPeriphInst f name) periphInsts
         }
     where PeriphRef{..} = typeRef
@@ -40,12 +41,12 @@ editRegister f p r@Register{..}
 editField :: Text -> Text -> Text -> Field -> Field
 editField = runFieldEdits fieldEdits
 
-type PeriphTypeEdit b = Text -> PeriphType b -> PeriphType b
+type PeriphTypeEdit = Text -> PeriphType Void -> PeriphType Void
 type PeriphInstEdit = Text -> Text -> PeriphInst -> PeriphInst
 type RegisterEdit = Text -> Text -> Register -> Register
 type FieldEdit = Text -> Text -> Text -> Field -> Field
 
-runPeriphTypeEdits :: [PeriphTypeEdit b] -> PeriphTypeEdit b
+runPeriphTypeEdits :: [PeriphTypeEdit] -> PeriphTypeEdit
 runPeriphTypeEdits xs f = foldl (.) id (map ($f) xs)
 
 runPeriphInstEdits :: [PeriphInstEdit] -> PeriphInstEdit
@@ -57,9 +58,9 @@ runRegisterEdits xs f p = foldl (.) id (map (($p) . ($f)) xs)
 runFieldEdits :: [FieldEdit] -> FieldEdit
 runFieldEdits xs f p r = foldl (.) id (map (($r) . ($p) . ($f)) xs)
 
-periphTypeEdits :: [PeriphTypeEdit b]
+periphTypeEdits :: [PeriphTypeEdit]
 periphTypeEdits =
-    [
+    [ usb_regs
     ]
 
 periphInstEdits :: [PeriphInstEdit]
@@ -78,6 +79,11 @@ fieldEdits =
     [ compx_csr
     , rcc_fields
     ]
+
+usb_regs :: PeriphTypeEdit
+usb_regs _ x@PeriphType{typeRef=PeriphRef{..},..}
+    | name == "USB" = x { registers = filter (not . usb_buffer) registers }
+    | otherwise = x
 
 inst_name :: PeriphInstEdit
 inst_name _ _ x@PeriphInst{instRef=r@PeriphRef{..}}
@@ -147,6 +153,12 @@ rcc_fields _ "RCC" _ x@Field{..}
     | otherwise = x
 rcc_fields _ _ _ x = x
 
+usb_buffer :: Either Void Register -> Bool
+usb_buffer (Right Register{..})
+    | "ADDR" `isPrefixOf` name = True
+    | "COUNT" `isPrefixOf` name = True
+    | otherwise = False
+
 {-
 fixupPeriphType "STM32G0" p@PeriphType{..}
     | name == "ADC"
@@ -176,12 +188,6 @@ usart1_cr1 r@Register{..}
     | name == "0x00000000"
     = r { name = "CR1", displayName = "CR1" }
     | otherwise = r
-
-usb_buffer :: Register -> Bool
-usb_buffer Register{..}
-    | "ADDR" `isPrefixOf` name = True
-    | "COUNT" `isPrefixOf` name = True
-    | otherwise = False
 
 nvic_iserx :: Register -> Register
 nvic_iserx r@Register{..}
@@ -220,6 +226,7 @@ reserve = concat . snd . mapAccumL pad 0 . nubOn addr . sortOn addr
     where pad i (Right r@Register{..})
               | n > 0 = (j, [ Left p, Right r ])
               | n < 0 = error $ "collission at " <> show r
+              -- | n < 0 = (j, [ Left $ Reserve "collission" i 0, Right r ])
               | otherwise = (j, [ Right r ])
               where n = addressOffset - i
                     j = i + n + size `div` 8
