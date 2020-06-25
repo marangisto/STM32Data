@@ -100,22 +100,37 @@ registerInfo (Right Register{..}) = object
         32  -> pack "volatile uint32_t"
         n   -> error $ "unsupported register size: " <> show n
     , "description" .= description
-    , "resetValue"  .= hex resetValue
-    , "fields"      .= map fieldInfo fields
+    , "fields"      .= (resetField : map (fieldInfo name) fields)
     ]
+    where resetField = object
+            [ "name"        .= (name <> "_RESET_VALUE")
+            , "type"        .= pack "static constexpr uint32_t"
+            , "value"       .= hex resetValue
+            , "description" .= pack "Reset value"
+            ]
+
 registerInfo (Left Reserve{..}) = object
     [ "name"        .= ("_" <> hex addressOffset)
     , "size"        .= hex (size `div` 32)
     , "reserve"     .= True
     ]
 
-fieldInfo :: Field -> Value
-fieldInfo Field{..} = object
-    [ "name"        .= name
+fieldInfo :: Text -> Field -> Value
+fieldInfo regName Field{..}
+  | bitWidth == 1 = object
+    [ "name"        .= (regName <> "_" <> name)
+    , "type"        .= pack "static constexpr uint32_t"
+    , "value"       .= hex (shift 1 bitOffset)
     , "description" .= description
-    , "bitOffset"   .= show bitOffset
-    , "bitWidth"    .= show bitWidth
     ]
+  | otherwise = object
+    [ "name"        .= (regName <> "_" <> name)
+    , "pos"         .= pos
+    , "mask"        .= mask
+    , "description" .= description
+    ]
+    where pos = pack $ show bitOffset
+          mask = hex $ shift 0xffffffff (bitWidth - 32)
 
 interruptInfo :: NormalSVD a b -> Value
 interruptInfo NormalSVD{..} = object
