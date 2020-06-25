@@ -30,4 +30,15 @@ struct {{#typeRef}}{{svdLC}}_{{nameLC}}_t{{/typeRef}}
 {{/registers}}
 };
 {{/periphTypes}}
+{{#periphTypes}}
+{{#periphInsts}}
+
+template<>
+struct {{#instRef}}periptheral_t<{{svd}}, {{name}}>{{/instRef}}
+{
+    using T = {{#typeRef}}{{svdLC}}_{{nameLC}}{{/typeRef}};
+    static T& V;
+};
+{{/periphInsts}}
+{{/periphTypes}}
 
