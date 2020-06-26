@@ -3,6 +3,7 @@
 module FrontEnd
     ( Family(..)
     , Mcu(..)
+    , Peripheral(..)
     , PeriphType(..)
     , PeriphRef(..)
     , PeriphInst(..)
@@ -22,7 +23,7 @@ module FrontEnd
 import System.FilePath
 import Data.List (find, sort, nub)
 import Data.List.Extra (groupSort)
-import Data.Text as T (pack, unpack, isPrefixOf, break)
+import Data.Text as T (pack, unpack, isPrefixOf, isSuffixOf, break)
 import Families hiding (Peripheral)
 import FrontEnd.ParseSVD hiding (Peripheral)
 import FrontEnd.ParseMCU
@@ -44,7 +45,7 @@ data Family = Family
 
 data Peripheral = Peripheral
     { name      :: !Text
-    , instNo    :: !Int
+    , instNo    :: !(Maybe Int)
     , altFuns   :: ![Void]
     } deriving (Show, Eq, Ord)
 
@@ -115,29 +116,20 @@ processPeripherals
     -> [(Text, ([PeriphType Reserve], [Peripheral]))]
 processPeripherals NormalSVD{..} = map f $ groupSort xs
     where xs = [ (groupName, p) | p@PeriphType{..} <- periphTypes ]
-          f (groupName, ps) = (groupName, (ps, map g xs))
-              where xs = nub $ sort
+          f (groupName, ps) = (groupName, (ps, xs))
+              where xs = map g $ nub $ sort
                         [ name
                         | PeriphType{..} <- ps
                         , PeriphInst{..} <- periphInsts
                         , PeriphRef{..} <- [ instRef ]
                         ]
-          g name = let (_, instNo) = nameNum name
+          g name = let instNo = instanceNo name
                        altFuns = []
                     in Peripheral{..}
-{-
-periphMap :: NormalSVD a b -> Map.Map Text [Periph]
-periphMap NormalSVD{..}
-    = Map.fromList $ groupSort $ nub $ sort $ concatMap f periphTypes
-    where f :: PeriphType b -> [(Text, Periph)]
-          f PeriphType{..} =
-            [ let altFuns = []
-                  instNo = undefined
-               in (groupName, Periph{..})
-            | PeriphInst{..} <- periphInsts
-            , PeriphRef{..} <- [ instRef ]
-            ]
-          exclude = [ "ADC12_COMMON"
-                    , "ADC345_COMMON"
-                    ]
--}
+
+instanceNo :: Text -> Maybe Int
+instanceNo name
+    | "_COMMON" `isSuffixOf` name = Nothing
+    | "GPIO" `isPrefixOf` name = Nothing
+    | otherwise = Just $ snd $ nameNum name
+

@@ -44,15 +44,17 @@ struct {{#instRef}}periptheral_t<{{svd}}, {{name}}>{{/instRef}}
 {{/periphInsts}}
 {{/periphTypes}}
 
-{{#abstractInsts}}
+{{#peripherals}}
 using {{nameLC}}_t = peripheral_t<svd, {{name}}>;
-{{/abstractInsts}}
+{{/peripherals}}
 
 template<int INST> struct {{groupLC}}_traits {};
-{{#abstractInsts}}
+{{#peripherals}}
+{{#instNo}}
 
 template<> struct {{groupLC}}_traits<{{instNo}}>
 {
         using {{groupLC}} = {{nameLC}}_t;
 };
-{{/abstractInsts}}
+{{/instNo}}
+{{/peripherals}}

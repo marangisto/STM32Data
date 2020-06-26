@@ -27,9 +27,9 @@ prettyCPP root family@Family{family=familyName,..} = do
         createDirectoryIfMissing True $ takeDirectory fn
         writeText' fn $ renderMustache template values
     let template = $(TH.compileMustacheFile $ "src/PrettyCPP/peripheral.h")
-    forM_ peripherals $ \(group, (periphTypes, _))  -> do
+    forM_ peripherals $ \(group, (periphTypes, peripherals))  -> do
         let fn = dir </> "device" </> unpack (toLower group) <.> "h"
-            values = periphGroupInfo familyName group periphTypes
+            values = periphInfo familyName group periphTypes peripherals
         writeText' fn $ renderMustache template values
 
 familyInfo :: Family -> Value
@@ -61,11 +61,13 @@ ipGPIOInfo i IpGPIO{..} = object
     , "enumValue"   .= hex (shift 1 i)
     ]
 
-periphGroupInfo :: Text -> Text -> [PeriphType Reserve] -> Value
-periphGroupInfo family group xs = object
+periphInfo :: Text -> Text -> [PeriphType Reserve] -> [Peripheral] -> Value
+periphInfo family groupName xs ys = object
     [ "family"      .= family
-    , "group"       .= group
+    , "group"       .= groupName
+    , "groupLC"     .= toLower groupName
     , "periphTypes" .= map periphTypeInfo xs
+    , "peripherals" .= map peripheralInfo ys
     ]
 
 periphTypeInfo :: PeriphType Reserve -> Value
@@ -75,6 +77,13 @@ periphTypeInfo PeriphType{..} = object
     , "registers"   .= map registerInfo registers
     , "periphInsts" .= map periphInstInfo periphInsts
     ]
+
+peripheralInfo :: Peripheral -> Value
+peripheralInfo Peripheral{..} = object $
+    [ "name"        .= name
+    , "nameLC"      .= toLower name
+    ] ++
+    [ "instNo"      .= pack (show no) | Just no <- [ instNo ] ]
 
 periphInstInfo :: PeriphInst -> Value
 periphInstInfo PeriphInst{..} = object
