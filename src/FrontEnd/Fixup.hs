@@ -6,7 +6,7 @@ import FrontEnd.Normalize
 import Utils
 import Data.Text (isPrefixOf, isSuffixOf, stripSuffix, toUpper)
 import Data.List (sortOn, mapAccumL)
-import Data.List.Extra (nubOn)
+import Data.List.Extra (nubOrdOn)
 
 data Reserve = Reserve
     { name          :: !Text
@@ -222,7 +222,7 @@ exceptions = map f
              in Interrupt{..}
 
 reserve :: [Either Void Register] -> [Either Reserve Register]
-reserve = concat . snd . mapAccumL pad 0 . nubOn addr . sortOn addr
+reserve = concat . snd . mapAccumL pad 0 . nubOrdOn addr . sortOn addr
     where pad i (Right r@Register{..})
               | n > 0 = (j, [ Left p, Right r ])
               | n < 0 = error $ "collission at " <> show r

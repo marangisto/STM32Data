@@ -26,21 +26,19 @@ prettyCPP root family@Family{family=familyName,..} = do
         let fn = dir </> fname
         createDirectoryIfMissing True $ takeDirectory fn
         writeText' fn $ renderMustache template values
-    let periphGroups = groupSortOn groupName $ periphTypes svd
-        template = $(TH.compileMustacheFile $ "src/PrettyCPP/peripheral.h")
-    forM_ periphGroups $ \periphGroup -> do
-        let group = groupName $ head periphGroup
-            fn = dir </> "device" </> unpack (toLower group) <.> "h"
-            values = periphGroupInfo familyName group periphGroup
+    let template = $(TH.compileMustacheFile $ "src/PrettyCPP/peripheral.h")
+    forM_ peripherals $ \(group, (periphTypes, _))  -> do
+        let fn = dir </> "device" </> unpack (toLower group) <.> "h"
+            values = periphGroupInfo familyName group periphTypes
         writeText' fn $ renderMustache template values
 
 familyInfo :: Family -> Value
 familyInfo Family{..} = object
     [ "family"      .= family
     , "mcus"        .= (markEnds $ map (mcuInfo specs) mcus)
-    , "svds"        .= (markEnds $ svdsInfo svd)
+    , "svds"        .= (markEnds $ svdsInfo svds)
     , "ipGPIOs"     .= (markEnds $ zipWithFrom ipGPIOInfo 0 ipGPIOs)
-    , "interrupt"   .= interruptInfo svd
+    , "interrupt"   .= interruptInfo interrupts
     ]
 
 mcuInfo :: [MCU] -> Mcu -> Value
@@ -54,8 +52,8 @@ mcuInfo mcus Mcu{..} = object
     where mcu = fromMaybe (error $ "can't find MCU for " <> unpack name)
               $ find (\MCU{..} -> refName == name) mcus
 
-svdsInfo :: NormalSVD a b -> [Value]
-svdsInfo = map (\svd -> object [ "svd" .= svd ]) . svdNames
+svdsInfo :: [Text] -> [Value]
+svdsInfo = map (\svd -> object [ "svd" .= svd ])
 
 ipGPIOInfo :: Int -> IpGPIO -> Value
 ipGPIOInfo i IpGPIO{..} = object
@@ -132,8 +130,8 @@ fieldInfo regName Field{..}
     where pos = pack $ show bitOffset
           mask = hex $ shift 0xffffffff (bitWidth - 32)
 
-interruptInfo :: NormalSVD a b -> Value
-interruptInfo NormalSVD{..} = object
+interruptInfo :: [Interrupt] -> Value
+interruptInfo interrupts = object
     [ "interrupts" .= (markEnds $ map f interrupts)
     , "registers"  .= (map g xs)
     ]

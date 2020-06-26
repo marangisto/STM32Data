@@ -10,6 +10,7 @@ module FrontEnd.Normalize
     , Void
     , normalize
     , peripheralNames
+    , nameNum
     ) where
 
 import FrontEnd.ParseSVD
