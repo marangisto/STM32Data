@@ -9,6 +9,7 @@ import System.FilePath
 import System.Directory
 import System.IO
 import System.IO.Temp
+import System.Info
 import Control.Monad
 import Control.Monad.Extra
 import Data.List (nub, sort, isPrefixOf)
@@ -27,7 +28,7 @@ import PrettyCPP
 data Options = Options
     { list_mcus     :: Bool
     , build_rules   :: Bool
-    , new_core      :: Bool
+    , old_core      :: Bool
     , clock_control :: Bool
     , headers       :: Maybe FilePath
     , family        :: [String]
@@ -40,7 +41,7 @@ options :: Main.Options
 options = Main.Options
     { list_mcus = def &= help "list available MCUs by family"
     , build_rules = def &= help "generate source for build rules"
-    , new_core = def &= help "run new core"
+    , old_core = def &= help "run old core"
     , clock_control = def &= help "report missing and unused clock control"
     , family = def &= help "filter on family"
     , sub_family = def &= help "filter on sub-family"
@@ -58,8 +59,13 @@ options = Main.Options
 tmpDir :: FilePath
 tmpDir = "C:" </> "tmp"
 
-famDir = "C:/Program Files (x86)/STMicroelectronics/STM32Cube"
-svdDir = "C:/ST/STM32CubeIDE_1.3.0/STM32CubeIDE/plugins"
+famDir = case os of
+    "linux" -> "/usr/local/STMicroelectronics/STM32Cube"
+    _       -> "C:/Program Files (x86)/STMicroelectronics/STM32Cube"
+
+svdDir = case os of
+    "linux" -> "/opt/st/stm32cubeide_1.3.0"
+    _       -> "C:/ST/STM32CubeIDE_1.3.0"
 
 main :: IO ()
 main = do
@@ -70,13 +76,13 @@ main = do
             , map (OnSubFamily . T.pack) sub_family
             , map (OnPackage . T.pack) package
             ]
-    [famXML] <- cached familiesFile famDir
+    [famXML] <- cacheLines familiesFile famDir
     families' <- parseFamilies famXML
     families <- return $ prune fs families'
-    allSVDs <- cached svdFiles svdDir
+    allSVDs <- cacheLines svdFiles svdDir
     let dbDir = takeDirectory famXML
 
-    when new_core $
+    unless old_core $
       forM_ families $ \(family', subFamilies) -> do
         fam@Family{..} <- parseFamily svdDir dbDir family' subFamilies
         whenJust headers $ flip prettyCPP fam
@@ -142,7 +148,7 @@ main = do
         $ mapM_ (putStrLn . T.unpack)
         $ buildRules families
 
-    when (not new_core) $ whenJust headers $ \top -> do
+    when old_core $ whenJust headers $ \top -> do
       stm32Header top $ map fst families'
       forM_ families $ \(family, subFamilies) -> do
         let dir = top </> T.unpack (T.toLower family) </> "device"
@@ -193,17 +199,4 @@ familiesFile = traverseDir (\_ -> True) accept []
           accept xs fp
             | takeFileName fp == "families.xml" = return $ fp : xs
             | otherwise = return xs
-
-cached :: (FilePath -> IO [FilePath]) -> FilePath -> IO [FilePath]
-cached act fp = do
-    dir <- getTemporaryDirectory
-    let fn = dir </> show (hash fp) <.> "tmp"
-    b <- doesFileExist fn
-    if b
-       then lines <$> readFile fn
-       else do
-           xs <- act fp
-           writeFile fn $ unlines xs
-           putStrLn $ "cached " <> fp <> " results in " <> fn
-           return xs
 

@@ -1,3 +1,4 @@
 .stack-work/
 STM32Data.cabal
 *~
+*.swp
