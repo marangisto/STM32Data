@@ -7,6 +7,8 @@
 ///
 {{#periphTypes}}
 
+// {{#typeRef}}{{name}}{{/typeRef}}: {{description}}
+
 struct {{#typeRef}}{{svdLC}}_{{nameLC}}_t{{/typeRef}}
 {
 {{#registers}}
