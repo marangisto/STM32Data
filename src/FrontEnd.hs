@@ -11,6 +11,7 @@ module FrontEnd
     , Reserve(..)
     , Field(..)
     , Interrupt(..)
+    , ClockControl(..)
     , CCMap
     , MCU(..)
     , Pin(..)
@@ -27,8 +28,8 @@ import Data.Char (ord)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.List (find, sort, nub)
 import Data.List.Extra (groupSort)
-import Data.Text as T (pack, unpack, isPrefixOf, isSuffixOf)
-import Data.Text as T (break, head, tail, length, stripPrefix)
+import Data.Text as T (pack, unpack, break, isPrefixOf, isSuffixOf)
+import Data.Text as T (head, tail, length, stripPrefix, stripSuffix)
 import qualified Data.Map.Strict as Map
 import Families hiding (Peripheral)
 import FrontEnd.ParseSVD hiding (Peripheral)
@@ -53,7 +54,8 @@ data Peripheral = Peripheral
     { name      :: !Text
     , instNo    :: !(Maybe Int)
     , altFuns   :: ![Text]
-    } deriving (Show, Eq, Ord)
+    , control   :: !(Maybe ClockControl)
+    } deriving (Show)
 
 processFamily
     :: FilePath             -- ^ STM32CubeIDE install path
@@ -118,7 +120,7 @@ fixupIpGPIO svds x@IpGPIO{..}
     where name' = fst $ T.break (=='_') version
 
 processPeripherals
-    :: NormalSVD a Reserve
+    :: NormalSVD CCMap Reserve
     -> Map.Map Text [Text]
     -> [(Text, ([PeriphType Reserve], [Peripheral]))]
 processPeripherals NormalSVD{..} afMap = map f $ groupSort xs
@@ -132,13 +134,16 @@ processPeripherals NormalSVD{..} afMap = map f $ groupSort xs
                         ]
           g name = let instNo = instanceNo name
                        altFuns = fromMaybe [] $ Map.lookup name afMap
+                       control = Map.lookup name clockControl
                     in Peripheral{..}
 
 instanceNo :: Text -> Maybe Int
 instanceNo name
-    | "_COMMON" `isSuffixOf` name = Nothing
+    | Just s <- stripSuffix "_COMMON" name
+    = Just $ snd $ nameNum s
     | Just s <- stripPrefix "GPIO" name
-    , T.length s == 1 = Just $ ord (T.head s) - ord 'A'
+    , T.length s == 1
+    = Just $ ord (T.head s) - ord 'A'
     | otherwise = Just $ snd $ nameNum name
 
 altFunMap :: [IpGPIO] -> Map.Map Text [Text]

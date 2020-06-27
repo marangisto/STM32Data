@@ -58,6 +58,19 @@ template<> struct {{groupLC}}_traits<{{instNo}}>
 {{#altFuns}}
     static constexpr alternate_function_t {{altFun}} = {{name}}_{{altFun}};
 {{/altFuns}}
+{{#controls}}
+
+    template<typename RCC>
+    static void {{method}}
+    {
+  {{#en}}
+        RCC::V.{{register}} |= RCC::T::{{register}}_{{flag}};
+  {{/en}}
+  {{^en}}
+        RCC::V.{{register}} &= ~RCC::T::{{register}}_{{flag}};
+  {{/en}}
+    }
+{{/controls}}
 };
 {{/instNo}}
 {{/peripherals}}

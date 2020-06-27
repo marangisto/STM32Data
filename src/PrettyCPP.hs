@@ -88,7 +88,24 @@ peripheralInfo Peripheral{..} = object $
     , "nameLC"      .= toLower name
     , "altFuns"     .= map (\x -> object [ "altFun" .= x ]) altFuns
     ] ++
-    [ "instNo"      .= pack (show no) | Just no <- [ instNo ] ]
+    [ "instNo"      .= pack (show no) | Just no <- [ instNo ] ] ++
+    [ "controls"    .= controlInfo c | Just c <- [ control ] ]
+
+controlInfo :: ClockControl -> [Value]
+controlInfo ClockControl{..} = concat
+    [ [ f "enable" rf True | Just rf <- [ enable ] ]
+    , [ f "disable" rf False | Just rf <- [ enable ] ]
+    , [ f "enable_sleep_mode" rf True | Just rf <- [ enableSM ] ]
+    , [ f "disable_sleep_mode" rf False | Just rf <- [ enableSM ] ]
+    , [ f "reset" rf True | Just rf <- [ reset ] ]
+    ]
+    where f :: Text -> (Text, Text) -> Bool -> Value
+          f method (register, flag) en = object
+              [ "method"    .= method
+              , "register"  .= register
+              , "flag"      .= flag
+              , "en"        .= en
+              ]
 
 periphInstInfo :: PeriphInst -> Value
 periphInstInfo PeriphInst{..} = object
