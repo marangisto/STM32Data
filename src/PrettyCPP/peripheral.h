@@ -54,7 +54,11 @@ template<int INST> struct {{groupLC}}_traits {};
 
 template<> struct {{groupLC}}_traits<{{instNo}}>
 {
-        using {{groupLC}} = {{nameLC}}_t;
+    using {{groupLC}} = {{nameLC}}_t;
+{{#altFuns}}
+    static constexpr alternate_function_t {{altFun}} = {{name}}_{{altFun}};
+{{/altFuns}}
 };
 {{/instNo}}
 {{/peripherals}}
+

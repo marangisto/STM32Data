@@ -2,6 +2,8 @@
 {-# LANGUAGE RecordWildCards, DuplicateRecordFields #-}
 module FrontEnd.ParseIpGPIO
     ( IpGPIO(..)
+    , GPIOPin(..)
+    , PinSignal(..)
     , parseIpGPIO
     ) where
 

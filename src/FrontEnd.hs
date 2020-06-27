@@ -16,14 +16,16 @@ module FrontEnd
     , Pin(..)
     , Signal(..)
     , IpGPIO(..)
-    , parseFamily
+    , processFamily
     , ipGPIOName
     ) where
 
 import System.FilePath
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.List (find, sort, nub)
 import Data.List.Extra (groupSort)
-import Data.Text as T (pack, unpack, isPrefixOf, isSuffixOf, break)
+import Data.Text as T (pack, unpack, isPrefixOf, isSuffixOf, break, tail)
+import qualified Data.Map.Strict as Map
 import Families hiding (Peripheral)
 import FrontEnd.ParseSVD hiding (Peripheral)
 import FrontEnd.ParseMCU
@@ -46,16 +48,16 @@ data Family = Family
 data Peripheral = Peripheral
     { name      :: !Text
     , instNo    :: !(Maybe Int)
-    , altFuns   :: ![Void]
+    , altFuns   :: ![Text]
     } deriving (Show, Eq, Ord)
 
-parseFamily
+processFamily
     :: FilePath             -- ^ STM32CubeIDE install path
     -> FilePath             -- ^ STM32CubeMX database directory
     -> Text                 -- ^ family name
     -> [SubFamily]          -- ^ sub-families from catalogue
     -> IO Family            -- ^ raw family data
-parseFamily svdDir dbDir family subFamilies = do
+processFamily svdDir dbDir family subFamilies = do
     let mcus = concatMap snd subFamilies
     svds <- familySVDs family <$> cacheLines svdFiles svdDir
     svd <- resolveCC . fixup . normalize family
@@ -63,7 +65,7 @@ parseFamily svdDir dbDir family subFamilies = do
     specs <- mapM (parseMCU $ map fst svds) $ mcuFiles dbDir subFamilies
     ipGPIOs <- map (fixupIpGPIO $ svdNames svd)
            <$> mapM parseIpGPIO (ipGPIOFiles dbDir specs)
-    let peripherals = processPeripherals svd
+    let peripherals = processPeripherals svd $ altFunMap ipGPIOs
         interrupts = (\NormalSVD{..} -> interrupts) svd
     return Family{svds=svdNames svd,..}
 
@@ -113,8 +115,9 @@ fixupIpGPIO svds x@IpGPIO{..}
 
 processPeripherals
     :: NormalSVD a Reserve
+    -> Map.Map Text [Text]
     -> [(Text, ([PeriphType Reserve], [Peripheral]))]
-processPeripherals NormalSVD{..} = map f $ groupSort xs
+processPeripherals NormalSVD{..} afMap = map f $ groupSort xs
     where xs = [ (groupName, p) | p@PeriphType{..} <- periphTypes ]
           f (groupName, ps) = (groupName, (ps, xs))
               where xs = map g $ nub $ sort
@@ -124,7 +127,7 @@ processPeripherals NormalSVD{..} = map f $ groupSort xs
                         , PeriphRef{..} <- [ instRef ]
                         ]
           g name = let instNo = instanceNo name
-                       altFuns = []
+                       altFuns = fromMaybe [] $ Map.lookup name afMap
                     in Peripheral{..}
 
 instanceNo :: Text -> Maybe Int
@@ -132,4 +135,14 @@ instanceNo name
     | "_COMMON" `isSuffixOf` name = Nothing
     | "GPIO" `isPrefixOf` name = Nothing
     | otherwise = Just $ snd $ nameNum name
+
+altFunMap :: [IpGPIO] -> Map.Map Text [Text]
+altFunMap = Map.fromList . groupSort . nub . sort . concatMap f
+    where f :: IpGPIO -> [(Text, Text)]
+          f IpGPIO{..} = concatMap g gpioPins
+          g GPIOPin{..} = mapMaybe h pinSignals
+          h PinSignal{..}
+              | sig == "" = Nothing
+              | otherwise = Just (dev, T.tail sig)
+              where (dev, sig) = T.break (=='_') name
 

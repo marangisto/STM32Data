@@ -84,7 +84,7 @@ main = do
 
     unless old_core $
       forM_ families $ \(family', subFamilies) -> do
-        fam@Family{..} <- parseFamily svdDir dbDir family' subFamilies
+        fam@Family{..} <- processFamily svdDir dbDir family' subFamilies
         whenJust headers $ flip prettyCPP fam
 
     {-

@@ -82,6 +82,7 @@ peripheralInfo :: Peripheral -> Value
 peripheralInfo Peripheral{..} = object $
     [ "name"        .= name
     , "nameLC"      .= toLower name
+    , "altFuns"     .= map (\x -> object [ "altFun" .= x ]) altFuns
     ] ++
     [ "instNo"      .= pack (show no) | Just no <- [ instNo ] ]
 
