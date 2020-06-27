@@ -33,13 +33,15 @@ prettyCPP root family@Family{family=familyName,..} = do
         writeText' fn $ renderMustache template values
 
 familyInfo :: Family -> Value
-familyInfo Family{..} = object
+familyInfo fam@Family{..} = object
     [ "family"      .= family
     , "mcus"        .= (markEnds $ map (mcuInfo specs) mcus)
-    , "svds"        .= (markEnds $ svdsInfo svds)
+    , "svds"        .= (markEnds $ names svds)
     , "ipGPIOs"     .= (markEnds $ zipWithFrom ipGPIOInfo 0 ipGPIOs)
+    , "periphs"     .= (markEnds $ names $ peripheralNames fam)
     , "interrupt"   .= interruptInfo interrupts
     ]
+    where names = map (\x -> object [ "name" .= x ])
 
 mcuInfo :: [MCU] -> Mcu -> Value
 mcuInfo mcus Mcu{..} = object
@@ -51,9 +53,6 @@ mcuInfo mcus Mcu{..} = object
     ]
     where mcu = fromMaybe (error $ "can't find MCU for " <> unpack name)
               $ find (\MCU{..} -> refName == name) mcus
-
-svdsInfo :: [Text] -> [Value]
-svdsInfo = map (\svd -> object [ "svd" .= svd ])
 
 ipGPIOInfo :: Int -> IpGPIO -> Value
 ipGPIOInfo i IpGPIO{..} = object

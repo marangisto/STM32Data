@@ -14,7 +14,7 @@ enum mcu_t
 
 enum svd_t
 {{#svds}}
-    {{#first}}{ {{/first}}{{^first}}, {{/first}}{{svd}}
+    {{#first}}{ {{/first}}{{^first}}, {{/first}}{{name}}
 {{/svds}}
     };
 
@@ -22,6 +22,12 @@ enum gpio_conf_t
 {{#ipGPIOs}}
     {{#first}}{ {{/first}}{{^first}}, {{/first}}{{name}} = {{enumValue}}
 {{/ipGPIOs}}
+    };
+
+enum periph_t
+{{#periphs}}
+    {{#first}}{ {{/first}}{{^first}}, {{/first}}{{name}}
+{{/periphs}}
     };
 
 template<mcu_t MCU> struct mcu_traits {};

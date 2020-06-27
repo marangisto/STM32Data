@@ -17,6 +17,7 @@ module FrontEnd
     , Signal(..)
     , IpGPIO(..)
     , processFamily
+    , peripheralNames
     , ipGPIOName
     ) where
 
@@ -25,15 +26,14 @@ import Data.Char (ord)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.List (find, sort, nub)
 import Data.List.Extra (groupSort)
-import Data.Text as T ( pack, unpack, isPrefixOf, isSuffixOf
-                      , break, head, tail, length, stripPrefix
-                      )
+import Data.Text as T (pack, unpack, isPrefixOf, isSuffixOf)
+import Data.Text as T (break, head, tail, length, stripPrefix)
 import qualified Data.Map.Strict as Map
 import Families hiding (Peripheral)
 import FrontEnd.ParseSVD hiding (Peripheral)
 import FrontEnd.ParseMCU
 import FrontEnd.ParseIpGPIO
-import FrontEnd.Normalize
+import FrontEnd.Normalize hiding (peripheralNames)
 import FrontEnd.Fixup
 import FrontEnd.ClockControl
 import Utils
@@ -149,4 +149,11 @@ altFunMap = Map.fromList . groupSort . nub . sort . concatMap f
               | sig == "" = Nothing
               | otherwise = Just (dev, T.tail sig)
               where (dev, sig) = T.break (=='_') name
+
+peripheralNames :: Family -> [Text]
+peripheralNames Family{..} = 
+    [ name 
+    | (_, (_, ps)) <- peripherals
+    , Peripheral{..} <- ps
+    ]
 
