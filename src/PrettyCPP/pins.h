@@ -19,10 +19,16 @@ enum pin_t
 {{/pins}}
     };
 
-enum alt_fun_t
+enum af_t
 {{#afs}}
     {{#first}}{ {{/first}}{{^first}}, {{/first}}{{name}} = {{value}}
 {{/afs}}
+    };
+
+enum alt_fun_t
+{{#altFuns}}
+    {{#first}}{ {{/first}}{{^first}}, {{/first}}{{name}}
+{{/altFuns}}
     };
 {{/gpio}}
 

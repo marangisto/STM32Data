@@ -68,11 +68,15 @@ ipGPIOInfo i IpGPIO{..} = object
 
 gpioInfo :: GPIO -> Value
 gpioInfo GPIO{..} = object
-    [ "ports" .= (markEnds $ map nameVal ports)
-    , "pins"  .= (markEnds $ map nameVal pins)
+    [ "ports"   .= (markEnds $ map nameVal ports)
+    , "pins"    .= (markEnds $ map nameVal pins)
+    , "afs"     .= (markEnds $ map nameVal afs)
+    , "altFuns" .= (markEnds $ map name altFuns)
     ]
     where nameVal :: (Text, Int) -> Value
           nameVal (n, v) = object [ "name" .= n, "value" .= hex v ]
+          name :: Text -> Value
+          name n = object [ "name" .= n ]
 
 periphInfo :: Text -> Text -> [PeriphType Reserve] -> [Peripheral] -> Value
 periphInfo family groupName xs ys = object

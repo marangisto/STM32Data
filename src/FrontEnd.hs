@@ -81,11 +81,12 @@ processFamily svdDir dbDir family subFamilies = do
     svd <- resolveCC . fixup . normalize family
        <$> mapM parseSVD (map snd svds)
     specs <- mapM (parseMCU $ map fst svds) $ mcuFiles dbDir subFamilies
-    ipGPIOs <- map (fixupIpGPIO $ svdNames svd)
+    ipGPIOs <- map (fixupAF . fixupIpGPIO (svdNames svd))
            <$> mapM parseIpGPIO (ipGPIOFiles dbDir specs)
     let peripherals = processPeripherals svd $ altFunMap ipGPIOs
         interrupts = (\NormalSVD{..} -> interrupts) svd
         gpio = processGPIO specs ipGPIOs
+    mapM_ print ipGPIOs
     print gpio
     return Family{svds=svdNames svd,..}
 
@@ -132,6 +133,16 @@ fixupIpGPIO svds x@IpGPIO{..}
     | name' `elem` svds = x { name = name' <> "_" } -- to avoid collissions
     | otherwise = x { name = name' }
     where name' = fst $ T.break (=='_') version
+
+fixupAF :: IpGPIO -> IpGPIO
+fixupAF x@IpGPIO{..} = x { gpioPins = map f gpioPins }
+    where f :: GPIOPin -> GPIOPin
+          f y@GPIOPin{..} = y { pinSignals = mapMaybe g pinSignals }
+          g :: PinSignal -> Maybe PinSignal
+          g z@PinSignal{..} = (\af -> z { gpioAF = af }) <$> h gpioAF
+          h s | Just rest <- stripPrefix "GPIO_" s
+              = Just $ fst $ T.break (=='_') rest
+              | otherwise = Nothing   -- FIXME: all the F1 remap crap comes here
 
 processPeripherals
     :: NormalSVD CCMap Reserve
@@ -189,10 +200,10 @@ processGPIO :: [MCU] -> [IpGPIO] -> GPIO
 processGPIO mcus ipGPIOs = GPIO{..}
     where ports = nub $ sort [ (port, m) | (port, m, _, _) <- xs ]
           pins = [ (pin, m * 16 + n) | (_, m, pin, n) <- xs ]
-          afs = []
-          altFuns = []
-          xs = sortOn f $ ioPins mcus
-          f (_, m, _, n) = (m, n)
+          afs = sortOn snd $ map splitAF $ nub $ sort $ map snd ys
+          altFuns = nub $ sort $ map fst ys
+          xs = sortOn (\(_, m, _, n) -> (m, n)) $ ioPins mcus
+          ys = concatMap getAltFuns ipGPIOs
 
 ioPins :: [MCU] -> [(Text, Int, Text, Int)]
 ioPins mcus = nub $ sort
@@ -208,4 +219,12 @@ splitPin s@('P':p:xs)
     | Just n <- readMaybe xs
     = Just (T.snoc "P" p, ord p - ord 'A', pack s, n)
 splitPin _ = Nothing
+
+getAltFuns :: IpGPIO -> [(Text, Text)]
+getAltFuns IpGPIO{..} = concatMap f gpioPins
+    where f GPIOPin{..} = map g pinSignals
+          g PinSignal{..} = (name, gpioAF)
+
+splitAF :: Text -> (Text, Int)
+splitAF s = let (_, i) = nameNum s in (s, i)
 
