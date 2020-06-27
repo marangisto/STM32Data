@@ -110,6 +110,7 @@ matchSVD svds name = case filter p svds of
     [] | "STM32F437" `isPrefixOf` name -> "STM32F427"
     [] | "STM32F439" `isPrefixOf` name -> "STM32F429"
     [] | "STM32F479" `isPrefixOf` name -> "STM32F469"
+    [] | "STM32WB5M" `isPrefixOf` name -> "STM32WB55" -- FIXME: questionable!
     [] ->  error $ "failed to match svd for " <> unpack name
     [ svd ] -> svd
     xs -> case filter tame xs of
