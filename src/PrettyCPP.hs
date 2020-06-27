@@ -172,6 +172,7 @@ templates Family{..} =
     , ("device/mcu.cpp", $(TH.compileMustacheFile $ "src/PrettyCPP/mcu.cpp"))
     , ("device/all.h", $(TH.compileMustacheFile $ "src/PrettyCPP/all.h"))
     , ("device/interrupt.h", $(TH.compileMustacheFile $ "src/PrettyCPP/interrupt.h"))
+    , ("device/vector.h", $(TH.compileMustacheFile $ "src/PrettyCPP/vector.h"))
     ]
     where fam = toLower family
 
