@@ -40,9 +40,13 @@ familyInfo fam@Family{..} = object
     , "ipGPIOs"     .= (markEnds $ zipWithFrom ipGPIOInfo 0 ipGPIOs)
     , "periphs"     .= (markEnds $ names $ peripheralNames fam)
     , "periphInsts" .= (map periphInstInfo $ peripheralInsts fam)
+    , "allGroups"   .= (names $ map fst peripherals)
     , "interrupt"   .= interruptInfo interrupts
     ]
-    where names = map (\x -> object [ "name" .= x ])
+    where names = map (\x -> object
+            [ "name" .= x
+            , "nameLC" .= toLower x
+            ])
 
 mcuInfo :: [MCU] -> Mcu -> Value
 mcuInfo mcus Mcu{..} = object
@@ -166,6 +170,7 @@ templates :: Family -> [(FilePath, Template)]
 templates Family{..} =
     [ ("device/mcu.h", $(TH.compileMustacheFile $ "src/PrettyCPP/mcu.h"))
     , ("device/mcu.cpp", $(TH.compileMustacheFile $ "src/PrettyCPP/mcu.cpp"))
+    , ("device/all.h", $(TH.compileMustacheFile $ "src/PrettyCPP/all.h"))
     , ("device/interrupt.h", $(TH.compileMustacheFile $ "src/PrettyCPP/interrupt.h"))
     ]
     where fam = toLower family
