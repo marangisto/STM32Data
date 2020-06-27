@@ -21,10 +21,13 @@ module FrontEnd
     ) where
 
 import System.FilePath
+import Data.Char (ord)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.List (find, sort, nub)
 import Data.List.Extra (groupSort)
-import Data.Text as T (pack, unpack, isPrefixOf, isSuffixOf, break, tail)
+import Data.Text as T ( pack, unpack, isPrefixOf, isSuffixOf
+                      , break, head, tail, length, stripPrefix
+                      )
 import qualified Data.Map.Strict as Map
 import Families hiding (Peripheral)
 import FrontEnd.ParseSVD hiding (Peripheral)
@@ -133,7 +136,8 @@ processPeripherals NormalSVD{..} afMap = map f $ groupSort xs
 instanceNo :: Text -> Maybe Int
 instanceNo name
     | "_COMMON" `isSuffixOf` name = Nothing
-    | "GPIO" `isPrefixOf` name = Nothing
+    | Just s <- stripPrefix "GPIO" name
+    , T.length s == 1 = Just $ ord (T.head s) - ord 'A'
     | otherwise = Just $ snd $ nameNum name
 
 altFunMap :: [IpGPIO] -> Map.Map Text [Text]
