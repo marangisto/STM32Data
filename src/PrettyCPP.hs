@@ -42,6 +42,7 @@ familyInfo fam@Family{..} = object
     , "periphInsts" .= (map periphInstInfo $ peripheralInsts fam)
     , "allGroups"   .= (names $ map fst peripherals)
     , "interrupt"   .= interruptInfo interrupts
+    , "gpio"        .= gpioInfo gpio
     ]
     where names = map (\x -> object
             [ "name" .= x
@@ -64,6 +65,14 @@ ipGPIOInfo i IpGPIO{..} = object
     [ "name"        .= name
     , "enumValue"   .= hex (shift 1 i)
     ]
+
+gpioInfo :: GPIO -> Value
+gpioInfo GPIO{..} = object
+    [ "ports" .= (markEnds $ map nameVal ports)
+    , "pins"  .= (markEnds $ map nameVal pins)
+    ]
+    where nameVal :: (Text, Int) -> Value
+          nameVal (n, v) = object [ "name" .= n, "value" .= hex v ]
 
 periphInfo :: Text -> Text -> [PeriphType Reserve] -> [Peripheral] -> Value
 periphInfo family groupName xs ys = object
@@ -188,6 +197,7 @@ templates Family{..} =
     [ ("device/mcu.h", $(TH.compileMustacheFile $ "src/PrettyCPP/mcu.h"))
     , ("device/mcu.cpp", $(TH.compileMustacheFile $ "src/PrettyCPP/mcu.cpp"))
     , ("device/all.h", $(TH.compileMustacheFile $ "src/PrettyCPP/all.h"))
+    , ("device/pins.h", $(TH.compileMustacheFile $ "src/PrettyCPP/pins.h"))
     , ("device/interrupt.h", $(TH.compileMustacheFile $ "src/PrettyCPP/interrupt.h"))
     , ("device/vector.h", $(TH.compileMustacheFile $ "src/PrettyCPP/vector.h"))
     ]

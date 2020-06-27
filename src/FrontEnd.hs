@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards, OverloadedStrings #-}
-{-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE DuplicateRecordFields, TupleSections #-}
 module FrontEnd
     ( Family(..)
     , Mcu(..)
@@ -17,6 +17,7 @@ module FrontEnd
     , Pin(..)
     , Signal(..)
     , IpGPIO(..)
+    , GPIO(..)
     , processFamily
     , peripheralNames
     , peripheralInsts
@@ -27,10 +28,13 @@ import System.FilePath
 import Data.Char (ord)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.List (find, sort, nub)
-import Data.List.Extra (groupSort)
-import Data.Text as T (pack, unpack, break, isPrefixOf, isSuffixOf)
-import Data.Text as T (head, tail, length, stripPrefix, stripSuffix)
+import Data.List.Extra (groupSort, sortOn)
+import Data.Text as T (pack, unpack, break)
+import Data.Text as T (head, tail, length, snoc)
+import Data.Text as T (isPrefixOf, isSuffixOf)
+import Data.Text as T (stripPrefix, stripSuffix)
 import qualified Data.Map.Strict as Map
+import Text.Read (readMaybe)
 import Families hiding (Peripheral)
 import FrontEnd.ParseSVD hiding (Peripheral)
 import FrontEnd.ParseMCU
@@ -48,6 +52,7 @@ data Family = Family
     , interrupts    :: [Interrupt]
     , specs         :: [MCU]
     , ipGPIOs       :: [IpGPIO]
+    , gpio          :: GPIO
     } deriving (Show)
 
 data Peripheral = Peripheral
@@ -55,6 +60,13 @@ data Peripheral = Peripheral
     , instNo    :: !(Maybe Int)
     , altFuns   :: ![Text]
     , control   :: !(Maybe ClockControl)
+    } deriving (Show)
+
+data GPIO = GPIO
+    { ports     :: ![(Text, Int)]
+    , pins      :: ![(Text, Int)]
+    , afs       :: ![(Text, Int)]
+    , altFuns   :: ![(Text)]
     } deriving (Show)
 
 processFamily
@@ -73,6 +85,8 @@ processFamily svdDir dbDir family subFamilies = do
            <$> mapM parseIpGPIO (ipGPIOFiles dbDir specs)
     let peripherals = processPeripherals svd $ altFunMap ipGPIOs
         interrupts = (\NormalSVD{..} -> interrupts) svd
+        gpio = processGPIO specs ipGPIOs
+    print gpio
     return Family{svds=svdNames svd,..}
 
 familySVDs :: Text -> [FilePath] -> [(Text, FilePath)]
@@ -170,4 +184,28 @@ peripheralInsts Family{..} =
     , PeriphType{..} <- pts
     , pi <- periphInsts
     ]
+
+processGPIO :: [MCU] -> [IpGPIO] -> GPIO
+processGPIO mcus ipGPIOs = GPIO{..}
+    where ports = nub $ sort [ (port, m) | (port, m, _, _) <- xs ]
+          pins = [ (pin, m * 16 + n) | (_, m, pin, n) <- xs ]
+          afs = []
+          altFuns = []
+          xs = sortOn f $ ioPins mcus
+          f (_, m, _, n) = (m, n)
+
+ioPins :: [MCU] -> [(Text, Int, Text, Int)]
+ioPins mcus = nub $ sort
+    [ portPin
+    | MCU{..} <- mcus
+    , Pin{..} <- pins
+    , Just portPin <- [ splitPin $ unpack name ]
+    ]
+
+-- split pin name into portName, portNum, pinName, pinNum
+splitPin :: String -> Maybe (Text, Int, Text, Int)
+splitPin s@('P':p:xs)
+    | Just n <- readMaybe xs
+    = Just (T.snoc "P" p, ord p - ord 'A', pack s, n)
+splitPin _ = Nothing
 
