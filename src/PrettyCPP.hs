@@ -39,6 +39,7 @@ familyInfo fam@Family{..} = object
     , "svds"        .= (markEnds $ names svds)
     , "ipGPIOs"     .= (markEnds $ zipWithFrom ipGPIOInfo 0 ipGPIOs)
     , "periphs"     .= (markEnds $ names $ peripheralNames fam)
+    , "periphInsts" .= (map periphInstInfo $ peripheralInsts fam)
     , "interrupt"   .= interruptInfo interrupts
     ]
     where names = map (\x -> object [ "name" .= x ])
@@ -164,6 +165,7 @@ markEnds (x:xs) = f x : xs
 templates :: Family -> [(FilePath, Template)]
 templates Family{..} =
     [ ("device/mcu.h", $(TH.compileMustacheFile $ "src/PrettyCPP/mcu.h"))
+    , ("device/mcu.cpp", $(TH.compileMustacheFile $ "src/PrettyCPP/mcu.cpp"))
     , ("device/interrupt.h", $(TH.compileMustacheFile $ "src/PrettyCPP/interrupt.h"))
     ]
     where fam = toLower family

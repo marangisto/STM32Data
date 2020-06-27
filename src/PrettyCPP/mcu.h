@@ -2,7 +2,7 @@
 
 ////
 //
-//      {{family}} MCUs
+//      {{family}} MCU family
 //
 ///
 
@@ -29,6 +29,15 @@ enum periph_t
     {{#first}}{ {{/first}}{{^first}}, {{/first}}{{name}}
 {{/periphs}}
     };
+
+template<svd_t SVD, periph_t PERIPH>
+struct peripheral_t
+{
+    static_assert
+        ( always_false_i<SVD>::value
+        , "peripheral not available on this MCU!"
+        );
+};
 
 template<mcu_t MCU> struct mcu_traits {};
 

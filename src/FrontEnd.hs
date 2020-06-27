@@ -18,6 +18,7 @@ module FrontEnd
     , IpGPIO(..)
     , processFamily
     , peripheralNames
+    , peripheralInsts
     , ipGPIOName
     ) where
 
@@ -155,5 +156,13 @@ peripheralNames Family{..} =
     [ name 
     | (_, (_, ps)) <- peripherals
     , Peripheral{..} <- ps
+    ]
+
+peripheralInsts :: Family -> [PeriphInst]
+peripheralInsts Family{..} = 
+    [ pi
+    | (_, (pts, _)) <- peripherals
+    , PeriphType{..} <- pts
+    , pi <- periphInsts
     ]
 
