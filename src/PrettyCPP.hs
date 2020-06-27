@@ -72,11 +72,18 @@ gpioInfo GPIO{..} = object
     , "pins"    .= (markEnds $ map nameVal pins)
     , "afs"     .= (markEnds $ map nameVal afs)
     , "altFuns" .= (markEnds $ map name altFuns)
+    , "traits"  .= map pinSignalAF traits
     ]
     where nameVal :: (Text, Int) -> Value
           nameVal (n, v) = object [ "name" .= n, "value" .= hex v ]
           name :: Text -> Value
           name n = object [ "name" .= n ]
+          pinSignalAF :: (Text, Text, Text) -> Value
+          pinSignalAF (pin, signal, af) = object
+              [ "pin"       .= pin
+              , "signal"    .= signal
+              , "af"        .= af
+              ]
 
 periphInfo :: Text -> Text -> [PeriphType Reserve] -> [Peripheral] -> Value
 periphInfo family groupName xs ys = object

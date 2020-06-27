@@ -29,6 +29,7 @@ import Data.Char (ord)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.List (find, sort, nub)
 import Data.List.Extra (groupSort, sortOn)
+import Data.Tuple.Extra (fst3, snd3, thd3)
 import Data.Text as T (pack, unpack, break)
 import Data.Text as T (head, tail, length, snoc)
 import Data.Text as T (isPrefixOf, isSuffixOf)
@@ -67,6 +68,7 @@ data GPIO = GPIO
     , pins      :: ![(Text, Int)]
     , afs       :: ![(Text, Int)]
     , altFuns   :: ![(Text)]
+    , traits    :: ![(Text, Text, Text)]
     } deriving (Show)
 
 processFamily
@@ -200,10 +202,10 @@ processGPIO :: [MCU] -> [IpGPIO] -> GPIO
 processGPIO mcus ipGPIOs = GPIO{..}
     where ports = nub $ sort [ (port, m) | (port, m, _, _) <- xs ]
           pins = [ (pin, m * 16 + n) | (_, m, pin, n) <- xs ]
-          afs = sortOn snd $ map splitAF $ nub $ sort $ map snd ys
-          altFuns = nub $ sort $ map fst ys
+          traits = concatMap getAltFuns ipGPIOs
+          afs = sortOn snd $ map splitAF $ nub $ sort $ map thd3 traits
+          altFuns = nub $ sort $ map snd3 traits
           xs = sortOn (\(_, m, _, n) -> (m, n)) $ ioPins mcus
-          ys = concatMap getAltFuns ipGPIOs
 
 ioPins :: [MCU] -> [(Text, Int, Text, Int)]
 ioPins mcus = nub $ sort
@@ -220,10 +222,11 @@ splitPin s@('P':p:xs)
     = Just (T.snoc "P" p, ord p - ord 'A', pack s, n)
 splitPin _ = Nothing
 
-getAltFuns :: IpGPIO -> [(Text, Text)]
+-- get (pin, signal, af)
+getAltFuns :: IpGPIO -> [(Text, Text, Text)]
 getAltFuns IpGPIO{..} = concatMap f gpioPins
-    where f GPIOPin{..} = map g pinSignals
-          g PinSignal{..} = (name, gpioAF)
+    where f GPIOPin{..} = map (g name) pinSignals
+          g pin PinSignal{..} = (pin, name, gpioAF)
 
 splitAF :: Text -> (Text, Int)
 splitAF s = let (_, i) = nameNum s in (s, i)
