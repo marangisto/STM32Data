@@ -76,6 +76,7 @@ data Signal = Signal
     , signal    :: !Text
     , altfun    :: !Text
     , configs   :: ![Text]
+    , partial   :: !Bool
     } deriving (Show)
 
 processFamily
@@ -233,12 +234,13 @@ toIOPin pin
 
 toSignals :: [IpGPIO] -> [Signal]
 toSignals xs =
-    [ Signal{..}
+    [ let partial = P.length configs /= n in Signal{..}
     | ((pin, signal, altfun), configs) <- groupSort $ concatMap f xs
     ]
     where f IpGPIO{..} = concatMap (g name) gpioPins
           g conf GPIOPin{..} = map (h conf name) pinSignals
           h conf pin PinSignal{..} = ((pin, name, gpioAF), conf)
+          n = P.length xs
 
 configNames :: [Signal] -> [(Text, Int)]
 configNames = zipWithFrom f 0 . nub . sort . concatMap configs

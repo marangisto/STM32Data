@@ -9,7 +9,7 @@ import Data.Aeson hiding (Options)
 import Data.HashMap.Strict (fromList)
 import Data.List (nub, sort, find)
 import Data.List.Extra (zipWithFrom, groupSortOn)
-import Data.Text as T (Text, toLower, pack, unpack)
+import Data.Text as T (Text, toLower, pack, unpack, intercalate)
 import Data.Maybe (fromMaybe)
 import Data.Bits (shift)
 import System.Directory
@@ -70,7 +70,11 @@ gpioInfo GPIO{..} = object
               [ "pin"       .= pin
               , "signal"    .= signal
               , "altfun"    .= altfun
+              , "partial"   .= partial
+              , "configs"   .= f configs 
               ]
+              where f (x:[]) = x
+                    f xs = "(" <> intercalate "|" xs <> ")"
 
 periphInfo :: Text -> Text -> [PeriphType Reserve] -> [Peripheral] -> Value
 periphInfo family groupName xs ys = object

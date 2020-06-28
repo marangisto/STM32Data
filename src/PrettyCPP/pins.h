@@ -60,13 +60,18 @@ struct available_signal_t<true>
 };
 
 template<bool AVAIL>
-using signal = typename available_signal_t<AVAIL>::type;
+using altfun = typename available_signal_t<AVAIL>::type;
 {{#traits}}
 
 template<gpio_conf_t CFG>
 struct signal_traits<CFG, {{pin}}, {{signal}}>
 {
+{{^partial}}
     static constexpr altfun_t AF = {{altfun}};
+{{/partial}}
+{{#partial}}
+    static constexpr altfun<CFG & {{configs}}> AF = {{altfun}};
+{{/partial}}
 };
 {{/traits}}
 {{/gpio}}
