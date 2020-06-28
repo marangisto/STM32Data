@@ -205,25 +205,31 @@ peripheralInsts Family{..} =
 
 processGPIO :: [MCU] -> [IpGPIO] -> GPIO
 processGPIO mcus ipGPIOs = GPIO{..}
-    where ports = nub $ sort [ (port, m) | (port, m, _, _) <- xs ]
-          pins = [ (pin, m * 16 + n) | (_, m, pin, n) <- xs ]
+    where ports = nub $ sort [ (port, portNo) | IOPin{..} <- xs ]
+          pins = [ (pin, portNo * 16 + pinNo) | IOPin{..} <- xs ]
           signals = toSignals ipGPIOs
-          xs = sortOn (\(_, m, _, n) -> (m, n)) $ ioPins mcus
+          xs = ioPins mcus
 
-ioPins :: [MCU] -> [(Text, Int, Text, Int)]
+data IOPin = IOPin
+    { portNo    :: !Int     -- order on this first
+    , pinNo     :: !Int     -- and second on this
+    , port      :: !Text
+    , pin       :: !Text
+    } deriving (Show, Eq, Ord)
+
+ioPins :: [MCU] -> [IOPin]
 ioPins mcus = nub $ sort
     [ portPin
     | MCU{..} <- mcus
     , Pin{..} <- pins
-    , Just portPin <- [ splitPin $ unpack name ]
+    , Just portPin <- [ toIOPin name ]
     ]
 
--- split pin name into portName, portNum, pinName, pinNum
-splitPin :: String -> Maybe (Text, Int, Text, Int)
-splitPin s@('P':p:xs)
-    | Just n <- readMaybe xs
-    = Just (T.snoc "P" p, ord p - ord 'A', pack s, n)
-splitPin _ = Nothing
+toIOPin :: Text -> Maybe IOPin
+toIOPin pin
+    | ('P':p:xs) <- unpack pin, Just pinNo <- readMaybe xs
+    = Just IOPin{port=T.snoc "P" p, portNo=ord p - ord 'A',..}
+    | otherwise = Nothing
 
 toSignals :: [IpGPIO] -> [Signal]
 toSignals xs =

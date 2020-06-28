@@ -51,7 +51,7 @@ options = Main.Options
     } &=
     verbosity &=
     help "Generate pin descriptions from STM32CubeMX xml files" &=
-    summary "STM32Data v0.3.0, (c) Bengt Marten Agren 2020" &=
+    summary "STM32Data v0.4.0, (c) Bengt Marten Agren 2020" &=
     details [ "STM32Data generate device header files for STM32"
             , "MCUs based on vendor XML files from SMT32CubeMX."
             ]
