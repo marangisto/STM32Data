@@ -66,17 +66,33 @@ gpioInfo GPIO{..} = object
     , "traits"  .= map pinSignalAF signals
     ]
     where pinSignalAF :: Signal -> Value
-          pinSignalAF Signal{..} = object $
+          pinSignalAF sig@Signal{..} = object $
               [ "pin"       .= pin
               , "signal"    .= signal
               ] ++ lhs ++ rhs
               where lhs | length confs < n
-                        = [ "condLHS" .= True, "config" .= orExpr confs ]
+                        = [ "condLHS" .= True
+                          , "config" .= orExpr confs
+                          ]
                         | otherwise = []
                         where confs = map snd altfun
                     rhs | ((af, _):[]) <- xs
-                        = [ "simpleRHS" .= True, "altfun" .= af ]
-                        | otherwise = []
+                        = [ "simpleRHS" .= True
+                          , "altfun" .= af
+                          ]
+                        | ((af1, c1s):(af2, c2s):[]) <- xs
+                        = ("dualRHS" .= True) : if length c1s < length c2s
+                          then
+                            [ "cond" .= orExpr c1s
+                            , "altfun1" .= af1
+                            , "altfun2" .= af2
+                            ]
+                          else
+                            [ "cond" .= orExpr c2s
+                            , "altfun1" .= af2
+                            , "altfun2" .= af1
+                            ]
+                        | otherwise = error $ "too complex: " <> show sig
                         where xs = groupSort altfun
           n = length configs
           orExpr (x:[]) = x

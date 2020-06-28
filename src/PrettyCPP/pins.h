@@ -67,10 +67,13 @@ template<gpio_conf_t CFG>
 struct signal_traits<CFG, {{pin}}, {{signal}}>
 {
 {{^condLHS}}
-    static constexpr altfun_t AF = {{#simpleRHS}}{{altfun}}{{/simpleRHS}};
+    static constexpr altfun_t AF = {{#simpleRHS}}{{altfun}}{{/simpleRHS}}{{#dualRHS}}(CFG & {{cond}}) ? {{altfun1}} : {{altfun2}}{{/dualRHS}};
+    ;
 {{/condLHS}}
 {{#condLHS}}
-    static constexpr altfun<CFG&{{config}}> AF = {{#simpleRHS}}{{altfun}}{{/simpleRHS}};
+    static constexpr altfun
+        < CFG & {{config}}
+        > AF = {{#simpleRHS}}{{altfun}}{{/simpleRHS}}{{#dualRHS}}(CFG & {{cond}}) ? {{altfun1}} : {{altfun2}}{{/dualRHS}};
 {{/condLHS}}
 };
 {{/traits}}
