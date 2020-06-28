@@ -21,7 +21,6 @@ module FrontEnd
     , peripheralNames
     , peripheralInsts
     , ipGPIOName
-    , configNames
     , signalNames
     , altfunNames
     ) where
@@ -68,15 +67,14 @@ data Peripheral = Peripheral
 data GPIO = GPIO
     { ports     :: ![(Text, Int)]
     , pins      :: ![(Text, Int)]
+    , configs   :: ![(Text, Int)]
     , signals   :: ![Signal]
     } deriving (Show)
 
 data Signal = Signal
     { pin       :: !Text
     , signal    :: !Text
-    , altfun    :: !Text
-    , configs   :: ![Text]
-    , partial   :: !Bool
+    , altfun    :: ![(Text, Text)]  -- (af, config)
     } deriving (Show)
 
 processFamily
@@ -130,7 +128,7 @@ ipGPIOName :: MCU -> Text
 ipGPIOName MCU{..}
     | Just IP{..} <- find (\IP{..} -> name == "GPIO") ips
     = fst $ T.break (=='_') version
-    | otherwise = error $ "failed to detepmine IpGPIO for " <> unpack refName
+    | otherwise = error $ "failed to find IpGPIO for " <> unpack refName
 
 svdNames :: NormalSVD a b -> [Text]
 svdNames NormalSVD{..} = nub $ sort
@@ -209,6 +207,9 @@ processGPIO mcus ipGPIOs = GPIO{..}
     where ports = nub $ sort [ (port, portNo) | IOPin{..} <- xs ]
           pins = [ (pin, portNo * 16 + pinNo) | IOPin{..} <- xs ]
           signals = toSignals ipGPIOs
+          configs = [ (name, shift 1 i)
+                    | (i, IpGPIO{..}) <- zip [0..] ipGPIOs
+                    ]
           xs = ioPins mcus
 
 data IOPin = IOPin
@@ -234,20 +235,17 @@ toIOPin pin
 
 toSignals :: [IpGPIO] -> [Signal]
 toSignals xs =
-    [ let partial = P.length configs /= n in Signal{..}
-    | ((pin, signal, altfun), configs) <- groupSort $ concatMap f xs
+    [ Signal{..}
+    | ((pin, signal), altfun) <- groupSort $ concatMap f xs
     ]
     where f IpGPIO{..} = concatMap (g name) gpioPins
           g conf GPIOPin{..} = map (h conf name) pinSignals
-          h conf pin PinSignal{..} = ((pin, name, gpioAF), conf)
-          n = P.length xs
-
-configNames :: [Signal] -> [(Text, Int)]
-configNames = zipWithFrom f 0 . nub . sort . concatMap configs
-    where f i x = (x, shift 1 i)
+          h conf pin PinSignal{..} = ((pin, name), (gpioAF, conf))
 
 altfunNames :: [Signal] -> [(Text, Int)]
-altfunNames = sortOn snd . map splitAF . nub . sort . map altfun
+altfunNames
+    = sortOn snd . map splitAF . nub . sort
+    . concatMap (map fst . altfun)
 
 signalNames :: [Signal] -> [Text]
 signalNames = nub . sort . map signal

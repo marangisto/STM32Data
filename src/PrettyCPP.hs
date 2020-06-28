@@ -8,7 +8,7 @@ import qualified Data.Text.Lazy as TL
 import Data.Aeson hiding (Options)
 import Data.HashMap.Strict (fromList)
 import Data.List (nub, sort, find)
-import Data.List.Extra (zipWithFrom, groupSortOn)
+import Data.List.Extra (zipWithFrom, groupSort, groupSortOn)
 import Data.Text as T (Text, toLower, pack, unpack, intercalate)
 import Data.Maybe (fromMaybe)
 import Data.Bits (shift)
@@ -37,7 +37,7 @@ familyInfo fam@Family{..} = object
     [ "family"      .= family
     , "mcus"        .= (markEnds $ map (mcuInfo specs) mcus)
     , "svds"        .= (markEnds $ map nameInfo svds)
-    , "configs"     .= (markEnds $ map nameValInfo $ configNames signals)
+    , "configs"     .= (markEnds $ map nameValInfo configs)
     , "periphs"     .= (markEnds $ map nameInfo $ peripheralNames fam)
     , "periphInsts" .= (map periphInstInfo $ peripheralInsts fam)
     , "allGroups"   .= (map nameInfo $ map fst peripherals)
@@ -66,15 +66,21 @@ gpioInfo GPIO{..} = object
     , "traits"  .= map pinSignalAF signals
     ]
     where pinSignalAF :: Signal -> Value
-          pinSignalAF Signal{..} = object
+          pinSignalAF Signal{..} = object $
               [ "pin"       .= pin
               , "signal"    .= signal
-              , "altfun"    .= altfun
-              , "partial"   .= partial
-              , "configs"   .= f configs 
-              ]
-              where f (x:[]) = x
-                    f xs = "(" <> intercalate "|" xs <> ")"
+              ] ++ lhs ++ rhs
+              where lhs | length confs < n
+                        = [ "condLHS" .= True, "config" .= orExpr confs ]
+                        | otherwise = []
+                        where confs = map snd altfun
+                    rhs | ((af, _):[]) <- xs
+                        = [ "simpleRHS" .= True, "altfun" .= af ]
+                        | otherwise = []
+                        where xs = groupSort altfun
+          n = length configs
+          orExpr (x:[]) = x
+          orExpr xs = "(" <> intercalate "|" xs <> ")"
 
 periphInfo :: Text -> Text -> [PeriphType Reserve] -> [Peripheral] -> Value
 periphInfo family groupName xs ys = object

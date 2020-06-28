@@ -66,12 +66,12 @@ using altfun = typename available_signal_t<AVAIL>::type;
 template<gpio_conf_t CFG>
 struct signal_traits<CFG, {{pin}}, {{signal}}>
 {
-{{^partial}}
-    static constexpr altfun_t AF = {{altfun}};
-{{/partial}}
-{{#partial}}
-    static constexpr altfun<CFG & {{configs}}> AF = {{altfun}};
-{{/partial}}
+{{^condLHS}}
+    static constexpr altfun_t AF = {{#simpleRHS}}{{altfun}}{{/simpleRHS}};
+{{/condLHS}}
+{{#condLHS}}
+    static constexpr altfun<CFG&{{config}}> AF = {{#simpleRHS}}{{altfun}}{{/simpleRHS}};
+{{/condLHS}}
 };
 {{/traits}}
 {{/gpio}}
