@@ -19,9 +19,9 @@ enum svd_t
     };
 
 enum gpio_conf_t
-{{#ipGPIOs}}
-    {{#first}}{ {{/first}}{{^first}}, {{/first}}{{name}} = {{enumValue}}
-{{/ipGPIOs}}
+{{#configs}}
+    {{#first}}{ {{/first}}{{^first}}, {{/first}}{{name}} = {{value}}
+{{/configs}}
     };
 
 enum periph_t

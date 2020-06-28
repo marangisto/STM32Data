@@ -15,21 +15,24 @@ module FrontEnd
     , CCMap
     , MCU(..)
     , Pin(..)
-    , Signal(..)
-    , IpGPIO(..)
     , GPIO(..)
+    , Signal(..)
     , processFamily
     , peripheralNames
     , peripheralInsts
     , ipGPIOName
+    , configNames
+    , signalNames
+    , altfunNames
     ) where
 
+import Prelude as P
 import System.FilePath
 import Data.Char (ord)
+import Data.Bits (shift)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.List (find, sort, nub)
-import Data.List.Extra (groupSort, sortOn)
-import Data.Tuple.Extra (fst3, snd3, thd3)
+import Data.List.Extra (groupSort, sortOn, zipWithFrom)
 import Data.Text as T (pack, unpack, break)
 import Data.Text as T (head, tail, length, snoc)
 import Data.Text as T (isPrefixOf, isSuffixOf)
@@ -38,7 +41,7 @@ import qualified Data.Map.Strict as Map
 import Text.Read (readMaybe)
 import Families hiding (Peripheral)
 import FrontEnd.ParseSVD hiding (Peripheral)
-import FrontEnd.ParseMCU
+import FrontEnd.ParseMCU hiding (Signal)
 import FrontEnd.ParseIpGPIO
 import FrontEnd.Normalize hiding (peripheralNames)
 import FrontEnd.Fixup
@@ -52,7 +55,6 @@ data Family = Family
     , peripherals   :: [(Text, ([PeriphType Reserve], [Peripheral]))]
     , interrupts    :: [Interrupt]
     , specs         :: [MCU]
-    , ipGPIOs       :: [IpGPIO]
     , gpio          :: GPIO
     } deriving (Show)
 
@@ -66,9 +68,14 @@ data Peripheral = Peripheral
 data GPIO = GPIO
     { ports     :: ![(Text, Int)]
     , pins      :: ![(Text, Int)]
-    , afs       :: ![(Text, Int)]
-    , altFuns   :: ![(Text)]
-    , traits    :: ![(Text, Text, Text)]
+    , signals   :: ![Signal]
+    } deriving (Show)
+
+data Signal = Signal
+    { pin       :: !Text
+    , signal    :: !Text
+    , altfun    :: !Text
+    , configs   :: ![Text]
     } deriving (Show)
 
 processFamily
@@ -88,8 +95,6 @@ processFamily svdDir dbDir family subFamilies = do
     let peripherals = processPeripherals svd $ altFunMap ipGPIOs
         interrupts = (\NormalSVD{..} -> interrupts) svd
         gpio = processGPIO specs ipGPIOs
-    mapM_ print ipGPIOs
-    print gpio
     return Family{svds=svdNames svd,..}
 
 familySVDs :: Text -> [FilePath] -> [(Text, FilePath)]
@@ -202,9 +207,7 @@ processGPIO :: [MCU] -> [IpGPIO] -> GPIO
 processGPIO mcus ipGPIOs = GPIO{..}
     where ports = nub $ sort [ (port, m) | (port, m, _, _) <- xs ]
           pins = [ (pin, m * 16 + n) | (_, m, pin, n) <- xs ]
-          traits = concatMap getAltFuns ipGPIOs
-          afs = sortOn snd $ map splitAF $ nub $ sort $ map thd3 traits
-          altFuns = nub $ sort $ map snd3 traits
+          signals = toSignals ipGPIOs
           xs = sortOn (\(_, m, _, n) -> (m, n)) $ ioPins mcus
 
 ioPins :: [MCU] -> [(Text, Int, Text, Int)]
@@ -222,11 +225,24 @@ splitPin s@('P':p:xs)
     = Just (T.snoc "P" p, ord p - ord 'A', pack s, n)
 splitPin _ = Nothing
 
--- get (pin, signal, af)
-getAltFuns :: IpGPIO -> [(Text, Text, Text)]
-getAltFuns IpGPIO{..} = concatMap f gpioPins
-    where f GPIOPin{..} = map (g name) pinSignals
-          g pin PinSignal{..} = (pin, name, gpioAF)
+toSignals :: [IpGPIO] -> [Signal]
+toSignals xs =
+    [ Signal{..}
+    | ((pin, signal, altfun), configs) <- groupSort $ concatMap f xs
+    ]
+    where f IpGPIO{..} = concatMap (g name) gpioPins
+          g conf GPIOPin{..} = map (h conf name) pinSignals
+          h conf pin PinSignal{..} = ((pin, name, gpioAF), conf)
+
+configNames :: [Signal] -> [(Text, Int)]
+configNames = zipWithFrom f 0 . nub . sort . concatMap configs
+    where f i x = (x, shift 1 i)
+
+altfunNames :: [Signal] -> [(Text, Int)]
+altfunNames = sortOn snd . map splitAF . nub . sort . map altfun
+
+signalNames :: [Signal] -> [Text]
+signalNames = nub . sort . map signal
 
 splitAF :: Text -> (Text, Int)
 splitAF s = let (_, i) = nameNum s in (s, i)

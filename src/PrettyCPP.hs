@@ -36,18 +36,15 @@ familyInfo :: Family -> Value
 familyInfo fam@Family{..} = object
     [ "family"      .= family
     , "mcus"        .= (markEnds $ map (mcuInfo specs) mcus)
-    , "svds"        .= (markEnds $ names svds)
-    , "ipGPIOs"     .= (markEnds $ zipWithFrom ipGPIOInfo 0 ipGPIOs)
-    , "periphs"     .= (markEnds $ names $ peripheralNames fam)
+    , "svds"        .= (markEnds $ map nameInfo svds)
+    , "configs"     .= (markEnds $ map nameValInfo $ configNames signals)
+    , "periphs"     .= (markEnds $ map nameInfo $ peripheralNames fam)
     , "periphInsts" .= (map periphInstInfo $ peripheralInsts fam)
-    , "allGroups"   .= (names $ map fst peripherals)
+    , "allGroups"   .= (map nameInfo $ map fst peripherals)
     , "interrupt"   .= interruptInfo interrupts
     , "gpio"        .= gpioInfo gpio
     ]
-    where names = map (\x -> object
-            [ "name" .= x
-            , "nameLC" .= toLower x
-            ])
+    where GPIO{..} = gpio
 
 mcuInfo :: [MCU] -> Mcu -> Value
 mcuInfo mcus Mcu{..} = object
@@ -60,29 +57,19 @@ mcuInfo mcus Mcu{..} = object
     where mcu = fromMaybe (error $ "can't find MCU for " <> unpack name)
               $ find (\MCU{..} -> refName == name) mcus
 
-ipGPIOInfo :: Int -> IpGPIO -> Value
-ipGPIOInfo i IpGPIO{..} = object
-    [ "name"        .= name
-    , "enumValue"   .= hex (shift 1 i)
-    ]
-
 gpioInfo :: GPIO -> Value
 gpioInfo GPIO{..} = object
-    [ "ports"   .= (markEnds $ map nameVal ports)
-    , "pins"    .= (markEnds $ map nameVal pins)
-    , "afs"     .= (markEnds $ map nameVal afs)
-    , "altFuns" .= (markEnds $ map name altFuns)
-    , "traits"  .= map pinSignalAF traits
+    [ "ports"   .= (markEnds $ map nameValInfo ports)
+    , "pins"    .= (markEnds $ map nameValInfo pins)
+    , "signals" .= (markEnds $ map nameInfo $ signalNames signals)
+    , "altfuns" .= (markEnds $ map nameValInfo $ altfunNames signals)
+    , "traits"  .= map pinSignalAF signals
     ]
-    where nameVal :: (Text, Int) -> Value
-          nameVal (n, v) = object [ "name" .= n, "value" .= hex v ]
-          name :: Text -> Value
-          name n = object [ "name" .= n ]
-          pinSignalAF :: (Text, Text, Text) -> Value
-          pinSignalAF (pin, signal, af) = object
+    where pinSignalAF :: Signal -> Value
+          pinSignalAF Signal{..} = object
               [ "pin"       .= pin
               , "signal"    .= signal
-              , "af"        .= af
+              , "altfun"    .= altfun
               ]
 
 periphInfo :: Text -> Text -> [PeriphType Reserve] -> [Peripheral] -> Value
@@ -202,6 +189,12 @@ markEnds :: [Value] -> [Value]
 markEnds [] = []
 markEnds (x:xs) = f x : xs
     where f (Object o) = Object $ o <> fromList [ "first" .= True ]
+
+nameInfo :: Text -> Value
+nameInfo n = object [ "name" .= n, "nameLC" .= toLower n ]
+
+nameValInfo :: (Text, Int) -> Value
+nameValInfo (n, v) = object [ "name" .= n, "value" .= hex v ]
 
 templates :: Family -> [(FilePath, Template)]
 templates Family{..} =

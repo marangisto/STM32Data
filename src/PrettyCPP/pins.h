@@ -19,24 +19,24 @@ enum pin_t
 {{/pins}}
     };
 
-enum af_t
-{{#afs}}
+enum altfun_t
+{{#altfuns}}
     {{#first}}{ {{/first}}{{^first}}, {{/first}}{{name}} = {{value}}
-{{/afs}}
+{{/altfuns}}
     };
 
-enum alt_fun_t
-{{#altFuns}}
+enum signal_t
+{{#signals}}
     {{#first}}{ {{/first}}{{^first}}, {{/first}}{{name}}
-{{/altFuns}}
+{{/signals}}
     };
 
 static constexpr gpio_conf_t gpio_conf = mcu_traits<target>::gpio_conf;
 
-template<gpio_conf_t CFG, pin_t PIN, af_t ALT>
-struct alt_fun_traits
+template<gpio_conf_t CFG, pin_t PIN, signal_t SIG>
+struct signal_traits
 {
-    static constexpr af_t AF = AF0;
+    static constexpr altfun_t AF = AF0;
     static_assert
         ( always_false_i<PIN>::value
         , "alternate function not available on this pin!"
@@ -44,9 +44,9 @@ struct alt_fun_traits
 };
 
 template<bool AVAIL>
-struct available_alt_fun_t
+struct available_signal_t
 {
-    using type = af_t;
+    using type = altfun_t;
     static assert
         ( always_false_i<AVAIL>::value
         , "alternate function not available on pin for mcu"
@@ -54,19 +54,19 @@ struct available_alt_fun_t
 };
 
 template<>
-struct available_alt_fun_t<true>
+struct available_signal_t<true>
 {
-    using type = af_t;
+    using type = altfun_t;
 };
 
 template<bool AVAIL>
-using alt_fun = typename available_alt_fun_t<AVAIL>::type;
+using signal = typename available_signal_t<AVAIL>::type;
 {{#traits}}
 
 template<gpio_conf_t CFG>
-struct alt_fun_traits<CFG, {{pin}}, {{signal}}>
+struct signal_traits<CFG, {{pin}}, {{signal}}>
 {
-    static constexpr af_t AF = {{af}};
+    static constexpr altfun_t AF = {{altfun}};
 };
 {{/traits}}
 {{/gpio}}
