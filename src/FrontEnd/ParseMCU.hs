@@ -9,10 +9,8 @@ module FrontEnd.ParseMCU
     , parseMCU
     ) where
 
-import Data.Text (Text, pack, unpack, toUpper, isPrefixOf, stripSuffix)
-import Data.Maybe (fromMaybe)
+import Data.Text (Text, pack, unpack, isPrefixOf, stripSuffix)
 import Text.Read (readMaybe)
-import Utils (fromHex)
 import HXT
 
 data MCU = MCU

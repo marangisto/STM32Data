@@ -17,11 +17,8 @@ module FrontEnd.Families
     , buildRules
     ) where
 
-import Data.Text (Text, pack, unpack, toUpper, toLower, stripPrefix)
-import Text.Read (readMaybe)
-import Data.Maybe (mapMaybe, fromMaybe)
+import Data.Text (Text, pack, unpack, toLower, stripPrefix)
 import Data.List (nub, sort)
-import qualified Data.Text as T
 import Control.Monad
 import Control.Arrow
 import HXT

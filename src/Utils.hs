@@ -23,7 +23,6 @@ import System.IO
 import System.Directory
 import System.FilePath
 import Control.Monad.Extra
-import Control.Monad
 
 type Text = T.Text
 

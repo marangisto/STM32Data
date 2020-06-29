@@ -4,11 +4,10 @@ module PrettyCPP (prettyFamiliesCPP, prettyFamilyCPP) where
 
 import Text.Mustache
 import qualified Text.Mustache.Compile.TH as TH
-import qualified Data.Text.Lazy as TL
 import Data.Aeson hiding (Options)
 import Data.HashMap.Strict (fromList)
-import Data.List (nub, sort, find)
-import Data.List.Extra (zipWithFrom, groupSort, groupSortOn)
+import Data.List (find)
+import Data.List.Extra (groupSort)
 import Data.Text as T (Text, toLower, pack, unpack, intercalate)
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Bits (shift)
@@ -227,6 +226,7 @@ markEnds :: [Value] -> [Value]
 markEnds [] = []
 markEnds (x:xs) = f x : xs
     where f (Object o) = Object $ o <> fromList [ "first" .= True ]
+          f _ = error "expected object!"
 
 nameInfo :: Text -> Value
 nameInfo n = object [ "name" .= n, "nameLC" .= toLower n ]
@@ -243,5 +243,4 @@ templates Family{..} =
     , ("device/interrupt.h", $(TH.compileMustacheFile $ "src/PrettyCPP/interrupt.h"))
     , ("device/vector.h", $(TH.compileMustacheFile $ "src/PrettyCPP/vector.h"))
     ]
-    where fam = toLower family
 

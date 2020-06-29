@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f1ccf6e823c418d270a7ba81fbe18a6deaefa62007b89ee91129c48f0f0eea9c
+-- hash: a9a939bf1beaf950471180b3595097ffdac3409fc2d3bd25f93edd63f3fdb6cd
 
 name:           STM32Data
 version:        0.1.0.0
@@ -42,6 +42,7 @@ library
       Paths_STM32Data
   hs-source-dirs:
       src
+  ghc-options: -Wunused-imports -Wunused-local-binds -Wincomplete-patterns -Werror
   build-depends:
       aeson
     , base >=4.7 && <5

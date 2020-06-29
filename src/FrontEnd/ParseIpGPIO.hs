@@ -7,10 +7,7 @@ module FrontEnd.ParseIpGPIO
     , parseIpGPIO
     ) where
 
-import Data.Text (Text, pack, unpack, toUpper)
-import Data.Maybe (fromMaybe)
-import Text.Read (readMaybe)
-import Utils (fromHex)
+import Data.Text (Text, pack)
 import HXT
 
 data IpGPIO = IpGPIO

@@ -173,6 +173,7 @@ usb_buffer (Right Register{..})
     | "ADDR" `isPrefixOf` name = True
     | "COUNT" `isPrefixOf` name = True
     | otherwise = False
+usb_buffer _ = False
 
 stk_regs :: Register -> Register
 stk_regs r@Register{..}
@@ -253,5 +254,7 @@ reserve = concat . snd . mapAccumL pad 0 . nubOrdOn addr . sortOn addr
               where n = addressOffset - i
                     j = i + n + size `div` 8
                     p = Reserve "res" i $ n * 8
+          pad _ _ = error "impossible!"
           addr (Right Register{..}) = addressOffset
+          addr _ = error "impossible!"
 

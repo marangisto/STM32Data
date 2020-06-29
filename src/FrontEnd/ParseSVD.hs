@@ -11,10 +11,9 @@ module FrontEnd.ParseSVD
     ) where
 
 import Data.Hashable
-import Data.Maybe (fromMaybe)
 import Data.Text (Text, pack)
 import Data.List (sortOn)
-import Utils (fromHex, cleanWords, packUpper, packWords)
+import Utils (fromHex, packUpper, packWords)
 import HXT
 
 data SVD = SVD

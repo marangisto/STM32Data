@@ -13,7 +13,7 @@ import Control.Arrow (second)
 import qualified Data.Text as T
 import Data.List (nub, sort)
 import Data.List.Extra (groupSort)
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (mapMaybe)
 import Data.Map.Strict (Map, fromList)
 import qualified Data.Map.Strict as Map
 import FrontEnd.Normalize

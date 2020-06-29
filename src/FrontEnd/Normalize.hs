@@ -21,10 +21,8 @@ import Data.List (nub, sort, sortOn, partition)
 import Data.List.Extra (groupSort, groupSortOn)
 import Data.Maybe (fromMaybe, isNothing)
 import Data.Char (isDigit)
-import Data.Void (Void)
 import qualified Data.Text as T
 import qualified Data.Map.Strict as Map
-import Control.Arrow (second)
 import Utils
 
 data NormalSVD cc pad = NormalSVD
@@ -95,6 +93,7 @@ periphType xs@((svd, Peripheral{registers=regs,..}):_) = PeriphType{..}
     where registers = map Right regs
           periphInsts = map (periphInst typeRef) xs
           typeRef = PeriphRef{..}
+periphType _ = error "expected at least one peripheral"
 
 periphInst :: PeriphRef -> (Text, Peripheral) -> PeriphInst
 periphInst typeRef (svd, Peripheral{..}) = PeriphInst{..}
