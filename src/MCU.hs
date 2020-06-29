@@ -10,7 +10,7 @@ module MCU
     , cleanSignal
     ) where
 
-import Families
+import FrontEnd.Families
 import Text.Read (readMaybe)
 import Data.List (sort, break)
 import Data.Char (isAlphaNum)

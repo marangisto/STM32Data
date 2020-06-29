@@ -1,7 +1,7 @@
 {-# LANGUAGE Arrows, NoMonomorphismRestriction #-}
 {-# LANGUAGE RecordWildCards, DuplicateRecordFields #-}
 {-# LANGUAGE TupleSections, OverloadedStrings #-}
-module Families
+module FrontEnd.Families
     ( Families
     , SubFamily
     , Peripheral

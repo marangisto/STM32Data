@@ -21,7 +21,7 @@ import Data.List (stripPrefix, isPrefixOf, break)
 import Data.List.Extra (stripSuffix)
 import Control.Arrow
 import TagSoup
-import Families
+import FrontEnd.Families
 import MCU
 
 newtype GPIOConf = GPIOConf { unGPIOConf :: Text } deriving (Eq, Ord, Show)

@@ -16,14 +16,10 @@ import Data.List (nub, sort, isPrefixOf)
 import Data.List.Extra (groupSort)
 import Data.Maybe (fromMaybe)
 import Data.Hashable
-import Families
-import IPMode
-import Pretty
-import FrontEnd.ParseSVD
-import NormalSVD
-import Utils
+import FrontEnd.Families
 import FrontEnd
 import PrettyCPP
+import Utils
 
 data Options = Options
     { list_mcus     :: Bool
@@ -88,104 +84,10 @@ main = do
         fam@Family{..} <- processFamily svdDir dbDir family' subFamilies
         whenJust headers $ flip prettyFamilyCPP fam
 
-    {-
-        let svds = familySVDs family' allSVDs
-        nsvd <- resolveCC . fixup . normalize family'
-            <$> mapM parseSVD (map snd svds)
-
-        when clock_control $ do
-            T.putStrLn "========================================="
-            T.putStrLn $ (\NormalSVD{..} -> family) nsvd
-            T.putStrLn "-----------------------------------------"
-            let putWords s = T.putStrLn . T.unwords . (T.pack s:)
-            putWords "missing:" $ missingCC nsvd
-            putWords "unused:" $ unusedCC nsvd
-
-        mcuSpecs <- mapM (parseMCU $ map fst svds) $ mcuFiles dbDir subFamilies
-        ipGPIOs <- mapM parseIpGPIO $ ipGPIOFiles dbDir mcuSpecs
-        mapM_ (T.putStrLn . (\MCU{..} -> refName <> " " <> svd)) mcuSpecs
-        mapM_ print ipGPIOs
-        -}
-
-    {-
-        -- Mcu.name refers to MCU.refName
-        let f Mcu{..} = (name, refName, rpn)
-        mapM_ (print . f) $ controllers subFamilies
-        let g MCU{..} = refName
-        mapM_ (print . g) mcuSpecs
-    -}
-
-        -- matchSVD :: [Text] -> Text -> Maybe Text
-            {-
-        forM_ periphTypes $ \PeriphType{..} -> do
-            print typeRef
-            mapM_ (putStrLn . ("    "<>) . show) periphInsts
-        forM_ interrupts $ \Interrupt{..} ->
-            putStrLn $ unwords
-                [ show value
-                , T.unpack name
-                , T.unpack description
-                ]
-                -}
-
-    {-
-        let ipGPIOs = nub $ sort
-                [ version
-                | MCU{..} <- mcuSpecs
-                , IP{name="GPIO",..} <- ips
-                ]
-        ipGPIOs <- forM ipGPIOs $ \name ->
-            parseIpGPIO
-                ( dbDir
-                </> "IP"
-                </> "GPIO-" <> T.unpack name <> "_Modes"
-                <.> "xml"
-                )
-        mapM_ print ipGPIOs
-        -}
-
     when list_mcus $ mcuList families
     when build_rules
         $ mapM_ (putStrLn . T.unpack)
         $ buildRules families
-
-    when old_core $ whenJust headers $ \top -> do
-      stm32Header top $ map fst families'
-      forM_ families $ \(family, subFamilies) -> do
-        let dir = top </> T.unpack (T.toLower family) </> "device"
-        createDirectoryIfMissing True dir
-        let svds = familySVDs family allSVDs
-        mcus <- mapM (loadMCU dbDir) $ controllers subFamilies
-        gss <- mapM (\x -> (x,) <$> gpioConfigSet dbDir x)
-            =<< gpioConfigs dbDir family
-        let pfs = groupSort $ nub $ sort $ concatMap (periFuns . snd) gss
-        familyHeaders dir family mcus gss $ map fst svds
-        withTempDirectory tmpDir (T.unpack family) $ \tmp ->
-          normalizeSVD tmp dir family pfs svds
-
-stm32Header :: FilePath -> [Text] -> IO ()
-stm32Header dir xs = do
-    createDirectoryIfMissing False dir
-    let header = dir </> "stm32" <.> "h"
-    putStrLn $ "writing " <> header
-    writeText header
-        $ banner [ "STM32 MCU families" ]
-        ++ enum "mcu_family_t" (map unPlus xs)
-
-familySVDs :: Text -> [FilePath] -> [(Text, FilePath)]
-familySVDs family = sort . filter pred . map f
-    where f s = (T.pack $ dropExtension $ takeFileName s, s)
-          pred (x, _)
-            | fam == "STM32L4+" = isL4plus x
-            | fam == "STM32G4" = any (`T.isPrefixOf` x) [ fam, "STM32GBK1" ]
-            | otherwise = fam `T.isPrefixOf` x && not (isL4plus x)
-            where fam = family
-
-isL4plus :: Text -> Bool
-isL4plus x = any (`T.isPrefixOf`x) $ map ("STM32L4"<>) [ "P", "Q", "R", "S" ]
-
-svdHeader :: FilePath -> SVD -> FilePath
-svdHeader dir SVD{..} = dir </> T.unpack (T.toLower name) <.> "h"
 
 svdFiles :: FilePath -> IO [FilePath]
 svdFiles = traverseDir (\_ -> True) accept []

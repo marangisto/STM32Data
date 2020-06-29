@@ -38,7 +38,7 @@ import Data.Text as T (isPrefixOf, isSuffixOf)
 import Data.Text as T (stripPrefix, stripSuffix)
 import qualified Data.Map.Strict as Map
 import Text.Read (readMaybe)
-import Families hiding (Peripheral)
+import FrontEnd.Families hiding (Peripheral)
 import FrontEnd.ParseSVD hiding (Peripheral)
 import FrontEnd.ParseMCU hiding (Signal)
 import FrontEnd.ParseIpGPIO
