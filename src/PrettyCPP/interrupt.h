@@ -14,7 +14,9 @@ struct interrupt
 
     enum interrupt_t
 {{#interrupts}}
+{{^pad}}
         {{#first}}{ {{/first}}{{^first}}, {{/first}}{{name}} = {{value}} // {{description}}
+{{/pad}}
 {{/interrupts}}
     };
 

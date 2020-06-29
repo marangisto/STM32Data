@@ -52,7 +52,7 @@ data Family = Family
     , mcus          :: [Mcu]
     , svds          :: [Text]
     , peripherals   :: [(Text, ([PeriphType Reserve], [Peripheral]))]
-    , interrupts    :: [Interrupt]
+    , interrupts    :: [Maybe Interrupt] -- pad for nothings
     , specs         :: [MCU]
     , gpio          :: GPIO
     } deriving (Show)
@@ -93,7 +93,7 @@ processFamily svdDir dbDir family subFamilies = do
            <$> mapM parseIpGPIO (ipGPIOFiles dbDir specs)
     xs <- mapM parseIpGPIO (ipGPIOFiles dbDir specs)
     let peripherals = processPeripherals svd $ altFunMap ipGPIOs
-        interrupts = (\NormalSVD{..} -> interrupts) svd
+        interrupts = (\NormalSVD{..} -> padInterrupts interrupts) svd
         gpio = processGPIO specs ipGPIOs
     return Family{svds=svdNames svd,..}
 
@@ -261,4 +261,11 @@ signalNames = nub . sort . map signal
 
 splitAF :: Text -> (Text, Int)
 splitAF s = let (_, i) = nameNum s in (s, i)
+
+padInterrupts :: [Interrupt] -> [Maybe Interrupt]
+padInterrupts xs = map (flip Map.lookup imap) [lo..hi]
+    where lo = minimum $ map value xs
+          hi = maximum $ map value xs
+          imap = Map.fromList $ map (\i@Interrupt{..} -> (value, i)) xs
+
 

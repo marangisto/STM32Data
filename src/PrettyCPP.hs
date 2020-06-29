@@ -10,7 +10,7 @@ import Data.HashMap.Strict (fromList)
 import Data.List (nub, sort, find)
 import Data.List.Extra (zipWithFrom, groupSort, groupSortOn)
 import Data.Text as T (Text, toLower, pack, unpack, intercalate)
-import Data.Maybe (fromMaybe, isJust)
+import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Bits (shift)
 import System.Directory
 import System.FilePath
@@ -203,22 +203,25 @@ fieldInfo regName Field{..}
     where pos = pack $ show bitOffset
           mask = hex $ shift 0xffffffff (bitWidth - 32)
 
-interruptInfo :: [Interrupt] -> Value
+interruptInfo :: [Maybe Interrupt] -> Value
 interruptInfo interrupts = object
     [ "interrupts" .= (markEnds $ map f interrupts)
     , "registers"  .= (map g xs)
     ]
-    where f Interrupt{..} = object
+    where f (Just Interrupt{..}) = object
             [ "name"        .= name
             , "value"       .= show value
             , "description" .= description
+            ]
+          f Nothing = object
+            [ "pad"         .= True
             ]
           g i = object
             [ "suffix" .= show i
             , "lbound" .= show (i * 32)
             , "hbound" .= show ((i+1) * 32)
             ]
-          xs = [0..maximum (map value interrupts) `div` 32]
+          xs = [0..maximum (mapMaybe (fmap value) interrupts) `div` 32]
 
 markEnds :: [Value] -> [Value]
 markEnds [] = []
