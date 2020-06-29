@@ -38,7 +38,7 @@ struct {{#typeRef}}{{svdLC}}_{{nameLC}}_t{{/typeRef}}
 template<>
 struct {{#instRef}}peripheral_t<{{svd}}, {{name}}>{{/instRef}}
 {
-    using T = {{#typeRef}}{{svdLC}}_{{nameLC}}{{/typeRef}};
+    using T = {{#typeRef}}{{svdLC}}_{{nameLC}}{{/typeRef}}_t;
     static T& V;
 };
 {{/periphInsts}}
@@ -50,18 +50,19 @@ using {{nameLC}}_t = peripheral_t<svd, {{name}}>;
 
 template<int INST> struct {{groupLC}}_traits {};
 {{#peripherals}}
+{{#haveTraits}}
 {{#instNo}}
 
 template<> struct {{groupLC}}_traits<{{instNo}}>
 {
     using {{groupLC}} = {{nameLC}}_t;
 {{#altFuns}}
-    static constexpr alternate_function_t {{altFun}} = {{name}}_{{altFun}};
+    static constexpr signal_t {{altFun}} = {{name}}_{{altFun}};
 {{/altFuns}}
 {{#controls}}
 
     template<typename RCC>
-    static void {{method}}
+    static void {{method}}()
     {
   {{#en}}
         RCC::V.{{register}} |= RCC::T::{{register}}_{{flag}};
@@ -73,5 +74,5 @@ template<> struct {{groupLC}}_traits<{{instNo}}>
 {{/controls}}
 };
 {{/instNo}}
+{{/haveTraits}}
 {{/peripherals}}
-

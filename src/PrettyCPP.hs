@@ -10,7 +10,7 @@ import Data.HashMap.Strict (fromList)
 import Data.List (nub, sort, find)
 import Data.List.Extra (zipWithFrom, groupSort, groupSortOn)
 import Data.Text as T (Text, toLower, pack, unpack, intercalate)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import Data.Bits (shift)
 import System.Directory
 import System.FilePath
@@ -128,6 +128,7 @@ peripheralInfo Peripheral{..} = object $
     [ "name"        .= name
     , "nameLC"      .= toLower name
     , "altFuns"     .= map (\x -> object [ "altFun" .= x ]) altFuns
+    , "haveTraits"  .= (isJust control || not (null altFuns))
     ] ++
     [ "instNo"      .= pack (show no) | Just no <- [ instNo ] ] ++
     [ "controls"    .= controlInfo c | Just c <- [ control ] ]
