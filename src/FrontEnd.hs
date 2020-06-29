@@ -132,8 +132,10 @@ ipGPIOName MCU{..}
     | otherwise = error $ "failed to find IpGPIO for " <> unpack refName
 
 svdNames :: NormalSVD a b -> [Text]
-svdNames NormalSVD{..} = nub $ sort
-    [ svd | PeriphType{..} <- periphTypes, PeriphRef{..} <- [ typeRef ] ]
+svdNames NormalSVD{..} = nub $ sort $ concatMap f periphTypes
+    where f PeriphType{..} = h typeRef : map g periphInsts
+          g PeriphInst{..} = h instRef
+          h PeriphRef{..} = svd
 
 fixupIpGPIO :: [Text] -> IpGPIO -> IpGPIO
 fixupIpGPIO svds x@IpGPIO{..}
