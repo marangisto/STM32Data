@@ -148,7 +148,7 @@ fixupAF x@IpGPIO{..} = x { gpioPins = map f gpioPins }
     where f :: GPIOPin -> GPIOPin
           f y@GPIOPin{..} = y { pinSignals = map g pinSignals }
           g :: PinSignal -> PinSignal
-          g z@PinSignal{..} = z { gpioAF = h gpioAF }
+          g z@PinSignal{..} = z { name = cleanName name, gpioAF = h gpioAF }
           h s | Just rest <- stripPrefix "GPIO_" s
               = fst $ T.break (=='_') rest
               | "_REMAP0" `isSuffixOf` s = "REMAP"
@@ -229,7 +229,7 @@ ioPins mcus = nub $ sort
     [ portPin
     | MCU{..} <- mcus
     , Pin{..} <- pins
-    , Just portPin <- [ toIOPin name ]
+    , Just portPin <- [ toIOPin $ cleanPin name ]
     ]
 
 toIOPin :: Text -> Maybe IOPin
@@ -244,8 +244,11 @@ toSignals xs =
     | ((pin, signal), altfun) <- groupSort $ concatMap f xs
     ]
     where f IpGPIO{..} = concatMap (g name) gpioPins
-          g conf GPIOPin{..} = map (h conf name) pinSignals
+          g conf GPIOPin{..} = map (h conf $ cleanPin name) pinSignals
           h conf pin PinSignal{..} = ((pin, name), (gpioAF, conf))
+
+cleanPin :: Text -> Text
+cleanPin = fst . T.break (=='-')
 
 altfunNames :: [Signal] -> [(Text, Int)]
 altfunNames xs

@@ -47,7 +47,7 @@ template<bool AVAIL>
 struct available_signal_t
 {
     using type = altfun_t;
-    static assert
+    static_assert
         ( always_false_i<AVAIL>::value
         , "alternate function not available on pin for mcu"
         );

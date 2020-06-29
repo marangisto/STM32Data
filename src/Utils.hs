@@ -10,6 +10,7 @@ module Utils
     , packUpper
     , packWords
     , cleanWords
+    , cleanName
     , writeText
     , writeText'
     , traverseDir
@@ -83,6 +84,9 @@ packWords = cleanWords . T.pack
 
 cleanWords :: Text -> Text
 cleanWords = T.unwords . T.words . T.filter isAscii
+
+cleanName :: Text -> Text
+cleanName = T.map (\c -> if c == '-' then '_' else c)
 
 -- | Does the right thing to not get crlf in output
 writeText :: FilePath -> [Text] -> IO ()
