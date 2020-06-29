@@ -62,6 +62,7 @@ periphTypeEdits :: [PeriphTypeEdit]
 periphTypeEdits =
     [ usb_regs
     , uart_group
+    , sys_tick
     ]
 
 periphInstEdits :: [PeriphInstEdit]
@@ -92,6 +93,11 @@ uart_group _ x@PeriphType{typeRef=PeriphRef{..},..}
     = x { groupName = "LPUART" }
     | groupName == "USART", "UART" `isPrefixOf` name
     = x { groupName = "UART" }
+    | otherwise = x
+
+sys_tick :: PeriphTypeEdit
+sys_tick _ x@PeriphType{typeRef=PeriphRef{..},..}
+    | name == "STK" = x { registers = map (fmap stk_regs) registers }
     | otherwise = x
 
 inst_name :: PeriphInstEdit
@@ -167,6 +173,13 @@ usb_buffer (Right Register{..})
     | "ADDR" `isPrefixOf` name = True
     | "COUNT" `isPrefixOf` name = True
     | otherwise = False
+
+stk_regs :: Register -> Register
+stk_regs r@Register{..}
+    | name == "CTRL" = r { name = "CSR" }
+    | name == "LOAD" = r { name = "RVR" }
+    | name == "VAL" = r { name = "CVR" }
+    | otherwise = r
 
 {-
 fixupPeriphType "STM32G0" p@PeriphType{..}
