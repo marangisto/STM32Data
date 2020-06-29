@@ -82,10 +82,11 @@ main = do
     allSVDs <- cacheLines svdFiles svdDir
     let dbDir = takeDirectory famXML
 
-    unless old_core $
+    unless old_core $ do
+      whenJust headers $ flip prettyFamiliesCPP $ map fst families'
       forM_ families $ \(family', subFamilies) -> do
         fam@Family{..} <- processFamily svdDir dbDir family' subFamilies
-        whenJust headers $ flip prettyCPP fam
+        whenJust headers $ flip prettyFamilyCPP fam
 
     {-
         let svds = familySVDs family' allSVDs

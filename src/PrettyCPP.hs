@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards, OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
-module PrettyCPP (prettyCPP) where
+module PrettyCPP (prettyFamiliesCPP, prettyFamilyCPP) where
 
 import Text.Mustache
 import qualified Text.Mustache.Compile.TH as TH
@@ -18,8 +18,16 @@ import Control.Monad
 import Utils (writeText', hex)
 import FrontEnd
 
-prettyCPP :: FilePath -> Family -> IO ()
-prettyCPP root family@Family{family=familyName,..} = do
+prettyFamiliesCPP :: FilePath -> [Text] -> IO ()
+prettyFamiliesCPP root xs = do
+    let fn = root </> "stm32" </> "stm32.h"
+        template = $(TH.compileMustacheFile $ "src/PrettyCPP/stm32.h")
+        values = object [ "families" .= (markEnds $ map nameInfo xs) ]
+    createDirectoryIfMissing True $ takeDirectory fn
+    writeText' fn $ renderMustache template values
+
+prettyFamilyCPP :: FilePath -> Family -> IO ()
+prettyFamilyCPP root family@Family{family=familyName,..} = do
     let dir = root </> "stm32" </> unpack (toLower familyName)
         values = familyInfo family
     forM_ (templates family) $ \(fname, template) -> do
