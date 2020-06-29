@@ -83,7 +83,7 @@ main = do
     let dbDir = takeDirectory famXML
 
     unless old_core $ do
-      whenJust headers $ flip prettyFamiliesCPP $ map fst families'
+      whenJust headers $ flip prettyFamiliesCPP $ map (unPlus . fst) families'
       forM_ families $ \(family', subFamilies) -> do
         fam@Family{..} <- processFamily svdDir dbDir family' subFamilies
         whenJust headers $ flip prettyFamilyCPP fam

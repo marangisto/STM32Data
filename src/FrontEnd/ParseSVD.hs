@@ -12,7 +12,7 @@ module FrontEnd.ParseSVD
 
 import Data.Hashable
 import Data.Maybe (fromMaybe)
-import Data.Text (Text, pack, unpack, toUpper)
+import Data.Text (Text, pack)
 import Data.List (sortOn)
 import Utils (fromHex, cleanWords, packUpper, packWords)
 import HXT
@@ -67,7 +67,7 @@ parseSVD fn = do
         _ -> error "failed to parse SVD"
 
 getSVD = atTag "device" >>> proc x -> do
-    name <- arr packUpper <<< elemText "name" -< x
+    name <- arr pack <<< elemText "name" -< x
     version <- arr pack <<< elemText "version" -< x
     description <- arr packWords <<< elemText "description" -< x
     peripherals <- listA getPeripheral <<< list "peripherals" -< x
