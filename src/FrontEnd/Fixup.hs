@@ -61,6 +61,7 @@ runFieldEdits xs f p r = foldl (.) id (map (($r) . ($p) . ($f)) xs)
 periphTypeEdits :: [PeriphTypeEdit]
 periphTypeEdits =
     [ usb_regs
+    , uart_group
     ]
 
 periphInstEdits :: [PeriphInstEdit]
@@ -83,6 +84,14 @@ fieldEdits =
 usb_regs :: PeriphTypeEdit
 usb_regs _ x@PeriphType{typeRef=PeriphRef{..},..}
     | name == "USB" = x { registers = filter (not . usb_buffer) registers }
+    | otherwise = x
+
+uart_group :: PeriphTypeEdit
+uart_group _ x@PeriphType{typeRef=PeriphRef{..},..}
+    | groupName == "USART", "LPUART" `isPrefixOf` name
+    = x { groupName = "LPUART" }
+    | groupName == "USART", "UART" `isPrefixOf` name
+    = x { groupName = "UART" }
     | otherwise = x
 
 inst_name :: PeriphInstEdit
