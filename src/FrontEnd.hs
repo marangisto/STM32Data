@@ -91,6 +91,7 @@ processFamily svdDir dbDir family subFamilies = do
     specs <- mapM (parseMCU $ map fst svds) $ mcuFiles dbDir subFamilies
     ipGPIOs <- map (fixupAF . fixupIpGPIO (svdNames svd))
            <$> mapM parseIpGPIO (ipGPIOFiles dbDir specs)
+    xs <- mapM parseIpGPIO (ipGPIOFiles dbDir specs)
     let peripherals = processPeripherals svd $ altFunMap ipGPIOs
         interrupts = (\NormalSVD{..} -> interrupts) svd
         gpio = processGPIO specs ipGPIOs
@@ -143,12 +144,14 @@ fixupIpGPIO svds x@IpGPIO{..}
 fixupAF :: IpGPIO -> IpGPIO
 fixupAF x@IpGPIO{..} = x { gpioPins = map f gpioPins }
     where f :: GPIOPin -> GPIOPin
-          f y@GPIOPin{..} = y { pinSignals = mapMaybe g pinSignals }
-          g :: PinSignal -> Maybe PinSignal
-          g z@PinSignal{..} = (\af -> z { gpioAF = af }) <$> h gpioAF
+          f y@GPIOPin{..} = y { pinSignals = map g pinSignals }
+          g :: PinSignal -> PinSignal
+          g z@PinSignal{..} = z { gpioAF = h gpioAF }
           h s | Just rest <- stripPrefix "GPIO_" s
-              = Just $ fst $ T.break (=='_') rest
-              | otherwise = Nothing   -- FIXME: all the F1 remap crap comes here
+              = fst $ T.break (=='_') rest
+              | "_REMAP0" `isSuffixOf` s = "REMAP"
+              | Just rest <- stripPrefix "__HAL_AFIO_" s = rest
+              | otherwise = error $ "unexpected gpioAF: " <> unpack s
 
 processPeripherals
     :: NormalSVD CCMap Reserve
@@ -243,9 +246,10 @@ toSignals xs =
           h conf pin PinSignal{..} = ((pin, name), (gpioAF, conf))
 
 altfunNames :: [Signal] -> [(Text, Int)]
-altfunNames
-    = sortOn snd . map splitAF . nub . sort
-    . concatMap (map fst . altfun)
+altfunNames xs
+    | "REMAP" `isPrefixOf` y = flip zip [0..] ys
+    | otherwise = sortOn snd $ map splitAF ys
+    where ys@(y:_) = nub . sort $ concatMap (map fst . altfun) xs
 
 signalNames :: [Signal] -> [Text]
 signalNames = nub . sort . map signal
