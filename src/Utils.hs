@@ -1,9 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Utils
     ( Text
-    , enum
-    , enum2
-    , banner
     , hex
     , fromHex
     , unPlus
@@ -12,7 +9,6 @@ module Utils
     , cleanWords
     , cleanName
     , writeText
-    , writeText'
     , traverseDir
     , cacheLines
     ) where
@@ -30,35 +26,6 @@ import Control.Monad.Extra
 import Control.Monad
 
 type Text = T.Text
-
-enum :: Text -> [Text] -> [Text]
-enum name xs = concat
-    [ [ "", "enum " <> name ]
-    , [ s <> x
-      | (s, x) <- zip ("    { " : repeat "    , ") xs
-      ]
-    , [ "    };" ]
-    ]
-
-enum2 :: Text -> [(Text, Int)] -> [Text]
-enum2 name xs = concat
-    [ [ "", "enum " <> name ]
-    , [ s <> x <> " = " <> T.pack (show i)
-      | (s, (x, i)) <- zip ("    { " : repeat "    , ") xs
-      ]
-    , [ "    };" ]
-    ]
-
-banner :: [Text]-> [Text]
-banner xs =
-    [ ""
-    , "////"
-    , "//"
-    ] ++
-    map ("//      " <>) xs ++
-    [ "//"
-    , "////"
-    ]
 
 hex :: Int -> Text
 hex x = T.pack $ "0x" ++ showHex x ""
@@ -89,14 +56,8 @@ cleanName :: Text -> Text
 cleanName = T.map (\c -> if c == '-' then '_' else c)
 
 -- | Does the right thing to not get crlf in output
-writeText :: FilePath -> [Text] -> IO ()
-writeText fn xs = withFile fn WriteMode $ \f -> do
-    hSetNewlineMode f noNewlineTranslation
-    T.hPutStr f $ T.unlines xs
-
--- | Does the right thing to not get crlf in output
-writeText' :: FilePath -> TL.Text -> IO ()
-writeText' fn x = withFile fn WriteMode $ \f -> do
+writeText :: FilePath -> TL.Text -> IO ()
+writeText fn x = withFile fn WriteMode $ \f -> do
     putStrLn fn
     hSetNewlineMode f noNewlineTranslation
     T.hPutStr f $ TL.toStrict x

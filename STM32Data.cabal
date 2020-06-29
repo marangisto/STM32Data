@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 47dd0431985fca22a39570a0d4d3f5a6f5f9b82a7e593aa90258d8e88c051f3e
+-- hash: f1ccf6e823c418d270a7ba81fbe18a6deaefa62007b89ee91129c48f0f0eea9c
 
 name:           STM32Data
 version:        0.1.0.0
@@ -27,7 +27,6 @@ source-repository head
 
 library
   exposed-modules:
-      FixupSVD
       FrontEnd
       FrontEnd.ClockControl
       FrontEnd.Families
@@ -37,14 +36,7 @@ library
       FrontEnd.ParseMCU
       FrontEnd.ParseSVD
       HXT
-      IPMode
-      MCU
-      NormalSVD
-      Pretty
       PrettyCPP
-      PrettySVD
-      PrettyVector
-      TagSoup
       Utils
   other-modules:
       Paths_STM32Data

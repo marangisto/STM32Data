@@ -268,4 +268,3 @@ padInterrupts xs = map (flip Map.lookup imap) [lo..hi]
           hi = maximum $ map value xs
           imap = Map.fromList $ map (\i@Interrupt{..} -> (value, i)) xs
 
-

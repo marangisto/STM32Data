@@ -15,7 +15,7 @@ import Data.Bits (shift)
 import System.Directory
 import System.FilePath
 import Control.Monad
-import Utils (writeText', hex)
+import Utils (writeText, hex)
 import FrontEnd
 
 prettyFamiliesCPP :: FilePath -> [Text] -> IO ()
@@ -24,7 +24,7 @@ prettyFamiliesCPP root xs = do
         template = $(TH.compileMustacheFile $ "src/PrettyCPP/stm32.h")
         values = object [ "families" .= (markEnds $ map nameInfo xs) ]
     createDirectoryIfMissing True $ takeDirectory fn
-    writeText' fn $ renderMustache template values
+    writeText fn $ renderMustache template values
 
 prettyFamilyCPP :: FilePath -> Family -> IO ()
 prettyFamilyCPP root family@Family{family=familyName,..} = do
@@ -33,12 +33,12 @@ prettyFamilyCPP root family@Family{family=familyName,..} = do
     forM_ (templates family) $ \(fname, template) -> do
         let fn = dir </> fname
         createDirectoryIfMissing True $ takeDirectory fn
-        writeText' fn $ renderMustache template values
+        writeText fn $ renderMustache template values
     let template = $(TH.compileMustacheFile $ "src/PrettyCPP/peripheral.h")
     forM_ peripherals $ \(group, (periphTypes, peripherals))  -> do
         let fn = dir </> "device" </> unpack (toLower group) <.> "h"
             values = periphInfo familyName group periphTypes peripherals
-        writeText' fn $ renderMustache template values
+        writeText fn $ renderMustache template values
 
 familyInfo :: Family -> Value
 familyInfo fam@Family{..} = object
