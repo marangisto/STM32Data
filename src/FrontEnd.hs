@@ -247,7 +247,7 @@ toSignals xs =
           h conf pin PinSignal{..} = ((pin, name), (gpioAF, conf))
 
 cleanPin :: Text -> Text
-cleanPin = fst . T.break (=='-')
+cleanPin = fst . T.break (`elem` ['-', ' ']) -- FIXME: see PA10 on G0!
 
 altfunNames :: [Signal] -> [(Text, Int)]
 altfunNames xs
