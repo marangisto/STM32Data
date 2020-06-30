@@ -5,9 +5,10 @@ module FrontEnd.Fixup (Reserve(..), fixup) where
 import FrontEnd.Normalize
 import Utils
 import Data.Text (isPrefixOf, isSuffixOf, toUpper)
-import Data.Text (stripPrefix, stripSuffix)
+import Data.Text (stripPrefix, stripSuffix, dropWhileEnd)
+import Data.List.Extra (nubOrdOn, groupSortOn)
 import Data.List (sortOn, mapAccumL)
-import Data.List.Extra (nubOrdOn)
+import Data.Char (isDigit)
 
 data Reserve = Reserve
     { name          :: !Text
@@ -78,6 +79,7 @@ registerEdits =
     , adc_hwcfgr6
     , nvic_iserx
     , syscfg_prefix
+    , rcc_pllcfgr
     ]
 
 fieldEdits :: [FieldEdit]
@@ -151,12 +153,30 @@ nvic_iserx _ p x@Register{..}
     | otherwise = x
 
 syscfg_prefix :: RegisterEdit
-syscfg_prefix "STM32F0" p x@Register{..}
-    | p == "SYSCFG"
-    , Just rest <- stripPrefix "SYSCFG_" name
+syscfg_prefix "STM32F0" "SYSCFG" x@Register{..}
+    | Just rest <- stripPrefix "SYSCFG_" name
     = x { name = rest }
     | otherwise = x
 syscfg_prefix _ _ x = x
+
+rcc_pllcfgr :: RegisterEdit
+rcc_pllcfgr "STM32F4" "RCC" x@Register{..}
+    | name `elem` [ "PLLCFGR", "CFGR" ] = x { fields = f fields }
+    | otherwise = x
+    where f :: [Field] -> [Field]
+          f = sortOn bitOffset . map h
+            . groupSortOn (\Field{..} -> name) . map g
+          g :: Field -> Field
+          g x@Field{..}
+              | any (`isPrefixOf` name) [ "PLL", "SW" ]
+              = x { name = dropWhileEnd isDigit name }
+              | otherwise = x
+          h :: [Field] -> Field
+          h [] = error "impossible!"
+          h (x:[]) = x
+          h xs@(x:_) = x { bitOffset = minimum $ map (\Field{..} -> bitOffset) xs , bitWidth = length xs }
+
+rcc_pllcfgr _ _ x = x
 
 compx_csr :: FieldEdit
 compx_csr _ p r x@Field{..}
