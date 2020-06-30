@@ -74,6 +74,8 @@ registerEdits :: [RegisterEdit]
 registerEdits =
     [ gpio_fields
     , tim_ccmr
+    , adc_hwcfgr6
+    , nvic_iserx
     ]
 
 fieldEdits :: [FieldEdit]
@@ -97,8 +99,14 @@ uart_group _ x@PeriphType{typeRef=PeriphRef{..},..}
 
 sys_tick :: PeriphTypeEdit
 sys_tick _ x@PeriphType{typeRef=PeriphRef{..},..}
-    | name == "STK" = x { registers = map (fmap stk_regs) registers }
+    | name == "STK" = x { registers = map (fmap f) registers }
     | otherwise = x
+    where f :: Register -> Register
+          f r@Register{..}
+            | name == "CTRL" = r { name = "CSR" }
+            | name == "LOAD" = r { name = "RVR" }
+            | name == "VAL" = r { name = "CVR" }
+            | otherwise = r
 
 inst_name :: PeriphInstEdit
 inst_name _ _ x@PeriphInst{instRef=r@PeriphRef{..}}
@@ -124,6 +132,19 @@ tim_ccmr _ p x@Register{..}
     | tim, Just s <- stripSuffix "_OUTPUT" name = x { name = s }
     | otherwise = x
     where tim = "TIM" `isPrefixOf` p
+
+adc_hwcfgr6 :: RegisterEdit
+adc_hwcfgr6 _ p x@Register{..}
+    | p == "ADC", name == "HWCFGR6"
+    , resetValue == fromHex "0x1f1f1f11f"
+    = x { resetValue = fromHex "0x1f1f1f1f" }
+    | otherwise = x
+
+nvic_iserx :: RegisterEdit
+nvic_iserx _ p x@Register{..}
+    | p == "NVIC", name `elem` [ "ISER", "ICER", "ISPR", "ICPR" ]
+    = x { name = name <> "0" }
+    | otherwise = x
 
 compx_csr :: FieldEdit
 compx_csr _ p r x@Field{..}
@@ -175,54 +196,17 @@ usb_buffer (Right Register{..})
     | otherwise = False
 usb_buffer _ = False
 
-stk_regs :: Register -> Register
-stk_regs r@Register{..}
-    | name == "CTRL" = r { name = "CSR" }
-    | name == "LOAD" = r { name = "RVR" }
-    | name == "VAL" = r { name = "CVR" }
-    | otherwise = r
-
 {-
-fixupPeriphType "STM32G0" p@PeriphType{..}
-    | name == "ADC"
-    = p { registers = map adc_hwcfgr6 registers }
 fixupPeriphType "STM32L4" p@PeriphType{..}
     | name == "USART1"
     = p { registers = map usart1_cr1 registers }
-fixupPeriphType _ p@PeriphType{name="USB",..}
-    = p { registers = filter (not . usb_buffer) registers }
-fixupPeriphType _ p@PeriphType{name="NVIC",..}
-    = p { registers = map nvic_iserx registers }
 fixupPeriphType _ p@PeriphType{name="SEC_DAC",derivedFrom=Just "DAC",..}
     = p { name = "DAC2", derivedFrom = Just "DAC1" }
-fixupPeriphType _ p@PeriphType{name="STK",..}
-    = p { registers = map stk_regs registers }
-fixupPeriphType _ p = p
-
-adc_hwcfgr6 :: Register -> Register
-adc_hwcfgr6 r@Register{..}
-    | name == "HWCFGR6"
-    , resetValue == fromHex "0x1f1f1f11f"
-    = r { resetValue = fromHex "0x1f1f1f1f" }
-    | otherwise = r
 
 usart1_cr1 :: Register -> Register
 usart1_cr1 r@Register{..}
     | name == "0x00000000"
     = r { name = "CR1", displayName = "CR1" }
-    | otherwise = r
-
-nvic_iserx :: Register -> Register
-nvic_iserx r@Register{..}
-    | name `elem` [ "ISER", "ICER", "ISPR", "ICPR" ]
-    = r { name = name <> "0" }
-    | otherwise = r
-
-stk_regs :: Register -> Register
-stk_regs r@Register{..}
-    | name == "CTRL" = r { name = "CSR" }
-    | name == "LOAD" = r { name = "RVR" }
-    | name == "VAL" = r { name = "CVR" }
     | otherwise = r
 
 -}
