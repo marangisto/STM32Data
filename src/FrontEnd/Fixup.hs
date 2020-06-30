@@ -20,7 +20,7 @@ fixup x@NormalSVD{..} = x
     , interrupts = exceptions ++ interrupts
     }
     where ps = map (f . editPeriphType family) periphTypes
-          f p@PeriphType{..} = PeriphType{registers = reserve registers,..}
+          f p@PeriphType{..} = p {registers = reserve registers }
 
 editPeriphType :: Text -> PeriphType Void -> PeriphType Void
 editPeriphType f p@PeriphType{..}

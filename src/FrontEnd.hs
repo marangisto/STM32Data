@@ -91,7 +91,6 @@ processFamily svdDir dbDir family subFamilies = do
     specs <- mapM (parseMCU $ map fst svds) $ mcuFiles dbDir subFamilies
     ipGPIOs <- map (fixupAF . fixupIpGPIO (svdNames svd))
            <$> mapM parseIpGPIO (ipGPIOFiles dbDir specs)
-    xs <- mapM parseIpGPIO (ipGPIOFiles dbDir specs)
     let peripherals = processPeripherals svd $ altFunMap ipGPIOs
         interrupts = (\NormalSVD{..} -> padInterrupts interrupts) svd
         gpio = processGPIO specs ipGPIOs

@@ -91,12 +91,12 @@ index = Map.fromList . concatMap f
 periphType :: [(Text, Peripheral)] -> PeriphType b
 periphType xs@((svd, Peripheral{registers=regs,..}):_) = PeriphType{..}
     where registers = map Right regs
-          periphInsts = map (periphInst typeRef) xs
+          periphInsts = map periphInst xs
           typeRef = PeriphRef{..}
 periphType _ = error "expected at least one peripheral"
 
-periphInst :: PeriphRef -> (Text, Peripheral) -> PeriphInst
-periphInst typeRef (svd, Peripheral{..}) = PeriphInst{..}
+periphInst :: (Text, Peripheral) -> PeriphInst
+periphInst (svd, Peripheral{..}) = PeriphInst{..}
     where instRef = PeriphRef{..}
 
 mergeInterrupts :: [Interrupt] -> [Interrupt]

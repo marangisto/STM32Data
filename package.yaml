@@ -43,6 +43,7 @@ library:
     - -Wunused-imports
     - -Wunused-local-binds
     - -Wincomplete-patterns
+    - -Wunused-matches
     - -Werror
 
 executables:
