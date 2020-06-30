@@ -4,7 +4,8 @@ module FrontEnd.Fixup (Reserve(..), fixup) where
 
 import FrontEnd.Normalize
 import Utils
-import Data.Text (isPrefixOf, isSuffixOf, stripSuffix, toUpper)
+import Data.Text (isPrefixOf, isSuffixOf, toUpper)
+import Data.Text (stripPrefix, stripSuffix)
 import Data.List (sortOn, mapAccumL)
 import Data.List.Extra (nubOrdOn)
 
@@ -76,6 +77,7 @@ registerEdits =
     , tim_ccmr
     , adc_hwcfgr6
     , nvic_iserx
+    , syscfg_prefix
     ]
 
 fieldEdits :: [FieldEdit]
@@ -145,6 +147,14 @@ nvic_iserx _ p x@Register{..}
     | p == "NVIC", name `elem` [ "ISER", "ICER", "ISPR", "ICPR" ]
     = x { name = name <> "0" }
     | otherwise = x
+
+syscfg_prefix :: RegisterEdit
+syscfg_prefix "STM32F0" p x@Register{..}
+    | p == "SYSCFG"
+    , Just rest <- stripPrefix "SYSCFG_" name
+    = x { name = rest }
+    | otherwise = x
+syscfg_prefix _ _ x = x
 
 compx_csr :: FieldEdit
 compx_csr _ p r x@Field{..}

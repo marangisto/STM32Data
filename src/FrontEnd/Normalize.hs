@@ -74,6 +74,7 @@ rename p@Peripheral{..} = p
     , groupName = f groupName
     }
     where f "SYSCFG_VREFBUF" = "SYSCFG"
+          f "SYSCFG_COMP" = "SYSCFG"
           f s = s
 
 mergeInstances
