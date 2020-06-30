@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards, DuplicateRecordFields #-}
+{-# LANGUAGE OverloadedStrings #-}
 module FrontEnd.Normalize
     ( NormalSVD(..)
     , PeriphType(..)
@@ -59,10 +60,18 @@ normalize family xs = NormalSVD{..}
           clockControl = ()
           (outright, derived) = partition (isOutright . snd) allPerips
           isOutright = isNothing . derivedFrom
-          allPerips = [ (name, p) | SVD{..} <- xs, p <- peripherals ]
           canon = groupSortOn (hash . snd) outright
           periphTypes' = map periphType canon
           moreInsts = map (fromDerived $ index periphTypes') derived
+          allPerips = [ (name, rename p)
+                      | SVD{..} <- xs
+                      , p <- peripherals
+                      ]
+
+rename :: Peripheral -> Peripheral
+rename p@Peripheral{..} = p { name = f name }
+    where f "SYSCFG_VREFBUF" = "SYSCFG"
+          f s = s
 
 mergeInstances
     :: [(PeriphRef, PeriphInst)]
