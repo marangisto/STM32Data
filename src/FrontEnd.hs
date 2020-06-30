@@ -34,7 +34,7 @@ import Data.List (find, sort, nub)
 import Data.List.Extra (groupSort, sortOn)
 import Data.Text as T (pack, unpack, break)
 import Data.Text as T (head, tail, length, snoc)
-import Data.Text as T (isPrefixOf, isSuffixOf)
+import Data.Text as T (isPrefixOf, isSuffixOf, isInfixOf)
 import Data.Text as T (stripPrefix, stripSuffix)
 import qualified Data.Map.Strict as Map
 import Text.Read (readMaybe)
@@ -145,9 +145,14 @@ fixupIpGPIO svds x@IpGPIO{..}
 fixupAF :: IpGPIO -> IpGPIO
 fixupAF x@IpGPIO{..} = x { gpioPins = map f gpioPins }
     where f :: GPIOPin -> GPIOPin
-          f y@GPIOPin{..} = y { pinSignals = map g pinSignals }
-          g :: PinSignal -> PinSignal
-          g z@PinSignal{..} = z { name = cleanName name, gpioAF = h gpioAF }
+          f y@GPIOPin{..} = y { pinSignals = mapMaybe g pinSignals }
+          g :: PinSignal -> Maybe PinSignal
+          g z@PinSignal{..}
+              | "Stingray" `isInfixOf` name = Nothing
+              | otherwise = Just $ z
+                  { name = cleanName name
+                  , gpioAF = h gpioAF
+                  }
           h s | Just rest <- stripPrefix "GPIO_" s
               = fst $ T.break (=='_') rest
               | "_REMAP0" `isSuffixOf` s = "REMAP"
