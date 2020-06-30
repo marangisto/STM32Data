@@ -42,7 +42,7 @@ prettyFamilyCPP root family@Family{family=familyName,..} = do
 familyInfo :: Family -> Value
 familyInfo fam@Family{..} = object
     [ "family"      .= family
-    , "mcus"        .= (markEnds $ map (mcuInfo specs) mcus)
+    , "mcus"        .= (markEnds $ map (mcuInfo svds specs) mcus)
     , "svds"        .= (markEnds $ map nameInfo svds)
     , "configs"     .= (markEnds $ map nameValInfo configs)
     , "periphs"     .= (markEnds $ map nameInfo $ peripheralNames fam)
@@ -53,13 +53,13 @@ familyInfo fam@Family{..} = object
     ]
     where GPIO{..} = gpio
 
-mcuInfo :: [MCU] -> Mcu -> Value
-mcuInfo mcus Mcu{..} = object
+mcuInfo :: [Text] -> [MCU] -> Mcu -> Value
+mcuInfo svds mcus Mcu{..} = object
     [ "name"        .= name
     , "refName"     .= refName
     , "rpn"         .= rpn
     , "svd"         .= (\MCU{..} -> svd) mcu
-    , "gpioConf"    .= ipGPIOName mcu
+    , "gpioConf"    .= ipGPIOName svds mcu
     ]
     where mcu = fromMaybe (error $ "can't find MCU for " <> unpack name)
               $ find (\MCU{..} -> refName == name) mcus

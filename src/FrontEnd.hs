@@ -124,10 +124,11 @@ ipGPIOFiles dir mcus = map f $ nub $ sort
     [ version | MCU{..} <- mcus , IP{name="GPIO",..} <- ips ]
     where f x = dir </> "IP" </> "GPIO-" <> unpack x <> "_Modes" <.> "xml"
 
-ipGPIOName :: MCU -> Text
-ipGPIOName MCU{..}
+ipGPIOName :: [Text] -> MCU -> Text
+ipGPIOName svds MCU{..}
     | Just IP{..} <- find (\IP{..} -> name == "GPIO") ips
-    = fst $ T.break (=='_') version
+    = let s = fst $ T.break (=='_') version
+       in if s `elem` svds then s <> "_" else s -- to avoid collissions
     | otherwise = error $ "failed to find IpGPIO for " <> unpack refName
 
 svdNames :: NormalSVD a b -> [Text]
@@ -197,7 +198,7 @@ altFunMap = Map.fromList . groupSort . nub . sort . concatMap f
               where (dev, sig) = T.break (=='_') name
 
 peripheralNames :: Family -> [Text]
-peripheralNames Family{..} = 
+peripheralNames Family{..} = nub $ sortOn nameNum
     [ name 
     | (_, (_, ps)) <- peripherals
     , Peripheral{..} <- ps
@@ -252,7 +253,7 @@ toSignals xs =
           h conf pin PinSignal{..} = ((pin, name), (gpioAF, conf))
 
 cleanPin :: Text -> Text
-cleanPin = fst . T.break (`elem` ['-', ' ']) -- FIXME: see PA10 on G0!
+cleanPin = fst . T.break (`elem` ['-', ' ', '/']) -- FIXME: see PA10 on G0!
 
 altfunNames :: [Signal] -> [(Text, Int)]
 altfunNames xs
