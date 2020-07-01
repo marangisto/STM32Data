@@ -63,7 +63,7 @@ runFieldEdits xs f p r = foldl (.) id (map (($r) . ($p) . ($f)) xs)
 periphTypeEdits :: [PeriphTypeEdit]
 periphTypeEdits =
     [ usb_regs
-    , grou_name
+    , group_name
     , sys_tick
     ]
 
@@ -80,6 +80,7 @@ registerEdits =
     , nvic_iserx
     , syscfg_prefix
     , rcc_pllcfgr
+    , gpio_reg
     ]
 
 fieldEdits :: [FieldEdit]
@@ -93,8 +94,8 @@ usb_regs _ x@PeriphType{typeRef=PeriphRef{..},..}
     | name == "USB" = x { registers = filter (not . usb_buffer) registers }
     | otherwise = x
 
-grou_name :: PeriphTypeEdit
-grou_name _ x@PeriphType{typeRef=PeriphRef{..},..}
+group_name :: PeriphTypeEdit
+group_name _ x@PeriphType{typeRef=PeriphRef{..},..}
     | groupName == "USART", "LPUART" `isPrefixOf` name
     = x { groupName = "LPUART" }
     | groupName == "USART", "UART" `isPrefixOf` name
@@ -116,6 +117,7 @@ sys_tick _ x@PeriphType{typeRef=PeriphRef{..},..}
 
 inst_name :: PeriphInstEdit
 inst_name _ _ x@PeriphInst{instRef=r@PeriphRef{..}}
+    | name == "PF" = x { instRef = r { name = "PF_" } }
     | name == "LPTIMER1" = x { instRef = r { name = "LPTIM1" } }
     | name == "CEC" = x { instRef = r { name = "HDMI_CEC" } }
     | name == "USB_FS_DEVICE" = x { instRef = r { name = "USB" } }
@@ -174,9 +176,18 @@ rcc_pllcfgr "STM32F4" "RCC" x@Register{..}
           h :: [Field] -> Field
           h [] = error "impossible!"
           h (x:[]) = x
-          h xs@(x:_) = x { bitOffset = minimum $ map (\Field{..} -> bitOffset) xs , bitWidth = length xs }
-
+          h xs@(x:_) = x
+              { bitOffset = minimum $ map (\Field{..} -> bitOffset) xs
+              , bitWidth = length xs
+              }
 rcc_pllcfgr _ _ x = x
+
+gpio_reg :: RegisterEdit
+gpio_reg "STM32F7" p x@Register{..}
+    | "GPIO" `isPrefixOf` p, name == "GPIOB_OSPEEDR"
+    = x { name = "OSPEEDR" }
+    | otherwise = x
+gpio_reg _ _ x = x
 
 compx_csr :: FieldEdit
 compx_csr _ p r x@Field{..}
