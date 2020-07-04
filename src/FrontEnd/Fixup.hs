@@ -162,8 +162,9 @@ syscfg_prefix "STM32F0" "SYSCFG" x@Register{..}
 syscfg_prefix _ _ x = x
 
 rcc_pllcfgr :: RegisterEdit
-rcc_pllcfgr "STM32F4" "RCC" x@Register{..}
-    | name `elem` [ "PLLCFGR", "CFGR" ] = x { fields = f fields }
+rcc_pllcfgr family "RCC" x@Register{..}
+    | family `elem` [ "STM32F4", "STM32F7" ]
+    , name `elem` [ "PLLCFGR", "CFGR" ] = x { fields = f fields }
     | otherwise = x
     where f :: [Field] -> [Field]
           f = sortOn bitOffset . map h
