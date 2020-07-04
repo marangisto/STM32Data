@@ -74,7 +74,8 @@ periphInstEdits =
 
 registerEdits :: [RegisterEdit]
 registerEdits =
-    [ gpio_fields
+    [ reg_name
+    , gpio_fields
     , tim_ccmr
     , adc_hwcfgr6
     , nvic_iserx
@@ -124,6 +125,11 @@ inst_name _ _ x@PeriphInst{instRef=r@PeriphRef{..}}
     | name `elem` [ "DAC", "LPUART", "SAI", "QUADSPI" ]
         = x { instRef = r { name = name <> "1" } }
     | otherwise = x
+
+reg_name :: RegisterEdit
+reg_name "STM32F7" "RCC" x@Register{name="DKCFGR1"}
+    = x { name = "DCKCFGR1" }
+reg_name _ _ x = x
 
 gpio_fields :: RegisterEdit
 gpio_fields "STM32F0" "RCC" x@Register{fields=fs,..}
