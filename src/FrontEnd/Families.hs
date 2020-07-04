@@ -19,6 +19,7 @@ module FrontEnd.Families
 
 import Data.Text (Text, pack, unpack, toLower, stripPrefix)
 import Data.List (nub, sort)
+import Data.List.Extra (nubOrdOn)
 import Control.Monad
 import Control.Arrow
 import HXT
@@ -59,7 +60,7 @@ getFamily = atTag "Family" >>> proc x -> do
 getSubFamily = atTag "SubFamily" >>> proc x -> do
     name <- arr pack <<< attrText "Name" -< x
     mcus <- listA getMCU -< x
-    returnA -< (name, mcus)
+    returnA -< (name, nubOrdOn refName mcus)
 
 getMCU = atTag "Mcu" >>> proc x -> do
     name <- arr pack <<< attrText "Name" -< x

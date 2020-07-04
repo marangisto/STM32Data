@@ -76,13 +76,13 @@ main = do
     families' <- parseFamilies famXML
     families <- return $ prune fs families'
     allSVDs <- cacheLines svdFiles svdDir
+
     let dbDir = takeDirectory famXML
 
-    unless old_core $ do
-      whenJust headers $ flip prettyFamiliesCPP $ map (unPlus . fst) families'
-      forM_ families $ \(family', subFamilies) -> do
-        fam@Family{..} <- processFamily svdDir dbDir family' subFamilies
-        whenJust headers $ flip prettyFamilyCPP fam
+    whenJust headers $ \outDir -> do
+        prettyFamiliesCPP outDir $ map (unPlus . fst) families'
+        forM_ families $ \(family', subs) -> do
+            prettyFamilyCPP outDir =<< processFamily svdDir dbDir family' subs
 
     when list_mcus $ mcuList families
     when build_rules
