@@ -144,9 +144,11 @@ fixupIpGPIO svds x@IpGPIO{..}
     where name' = fst $ T.break (=='_') version
 
 fixupAF :: IpGPIO -> IpGPIO
-fixupAF x@IpGPIO{..} = x { gpioPins = map f gpioPins }
-    where f :: GPIOPin -> GPIOPin
-          f y@GPIOPin{..} = y { pinSignals = mapMaybe g pinSignals }
+fixupAF x@IpGPIO{..} = x { gpioPins = mapMaybe f gpioPins }
+    where f :: GPIOPin -> Maybe GPIOPin
+          f y@GPIOPin{..}
+              | "_C" `isSuffixOf` name = Nothing -- dual pad pin
+              | otherwise = Just $ y { pinSignals = mapMaybe g pinSignals }
           g :: PinSignal -> Maybe PinSignal
           g z@PinSignal{..}
               | "Stingray" `isInfixOf` name = Nothing
@@ -199,13 +201,13 @@ altFunMap = Map.fromList . groupSort . nub . sort . concatMap f
 
 peripheralNames :: Family -> [Text]
 peripheralNames Family{..} = nub $ sortOn nameNum
-    [ name 
+    [ name
     | (_, (_, ps)) <- peripherals
     , Peripheral{..} <- ps
     ]
 
 peripheralInsts :: Family -> [PeriphInst]
-peripheralInsts Family{..} = 
+peripheralInsts Family{..} =
     [ pi
     | (_, (pts, _)) <- peripherals
     , PeriphType{..} <- pts
