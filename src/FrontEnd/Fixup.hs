@@ -114,6 +114,7 @@ sys_tick _ x@PeriphType{typeRef=PeriphRef{..},..}
           f r@Register{..}
             | name == "CTRL" = r { name = "CSR" }
             | name == "LOAD" = r { name = "RVR" }
+            | name == "LOAD_" = r { name = "RVR" }
             | name == "VAL" = r { name = "CVR" }
             | otherwise = r
 
