@@ -82,6 +82,7 @@ registerEdits =
     , syscfg_prefix
     , rcc_pllcfgr
     , gpio_reg
+    , usart_cr1
     ]
 
 fieldEdits :: [FieldEdit]
@@ -196,6 +197,13 @@ gpio_reg "STM32F7" p x@Register{..}
     | otherwise = x
 gpio_reg _ _ x = x
 
+usart_cr1 :: RegisterEdit
+usart_cr1 "STM32L4" p x@Register{..}
+    | "USART" `isPrefixOf` p, name == "0X00000000"
+    = x { name = "CR1", displayName = "CR1" }
+    | otherwise = x
+usart_cr1 _ _ x = x
+
 compx_csr :: FieldEdit
 compx_csr _ p r x@Field{..}
     | p == "SYSCFG_COMP_OPAMP", "COMP" `isPrefixOf` r
@@ -252,13 +260,6 @@ fixupPeriphType "STM32L4" p@PeriphType{..}
     = p { registers = map usart1_cr1 registers }
 fixupPeriphType _ p@PeriphType{name="SEC_DAC",derivedFrom=Just "DAC",..}
     = p { name = "DAC2", derivedFrom = Just "DAC1" }
-
-usart1_cr1 :: Register -> Register
-usart1_cr1 r@Register{..}
-    | name == "0x00000000"
-    = r { name = "CR1", displayName = "CR1" }
-    | otherwise = r
-
 -}
 
 exceptions :: [Interrupt]
