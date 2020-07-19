@@ -119,13 +119,15 @@ sys_tick _ x@PeriphType{typeRef=PeriphRef{..},..}
             | otherwise = r
 
 inst_name :: PeriphInstEdit
-inst_name _ _ x@PeriphInst{instRef=r@PeriphRef{..}}
+inst_name fam _ x@PeriphInst{instRef=r@PeriphRef{..}}
     | name == "PF" = x { instRef = r { name = "PF_" } }
     | name == "LPTIMER1" = x { instRef = r { name = "LPTIM1" } }
     | name == "CEC" = x { instRef = r { name = "HDMI_CEC" } }
     | name == "USB_FS_DEVICE" = x { instRef = r { name = "USB" } }
     | name `elem` [ "DAC", "LPUART", "SAI", "QUADSPI" ]
         = x { instRef = r { name = name <> "1" } }
+    | fam == "STM32L1", Just s <- stripPrefix "UART" name
+        = x { instRef = r { name = "USART" <> s } }
     | otherwise = x
 
 reg_name :: RegisterEdit
