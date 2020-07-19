@@ -133,6 +133,9 @@ inst_name fam _ x@PeriphInst{instRef=r@PeriphRef{..}}
 reg_name :: RegisterEdit
 reg_name "STM32F7" "RCC" x@Register{name="DKCFGR1"}
     = x { name = "DCKCFGR1" }
+reg_name "STM32L1" p x@Register{name="OSPEEDER"}
+    | "GPIO" `isPrefixOf` p = x { name = "OSPEEDR" }
+    | otherwise = x
 reg_name _ _ x = x
 
 gpio_fields :: RegisterEdit
@@ -215,7 +218,7 @@ compx_csr _ p r x@Field{..}
     | otherwise = x
 
 rcc_fields :: FieldEdit
-rcc_fields _ "RCC" _ x@Field{..}
+rcc_fields fam "RCC" _ x@Field{..}
     | name == "AD12CSMEN" = x { name = "ADC12_COMMONSMEN" }
     | name == "ADC12EN" = x { name = "ADC12_COMMONEN" }
     | name == "ADC12SMEN" = x { name = "ADC12_COMMONSMEN" }
@@ -247,6 +250,9 @@ rcc_fields _ "RCC" _ x@Field{..}
     | name == "ADC345RST_" = x { name = "ADC345_COMMONRST" }
     | name == "DAC1RST_" = x { name = "DAC1RST" }
     | name == "FLITFRST_" = x { name = "FLASHRST" }
+    | fam == "STM32L1"
+    , Just s <- stripPrefix "GPIOP" name
+        = x { name = "GPIO" <> s }
     | otherwise = x
 rcc_fields _ _ _ x = x
 
