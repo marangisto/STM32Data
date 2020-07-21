@@ -176,7 +176,7 @@ syscfg_prefix _ _ x = x
 
 rcc_pllcfgr :: RegisterEdit
 rcc_pllcfgr family "RCC" x@Register{..}
-    | family `elem` [ "STM32F4", "STM32F7" ]
+    | family `elem` [ "STM32F4", "STM32F7", "STM32F2" ]
     , name `elem` [ "PLLCFGR", "CFGR" ] = x { fields = f fields }
     | otherwise = x
     where f :: [Field] -> [Field]
@@ -186,6 +186,11 @@ rcc_pllcfgr family "RCC" x@Register{..}
           g x@Field{..}
               | any (`isPrefixOf` name) [ "PLL", "SW" ]
               = x { name = dropWhileEnd isDigit name }
+              | name `elem` [ "MCO1EN", "MCO2EN" ] = x
+              | "MCO1PRE" `isPrefixOf` name = x { name = "MCO1PRE" }
+              | "MCO2PRE" `isPrefixOf` name = x { name = "MCO2PRE" }
+              | "MCO1" `isPrefixOf` name = x { name = "MCO1SEL" }
+              | "MCO2" `isPrefixOf` name = x { name = "MCO2SEL" }
               | otherwise = x
           h :: [Field] -> Field
           h [] = error "impossible!"
