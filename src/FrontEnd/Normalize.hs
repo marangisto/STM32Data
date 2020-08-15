@@ -69,10 +69,8 @@ normalize family xs = NormalSVD{..}
                       ]
 
 rename :: Peripheral -> Peripheral
-rename p@Peripheral{..} = p
-    { name = f name
-    , groupName = f groupName
-    }
+rename p@Peripheral{groupName="TIMS",..} = p { groupName = "TIM" }
+rename p@Peripheral{..} = p { name = f name , groupName = f groupName }
     where f "SYSCFG_VREFBUF" = "SYSCFG"
           f "SYSCFG_COMP" = "SYSCFG"
           f "SYSCFG_COMP_OPAMP" = "SYSCFG"

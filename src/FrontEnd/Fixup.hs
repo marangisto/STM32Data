@@ -19,7 +19,7 @@ data Reserve = Reserve
 fixup :: NormalSVD () Void -> NormalSVD () Reserve
 fixup x@NormalSVD{..} = x
     { periphTypes = ps
-    , interrupts = exceptions ++ interrupts
+    , interrupts = exceptions ++ fixupInterrupts interrupts
     }
     where ps = map (f . editPeriphType family) periphTypes
           f p@PeriphType{..} = p {registers = reserve registers }
@@ -168,8 +168,9 @@ nvic_iserx _ p x@Register{..}
     | otherwise = x
 
 syscfg_prefix :: RegisterEdit
-syscfg_prefix "STM32F0" "SYSCFG" x@Register{..}
-    | Just rest <- stripPrefix "SYSCFG_" name
+syscfg_prefix f "SYSCFG" x@Register{..}
+    | f `elem` [ "STM32F0", "STM32F3" ]
+    , Just rest <- stripPrefix "SYSCFG_" name
     = x { name = rest }
     | otherwise = x
 syscfg_prefix _ _ x = x
@@ -216,8 +217,11 @@ usart_cr1 "STM32L4" p x@Register{..}
 usart_cr1 _ _ x = x
 
 compx_csr :: FieldEdit
-compx_csr _ p r x@Field{..}
+compx_csr f p r x@Field{..}
     | p == "SYSCFG_COMP_OPAMP", "COMP" `isPrefixOf` r
+    , "_CSR" `isSuffixOf` r, "INMSEL" `isSuffixOf` name
+    , bitOffset == 22 = x { name = name <> "3" }
+    | f == "STM32F3", p == "SYSCFG", "COMP" `isPrefixOf` r
     , "_CSR" `isSuffixOf` r, "INMSEL" `isSuffixOf` name
     , bitOffset == 22 = x { name = name <> "3" }
     | otherwise = x
@@ -275,6 +279,13 @@ fixupPeriphType "STM32L4" p@PeriphType{..}
 fixupPeriphType _ p@PeriphType{name="SEC_DAC",derivedFrom=Just "DAC",..}
     = p { name = "DAC2", derivedFrom = Just "DAC1" }
 -}
+
+fixupInterrupts :: [Interrupt] -> [Interrupt]
+fixupInterrupts = map f
+    where f :: Interrupt -> Interrupt
+          f x@Interrupt{..}
+            | Just rest <- stripSuffix "_IRQ" name = x { name = rest }
+            | otherwise = x
 
 exceptions :: [Interrupt]
 exceptions = map f
