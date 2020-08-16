@@ -124,7 +124,7 @@ inst_name fam _ x@PeriphInst{instRef=r@PeriphRef{..}}
     | name == "LPTIMER1" = x { instRef = r { name = "LPTIM1" } }
     | name == "CEC" = x { instRef = r { name = "HDMI_CEC" } }
     | name == "USB_FS_DEVICE" = x { instRef = r { name = "USB" } }
-    | name `elem` [ "DAC", "LPUART", "SAI", "QUADSPI" ]
+    | name `elem` [ "DAC", "LPUART", "SAI", "QUADSPI", "ADC", "DMA" ]
         = x { instRef = r { name = name <> "1" } }
     | fam == "STM32L1", Just s <- stripPrefix "UART" name
         = x { instRef = r { name = "USART" <> s } }
@@ -259,6 +259,12 @@ rcc_fields fam "RCC" _ x@Field{..}
     | name == "ADC345RST_" = x { name = "ADC345_COMMONRST" }
     | name == "DAC1RST_" = x { name = "DAC1RST" }
     | name == "FLITFRST_" = x { name = "FLASHRST" }
+    | name == "ADCEN" = x { name = "ADC1EN" }
+    | name == "ADCRST" = x { name = "ADC1RST" }
+    | name == "ADCSMEN" = x { name = "ADC1SMEN" }
+    | name == "DMAEN" = x { name = "DMA1EN" }
+    | name == "DMARST" = x { name = "DMA1RST" }
+    | name == "DMASMEN" = x { name = "DMA1SMEN" }
     | fam == "STM32L1"
     , Just s <- stripPrefix "GPIOP" name
         = x { name = "GPIO" <> s }
