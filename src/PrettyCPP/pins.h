@@ -17,6 +17,7 @@ enum pin_t
 {{#pins}}
     {{#first}}{ {{/first}}{{^first}}, {{/first}}{{name}} = {{value}}
 {{/pins}}
+    , NO_PIN
     };
 
 enum altfun_t
