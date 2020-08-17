@@ -47,11 +47,13 @@ struct {{#instRef}}peripheral_t<{{svd}}, {{name}}>{{/instRef}}
 {{#peripherals}}
 using {{nameLC}}_t = peripheral_t<svd, {{name}}>;
 {{/peripherals}}
-
-template<int INST> struct {{groupLC}}_traits {};
 {{#peripherals}}
 {{#haveTraits}}
 {{#instNo}}
+{{#first}}
+
+template<int INST> struct {{groupLC}}_traits {};
+{{/first}}
 
 template<> struct {{groupLC}}_traits<{{instNo}}>
 {

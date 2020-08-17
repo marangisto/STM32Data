@@ -136,6 +136,9 @@ reg_name "STM32F7" "RCC" x@Register{name="DKCFGR1"}
 reg_name "STM32L1" p x@Register{name="OSPEEDER"}
     | "GPIO" `isPrefixOf` p = x { name = "OSPEEDR" }
     | otherwise = x
+reg_name "STM32G0" p x@Register{..}
+    | Just rest <- stripPrefix (p <> "_") name = x { name = rest }
+    | otherwise = x
 reg_name _ _ x = x
 
 gpio_fields :: RegisterEdit

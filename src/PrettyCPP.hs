@@ -111,7 +111,7 @@ periphInfo family groupName xs ys = object
     , "group"       .= groupName
     , "groupLC"     .= toLower groupName
     , "periphTypes" .= map periphTypeInfo xs
-    , "peripherals" .= map peripheralInfo ys
+    , "peripherals" .= (markEnds $ map peripheralInfo ys)
     ]
 
 periphTypeInfo :: PeriphType Reserve -> Value
