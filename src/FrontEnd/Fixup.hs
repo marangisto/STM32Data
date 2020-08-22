@@ -139,6 +139,10 @@ reg_name "STM32L1" p x@Register{name="OSPEEDER"}
 reg_name "STM32G0" p x@Register{..}
     | Just rest <- stripPrefix (p <> "_") name = x { name = rest }
     | otherwise = x
+reg_name "STM32G4" p x@Register{..}
+    | Just rest <- stripPrefix (p <> "_") name = x { name = rest }
+    | Just rest <- stripPrefix ("DAC_") name = x { name = rest }
+    | otherwise = x
 reg_name _ _ x = x
 
 gpio_fields :: RegisterEdit
@@ -268,6 +272,10 @@ rcc_fields fam "RCC" _ x@Field{..}
     | name == "DMAEN" = x { name = "DMA1EN" }
     | name == "DMARST" = x { name = "DMA1RST" }
     | name == "DMASMEN" = x { name = "DMA1SMEN" }
+    | name == "DAC1" = x { name = "DAC1EN" }
+    | name == "DAC2" = x { name = "DAC2EN" }
+    | name == "DAC3" = x { name = "DAC3EN" }
+    | name == "DAC4" = x { name = "DAC4EN" }
     | fam == "STM32L1"
     , Just s <- stripPrefix "GPIOP" name
         = x { name = "GPIO" <> s }
