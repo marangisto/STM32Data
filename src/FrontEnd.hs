@@ -35,9 +35,10 @@ import Data.List.Extra (groupSort, sortOn)
 import Data.Text as T (pack, unpack, break)
 import Data.Text as T (head, tail, length, snoc)
 import Data.Text as T (isPrefixOf, isSuffixOf, isInfixOf)
-import Data.Text as T (stripPrefix, stripSuffix)
+import Data.Text as T (stripPrefix)
 import qualified Data.Map.Strict as Map
 import Text.Read (readMaybe)
+import Control.Applicative ((<|>))
 import FrontEnd.Families hiding (Peripheral)
 import FrontEnd.ParseSVD hiding (Peripheral)
 import FrontEnd.ParseMCU hiding (Signal)
@@ -182,11 +183,18 @@ processPeripherals NormalSVD{..} afMap = map f $ groupSort xs
 
 instanceNo :: Text -> Maybe Int
 instanceNo name
-    | Just s <- stripSuffix "_COMMON" name
-    = Just $ snd $ nameNum s
     | Just s <- stripPrefix "GPIO" name
+            <|> stripPrefix "HRTIM_TIM" name
     , T.length s == 1
     = Just $ ord (T.head s) - ord 'A'
+    -- FIXME: introduce constants for these
+    | name == "ADC_COMMON" = Just 123
+    | name == "ADC12_COMMON" = Just 12
+    | name == "ADC345_COMMON" = Just 345
+    | name == "ADC1_2" = Just 12
+    | name == "ADC3_4" = Just 34
+    | name == "HRTIM_MASTER" = Just 10
+    | name == "HRTIM_COMMON" = Just 11
     | otherwise = Just $ snd $ nameNum name
 
 altFunMap :: [IpGPIO] -> Map.Map Text [Text]

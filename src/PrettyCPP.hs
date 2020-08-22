@@ -8,7 +8,7 @@ import Data.Aeson hiding (Options)
 import Data.HashMap.Strict (fromList)
 import Data.List (find)
 import Data.List.Extra (groupSort)
-import Data.Text as T (Text, toLower, pack, unpack, intercalate)
+import Data.Text as T (Text, toLower, pack, unpack, intercalate, isPrefixOf)
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Bits (shift)
 import System.Directory
@@ -127,10 +127,11 @@ peripheralInfo Peripheral{..} = object $
     [ "name"        .= name
     , "nameLC"      .= toLower name
     , "altFuns"     .= map (\x -> object [ "altFun" .= x ]) altFuns
-    , "haveTraits"  .= (isJust control || not (null altFuns))
+    , "haveTraits"  .= (isJust control || not (null altFuns) || anyway)
     ] ++
     [ "instNo"      .= pack (show no) | Just no <- [ instNo ] ] ++
     [ "controls"    .= controlInfo c | Just c <- [ control ] ]
+    where anyway = any (`isPrefixOf` name) [ "ADC", "HRTIM" ]
 
 controlInfo :: ClockControl -> [Value]
 controlInfo ClockControl{..} = concat
