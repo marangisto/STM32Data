@@ -70,6 +70,7 @@ periphTypeEdits =
 periphInstEdits :: [PeriphInstEdit]
 periphInstEdits =
     [ inst_name
+    , base_addr
     ]
 
 registerEdits :: [RegisterEdit]
@@ -129,6 +130,12 @@ inst_name fam _ x@PeriphInst{instRef=r@PeriphRef{..}}
     | fam == "STM32L1", Just s <- stripPrefix "UART" name
         = x { instRef = r { name = "USART" <> s } }
     | otherwise = x
+
+base_addr :: PeriphInstEdit
+base_addr "STM32G4" "ADC12_COMMON" x@PeriphInst{..}
+    | baseAddress == 0x50000200 = x { baseAddress = 0x50000300 }
+    | otherwise = x
+base_addr _ _ x = x
 
 reg_name :: RegisterEdit
 reg_name "STM32F7" "RCC" x@Register{name="DKCFGR1"}
