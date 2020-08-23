@@ -90,6 +90,7 @@ fieldEdits :: [FieldEdit]
 fieldEdits =
     [ compx_csr
     , rcc_fields
+    , adc_fields
     ]
 
 usb_regs :: PeriphTypeEdit
@@ -288,6 +289,13 @@ rcc_fields fam "RCC" _ x@Field{..}
         = x { name = "GPIO" <> s }
     | otherwise = x
 rcc_fields _ _ _ x = x
+
+adc_fields :: FieldEdit
+adc_fields f p r x@Field{..}
+    | f == "STM32G4", "ADC" `isPrefixOf` p, r == "CFGR"
+    , name == "EXTSEL", bitOffset == 6, bitWidth == 4
+    = x { bitOffset = 5, bitWidth = 5 }
+    | otherwise = x
 
 usb_buffer :: Either Void Register -> Bool
 usb_buffer (Right Register{..})
