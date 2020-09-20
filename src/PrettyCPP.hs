@@ -111,7 +111,8 @@ periphInfo family groupName xs ys = object
     , "group"       .= groupName
     , "groupLC"     .= toLower groupName
     , "periphTypes" .= map periphTypeInfo xs
-    , "peripherals" .= (markEnds $ map peripheralInfo ys)
+    , "peripherals" .= map peripheralInfo ys
+    , "needTraits"  .= any haveTraits ys
     ]
 
 periphTypeInfo :: PeriphType Reserve -> Value
@@ -123,14 +124,17 @@ periphTypeInfo PeriphType{..} = object
     ]
 
 peripheralInfo :: Peripheral -> Value
-peripheralInfo Peripheral{..} = object $
+peripheralInfo p@Peripheral{..} = object $
     [ "name"        .= name
     , "nameLC"      .= toLower name
     , "altFuns"     .= map (\x -> object [ "altFun" .= x ]) altFuns
-    , "haveTraits"  .= (isJust control || not (null altFuns) || anyway)
+    , "haveTraits"  .= haveTraits p
     ] ++
     [ "instNo"      .= pack (show no) | Just no <- [ instNo ] ] ++
     [ "controls"    .= controlInfo c | Just c <- [ control ] ]
+
+haveTraits :: Peripheral -> Bool
+haveTraits Peripheral{..} = isJust control || not (null altFuns) || anyway
     where anyway = any (`isPrefixOf` name) [ "ADC", "HRTIM" ]
 
 controlInfo :: ClockControl -> [Value]
