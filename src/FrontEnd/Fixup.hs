@@ -151,6 +151,10 @@ reg_name "STM32G4" p x@Register{..}
     | Just rest <- stripPrefix (p <> "_") name = x { name = rest }
     | Just rest <- stripPrefix ("DAC_") name = x { name = rest }
     | otherwise = x
+reg_name "STM32H7" p x@Register{..}
+    | Just rest <- stripPrefix (p <> "_") name
+    , p `elem` [ "PWR" ]
+    = x { name = rest }
 reg_name _ _ x = x
 
 gpio_fields :: RegisterEdit
