@@ -91,6 +91,7 @@ fieldEdits =
     [ compx_csr
     , rcc_fields
     , adc_fields
+    , syscfg_fields
     ]
 
 usb_regs :: PeriphTypeEdit
@@ -308,6 +309,11 @@ usb_buffer (Right Register{..})
     | otherwise = False
 usb_buffer _ = False
 
+syscfg_fields :: FieldEdit
+syscfg_fields "STM32H7" "SYSCFG" "PWRCR" x@Field{..}
+    | name == "ODEN", bitWidth /= 1 = x { bitWidth = 1 }
+    | otherwise = x
+syscfg_fields _ _ _ x = x
 {-
 fixupPeriphType "STM32L4" p@PeriphType{..}
     | name == "USART1"
