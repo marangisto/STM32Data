@@ -38,6 +38,7 @@ struct {{#typeRef}}{{svdLC}}_{{nameLC}}_t{{/typeRef}}
 template<>
 struct {{#instRef}}peripheral_t<{{svd}}, {{name}}>{{/instRef}}
 {
+    static constexpr periph_t P = {{#instRef}}{{name}}{{/instRef}};
     using T = {{#typeRef}}{{svdLC}}_{{nameLC}}{{/typeRef}}_t;
     static T& V;
 };
