@@ -69,6 +69,9 @@ template<> struct {{groupLC}}_traits<{{instNo}}>
     {
   {{#en}}
         RCC::V.{{register}} |= RCC::T::{{register}}_{{flag}};
+     {{#delayRCC}}
+        __asm volatile ("dsb"); // dm00037591 2.1.13
+     {{/delayRCC}}
   {{/en}}
   {{^en}}
         RCC::V.{{register}} &= ~RCC::T::{{register}}_{{flag}};

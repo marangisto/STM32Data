@@ -111,7 +111,7 @@ periphInfo family groupName xs ys = object
     , "group"       .= groupName
     , "groupLC"     .= toLower groupName
     , "periphTypes" .= map periphTypeInfo xs
-    , "peripherals" .= map peripheralInfo ys
+    , "peripherals" .= map (peripheralInfo family) ys
     , "needTraits"  .= any haveTraits ys
     ]
 
@@ -123,22 +123,22 @@ periphTypeInfo PeriphType{..} = object
     , "periphInsts" .= map periphInstInfo periphInsts
     ]
 
-peripheralInfo :: Peripheral -> Value
-peripheralInfo p@Peripheral{..} = object $
+peripheralInfo :: Text -> Peripheral -> Value
+peripheralInfo family p@Peripheral{..} = object $
     [ "name"        .= name
     , "nameLC"      .= toLower name
     , "altFuns"     .= map (\x -> object [ "altFun" .= x ]) altFuns
     , "haveTraits"  .= haveTraits p
     ] ++
     [ "instNo"      .= pack (show no) | Just no <- [ instNo ] ] ++
-    [ "controls"    .= controlInfo c | Just c <- [ control ] ]
+    [ "controls"    .= controlInfo family c | Just c <- [ control ] ]
 
 haveTraits :: Peripheral -> Bool
 haveTraits Peripheral{..} = isJust control || not (null altFuns) || anyway
     where anyway = any (`isPrefixOf` name) [ "ADC", "HRTIM" ]
 
-controlInfo :: ClockControl -> [Value]
-controlInfo ClockControl{..} = concat
+controlInfo :: Text -> ClockControl -> [Value]
+controlInfo family ClockControl{..} = concat
     [ [ f "enable" rf True | Just rf <- [ enable ] ]
     , [ f "disable" rf False | Just rf <- [ enable ] ]
     , [ f "enable_sleep_mode" rf True | Just rf <- [ enableSM ] ]
@@ -151,7 +151,9 @@ controlInfo ClockControl{..} = concat
               , "register"  .= register
               , "flag"      .= flag
               , "en"        .= en
+              , "delayRCC"  .= (en && family `elem` needDelay)
               ]
+          needDelay = [ "STM32F4", "STM32F7", "STM32H7" ]
 
 periphInstInfo :: PeriphInst -> Value
 periphInstInfo PeriphInst{..} = object
