@@ -8,11 +8,15 @@ import Data.Aeson hiding (Options)
 import Data.HashMap.Strict (fromList)
 import Data.List (find)
 import Data.List.Extra (groupSort)
-import Data.Text as T (Text, toLower, pack, unpack, intercalate, isPrefixOf)
+import Data.Text as T ( Text, toLower, pack, unpack
+                      , intercalate, isPrefixOf
+                      , isInfixOf
+                      )
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.Bits (shift)
 import System.Directory
 import System.FilePath
+import Control.Applicative
 import Control.Monad
 import Utils (writeText, hex)
 import FrontEnd
@@ -59,6 +63,7 @@ mcuInfo svds mcus Mcu{..} = object
     , "refName"     .= refName
     , "rpn"         .= rpn
     , "svd"         .= (\MCU{..} -> svd) mcu
+    , "frequency"   .= frequency
     , "gpioConf"    .= ipGPIOName svds mcu
     ]
     where mcu = fromMaybe (error $ "can't find MCU for " <> unpack name)
@@ -131,6 +136,7 @@ peripheralInfo family p@Peripheral{..} = object $
     , "haveTraits"  .= haveTraits p
     ] ++
     [ "instNo"      .= pack (show no) | Just no <- [ instNo ] ] ++
+    [ "clockSource" .= s | Just s <- [ clockSource =<< control ] ] ++
     [ "controls"    .= controlInfo family c | Just c <- [ control ] ]
 
 haveTraits :: Peripheral -> Bool
@@ -151,9 +157,20 @@ controlInfo family ClockControl{..} = concat
               , "register"  .= register
               , "flag"      .= flag
               , "en"        .= en
-              , "delayRCC"  .= (en && family `elem` needDelay)
+              , "delayRCC"  .= delay
               ]
-          needDelay = [ "STM32F4", "STM32F7", "STM32H7" ]
+              where delay = family `elem` [ "STM32F4", "STM32F7", "STM32H7" ]
+                         && "enable" `isPrefixOf` method
+
+clockSource :: ClockControl -> Maybe Text
+clockSource ClockControl{..} = f enable <|> f enableSM
+    where f (Just (reg, flag))
+              | "APB1" `isPrefixOf` reg = Just $ "APB1" <> qual
+              | "APB2" `isPrefixOf` reg = Just $ "APB2" <> qual
+              | otherwise = Nothing
+              where qual | "TIM" `isInfixOf` flag = "_TIMER"
+                         | otherwise = "_PERIPH"
+          f _ = Nothing
 
 periphInstInfo :: PeriphInst -> Value
 periphInstInfo PeriphInst{..} = object
