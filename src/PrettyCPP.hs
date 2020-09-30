@@ -165,6 +165,7 @@ controlInfo family ClockControl{..} = concat
 clockSource :: ClockControl -> Maybe Text
 clockSource ClockControl{..} = f enable <|> f enableSM
     where f (Just (reg, flag))
+              | "AHB" `isPrefixOf` reg = Just $ "AHB" <> qual
               | "APB1" `isPrefixOf` reg = Just $ "APB1" <> qual
               | "APB2" `isPrefixOf` reg = Just $ "APB2" <> qual
               | otherwise = Nothing

@@ -63,7 +63,7 @@ template<> struct {{groupLC}}_traits<{{instNo}}>
     static constexpr signal_t {{altFun}} = {{name}}_{{altFun}};
 {{/altFuns}}
 {{#clockSource}}
-    static constexpr clock_source_t CS = {{clockSource}};
+    static constexpr clock_source_t CLOCK = {{clockSource}};
 {{/clockSource}}
 {{#controls}}
 
