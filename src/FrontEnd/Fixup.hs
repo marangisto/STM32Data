@@ -321,6 +321,9 @@ tim_fields _ p "CCMR1_INPUT" x@Field{..}
     | "TIM" `isPrefixOf` p
     , name `elem` [ "ICPCS", "IC1PCS" ]
     = x { name = "IC1PSC" }
+    | "TIM" `isPrefixOf` p
+    , name == "IC2PCS"
+    = x { name = "IC2PSC" }
     | otherwise = x
 tim_fields _ _ _ x = x
 
