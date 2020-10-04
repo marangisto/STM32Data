@@ -92,6 +92,7 @@ fieldEdits =
     , rcc_fields
     , adc_fields
     , syscfg_fields
+    , tim_fields
     ]
 
 usb_regs :: PeriphTypeEdit
@@ -314,6 +315,15 @@ syscfg_fields "STM32H7" "SYSCFG" "PWRCR" x@Field{..}
     | name == "ODEN", bitWidth /= 1 = x { bitWidth = 1 }
     | otherwise = x
 syscfg_fields _ _ _ x = x
+
+tim_fields :: FieldEdit
+tim_fields _ p "CCMR1_INPUT" x@Field{..}
+    | "TIM" `isPrefixOf` p
+    , name `elem` [ "ICPCS", "IC1PCS" ]
+    = x { name = "IC1PSC" }
+    | otherwise = x
+tim_fields _ _ _ x = x
+
 {-
 fixupPeriphType "STM32L4" p@PeriphType{..}
     | name == "USART1"
