@@ -347,7 +347,7 @@ exceptions = map f
              in Interrupt{..}
 
 reserve :: [Either Void Register] -> [Either Reserve Register]
-reserve = concat . snd . mapAccumL pad 0 . nubOrdOn addr . sortOn addr
+reserve = concat . snd . mapAccumL pad 0 . combineFlags
     where pad i (Right r@Register{..})
               | n > 0 = (j, [ Left p, Right r ])
               | n < 0 = error $ "collission at " <> show r
@@ -357,6 +357,17 @@ reserve = concat . snd . mapAccumL pad 0 . nubOrdOn addr . sortOn addr
                     j = i + n + size `div` 8
                     p = Reserve "res" i $ n * 8
           pad _ _ = error "impossible!"
-          addr (Right Register{..}) = addressOffset
+
+combineFlags :: [Either Void Register] -> [Either Void Register]
+combineFlags = map comb . groupSortOn addr
+    where addr (Right Register{..}) = addressOffset
           addr _ = error "impossible!"
+          name (Field{..}) = name
+          comb :: [Either Void Register] -> Either Void Register
+          comb (x:[]) = x
+          comb xs@(Right x:_) = Right x
+              { fields = nubOrdOn name $ sortOn name
+                       $ concatMap (either (const []) fields) xs
+              }
+          comb _ = error "unexpected lack of registers"
 
