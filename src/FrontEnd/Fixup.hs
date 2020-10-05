@@ -317,13 +317,15 @@ syscfg_fields "STM32H7" "SYSCFG" "PWRCR" x@Field{..}
 syscfg_fields _ _ _ x = x
 
 tim_fields :: FieldEdit
-tim_fields _ p "CCMR1_INPUT" x@Field{..}
-    | "TIM" `isPrefixOf` p
-    , name `elem` [ "ICPCS", "IC1PCS" ]
-    = x { name = "IC1PSC" }
-    | "TIM" `isPrefixOf` p
-    , name == "IC2PCS"
-    = x { name = "IC2PSC" }
+tim_fields _ _ "CCMR1_INPUT" x@Field{..}
+    | name `elem` [ "ICPCS", "IC1PCS" ] = x { name = "IC1PSC" }
+    | name == "IC2PCS" = x { name = "IC2PSC" }
+    | otherwise = x
+tim_fields _ _ "CCMR1_OUTPUT" x@Field{..}
+    | name == "CC2S", bitWidth == 1 = x { bitWidth = 2 }
+    | otherwise = x
+tim_fields _ _ "CCMR2_OUTPUT" x@Field{..}
+    | name == "CC4S", bitWidth == 1 = x { bitWidth = 2 }
     | otherwise = x
 tim_fields _ _ _ x = x
 
