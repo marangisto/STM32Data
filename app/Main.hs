@@ -57,10 +57,12 @@ tmpDir = "C:" </> "tmp"
 
 famDir = case os of
     "linux" -> "/usr/local/STMicroelectronics/STM32Cube"
+    "darwin" -> "/Applications/STMicroelectronics/STM32CubeMX.app"
     _       -> "C:/Program Files (x86)/STMicroelectronics/STM32Cube"
 
 svdDir = case os of
     "linux" -> "/opt/st/stm32cubeide_1.3.0"
+    "darwin" -> "/Applications/STM32CubeIDE.app"
     _       -> "C:/ST/STM32CubeIDE_1.3.0"
 
 main :: IO ()
