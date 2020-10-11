@@ -81,12 +81,13 @@ data Signal = Signal
 processFamily
     :: FilePath             -- ^ STM32CubeIDE install path
     -> FilePath             -- ^ STM32CubeMX database directory
+    -> Bool                 -- ^ recache files
     -> Text                 -- ^ family name
     -> [SubFamily]          -- ^ sub-families from catalogue
     -> IO Family            -- ^ raw family data
-processFamily svdDir dbDir family subFamilies = do
+processFamily svdDir dbDir recache family subFamilies = do
     let mcus = concatMap snd subFamilies
-    svds <- familySVDs family <$> cacheLines svdFiles svdDir
+    svds <- familySVDs family <$> cacheLines recache svdFiles svdDir
     svd <- resolveCC . fixup . normalize family
        <$> mapM parseSVD (map snd svds)
     specs <- mapM (parseMCU $ map fst svds) $ mcuFiles dbDir subFamilies

@@ -24,7 +24,7 @@ import Utils
 data Options = Options
     { list_mcus     :: Bool
     , build_rules   :: Bool
-    , old_core      :: Bool
+    , recache       :: Bool
     , clock_control :: Bool
     , headers       :: Maybe FilePath
     , family        :: [String]
@@ -37,7 +37,7 @@ options :: Main.Options
 options = Main.Options
     { list_mcus = def &= help "list available MCUs by family"
     , build_rules = def &= help "generate source for build rules"
-    , old_core = def &= help "run old core"
+    , recache = def &= help "force file cache refresh"
     , clock_control = def &= help "report missing and unused clock control"
     , family = def &= help "filter on family"
     , sub_family = def &= help "filter on sub-family"
@@ -74,17 +74,18 @@ main = do
             , map (OnSubFamily . T.pack) sub_family
             , map (OnPackage . T.pack) package
             ]
-    [famXML] <- cacheLines familiesFile famDir
+    [famXML] <- cacheLines recache familiesFile famDir
     families' <- parseFamilies famXML
     families <- return $ prune fs families'
-    allSVDs <- cacheLines svdFiles svdDir
+    allSVDs <- cacheLines recache svdFiles svdDir
 
     let dbDir = takeDirectory famXML
 
     whenJust headers $ \outDir -> do
         prettyFamiliesCPP outDir $ map (unPlus . fst) families'
         forM_ families $ \(family', subs) -> do
-            prettyFamilyCPP outDir =<< processFamily svdDir dbDir family' subs
+            x <- processFamily svdDir dbDir recache family' subs
+            prettyFamilyCPP outDir x
 
     when list_mcus $ mcuList families
     when build_rules
