@@ -5,7 +5,7 @@ module FrontEnd.ParseMCU
     ( MCU(..)
     , IP(..)
     , Pin(..)
-    , Signal(..)
+    , Sig(..)
     , parseMCU
     ) where
 
@@ -39,10 +39,10 @@ data Pin = Pin
     { name              :: !Text
     , position          :: !(Either Text Int)
     , type_             :: !Text
-    , signals           :: ![Signal]
+    , signals           :: ![Sig]
     } deriving (Show)
 
-data Signal = Signal
+data Sig = Sig
     { name              :: !Text
     , ioModes           :: !(Maybe Text)
     } deriving (Show)
@@ -87,7 +87,7 @@ getPin = atTag "Pin" >>> proc x -> do
 getSignal = atTag "Signal" >>> proc x -> do
     name <- arr pack <<< attrText "Name" -< x
     ioModes <- arr (fmap pack) <<< attrTextMay "IOModes" -< x
-    returnA -< Signal{..}
+    returnA -< Sig{..}
 
 readBool :: String -> Bool
 readBool "true" = True

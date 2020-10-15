@@ -17,6 +17,8 @@ module FrontEnd
     , Pin(..)
     , GPIO(..)
     , Signal(..)
+    , Bank(..)
+    , AnalogFun(..)
     , processFamily
     , peripheralNames
     , peripheralInsts
@@ -31,17 +33,19 @@ import Data.Char (ord)
 import Data.Bits (shift)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.List (find, sort, nub)
-import Data.List.Extra (groupSort, sortOn)
+import Data.List.Extra (groupSort, sortOn, firstJust)
 import Data.Text as T (pack, unpack, break)
 import Data.Text as T (head, tail, length, snoc)
 import Data.Text as T (isPrefixOf, isSuffixOf, isInfixOf)
-import Data.Text as T (stripPrefix)
+import Data.Text as T (stripPrefix, stripSuffix, unlines)
+import Data.Text.Lazy (fromStrict)
 import qualified Data.Map.Strict as Map
 import Text.Read (readMaybe)
 import Control.Applicative ((<|>))
+import Control.Arrow (second)
 import FrontEnd.Families hiding (Peripheral)
 import FrontEnd.ParseSVD hiding (Peripheral)
-import FrontEnd.ParseMCU hiding (Signal)
+import FrontEnd.ParseMCU
 import FrontEnd.ParseIpGPIO
 import FrontEnd.Normalize hiding (peripheralNames)
 import FrontEnd.Fixup
@@ -70,12 +74,23 @@ data GPIO = GPIO
     , pins      :: ![(Text, Int)]
     , configs   :: ![(Text, Int)]
     , signals   :: ![Signal]
+    , analogs   :: ![Analog]
     } deriving (Show)
 
 data Signal = Signal
     { pin       :: !Text
     , signal    :: !Text
     , altfun    :: ![(Text, Text)]  -- (af, config)
+    } deriving (Show)
+
+data Bank = BankA | BankB deriving (Show)
+
+data AnalogFun = InP | InN | Out | ExtI | Dig deriving (Show)
+
+data Analog = Analog
+    { pin           :: !Text
+    , peripheral    :: !Text
+    , function      :: ![(AnalogFun, Maybe Int, Bank)]
     } deriving (Show)
 
 processFamily
@@ -95,6 +110,7 @@ processFamily svdDir dbDir family subFamilies = do
     let peripherals = processPeripherals svd $ altFunMap ipGPIOs
         interrupts = (\NormalSVD{..} -> padInterrupts interrupts) svd
         gpio = processGPIO specs ipGPIOs
+    writeText ("c:/tmp/" <> T.unpack family <> ".txt") $ fromStrict $ T.unlines $ map (T.pack . show) $ analogs gpio
     return Family{svds=svdNames svd,..}
 
 familySVDs :: Text -> [FilePath] -> [(Text, FilePath)]
@@ -227,6 +243,7 @@ processGPIO mcus ipGPIOs = GPIO{..}
     where ports = nub $ sort [ (port, portNo) | IOPin{..} <- xs ]
           pins = [ (pin, portNo * 16 + pinNo) | IOPin{..} <- xs ]
           signals = toSignals ipGPIOs
+          analogs = toAnalogs mcus
           configs = [ (name, shift 1 i)
                     | (i, IpGPIO{..}) <- zip [0..] ipGPIOs
                     ]
@@ -261,6 +278,46 @@ toSignals xs =
     where f IpGPIO{..} = concatMap (g name) gpioPins
           g conf GPIOPin{..} = map (h conf $ cleanPin name) pinSignals
           h conf pin PinSignal{..} = ((pin, name), (gpioAF, conf))
+
+toAnalogs :: [MCU] -> [Analog]
+toAnalogs mcus =
+    [ Analog{function = map (parseAnalogFun . fst) $ groupSort xs,..}
+    | ((peripheral, pin), xs) <- groupSort
+        [ ((per, pin), (sig, mcu))
+        | (mcu, ys) <- analogs
+        , (pin, zs) <- ys
+        , (per, sig) <- zs
+        ] 
+    ]
+    where analogs = [ (refName, map f pins) | MCU{..} <- mcus ]
+          f :: Pin -> (Text, [(Text, Text)])
+          f Pin{..} = (cleanPin name, map g $ filter pred xs)
+            where xs = [ name | Sig{..} <- signals ]
+                  pred s = any (`isPrefixOf` s)
+                      [ "ADC", "DAC", "OPAMP", "COMP" ]
+                  g = second T.tail . T.break (=='_')
+
+parseAnalogFun :: Text -> (AnalogFun, Maybe Int, Bank)
+parseAnalogFun s
+    | s == "DIG" = (Dig, Nothing, BankA)
+    | s == "VINM_SEC" = (InN, Nothing, BankB)
+    | s == "VINP_SEC" = (InP, Nothing, BankB)
+    | Just x <- strip [ "INN", "INM", "VINM" ] s
+    = (InN, number x, BankA)
+    | Just x <- strip [ "INP", "VINP", "IN" ] s
+    = case stripSuffix "b" x of
+        Just y -> (InP, number y, BankB)
+        Nothing -> (InP, number x, BankA)
+    | Just x <- strip [ "OUT", "VOUT" ] s
+    = (Out, number x, BankA)
+    | Just x <- stripPrefix "EXTI" s
+    = (ExtI, number x, BankA)
+    | otherwise = error $ "unrecognized analog function: " <> unpack s
+    where number :: Text -> Maybe Int
+          number "" = Nothing
+          number s = Just $ read $ unpack s
+          strip :: [Text] -> Text -> Maybe Text
+          strip ps s = firstJust (`stripPrefix` s) ps
 
 cleanPin :: Text -> Text
 cleanPin = fst . T.break (`elem` ['-', ' ', '/']) -- FIXME: see PA10 on G0!
