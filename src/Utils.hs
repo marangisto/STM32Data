@@ -75,12 +75,12 @@ traverseDir validDir transition = go
               state' <- foldM transition state filePaths
               foldM go state' (filter validDir dirPaths)
 
-cacheLines :: (FilePath -> IO [String]) -> FilePath -> IO [String]
-cacheLines act fp = do
+cacheLines :: Bool -> (FilePath -> IO [String]) -> FilePath -> IO [String]
+cacheLines recache act fp = do
     dir <- getTemporaryDirectory
     let fn = dir </> showHex (abs $ hash fp) "" <.> "tmp"
     b <- doesFileExist fn
-    if b then lines <$> readFile fn else do
+    if b && not recache  then lines <$> readFile fn else do
         xs <- act fp
         writeFile fn $ unlines xs
         putStrLn $ "cached " <> fp <> " in " <> fn

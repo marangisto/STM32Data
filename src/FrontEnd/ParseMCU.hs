@@ -9,7 +9,7 @@ module FrontEnd.ParseMCU
     , parseMCU
     ) where
 
-import Data.Text (Text, pack, unpack, isPrefixOf, stripSuffix)
+import Data.Text (Text, pack, unpack, isPrefixOf, stripSuffix, intercalate)
 import Text.Read (readMaybe)
 import HXT
 
@@ -108,8 +108,10 @@ matchSVD svds name = case filter p svds of
     [] | "STM32F437" `isPrefixOf` name -> "STM32F427"
     [] | "STM32F439" `isPrefixOf` name -> "STM32F429"
     [] | "STM32F479" `isPrefixOf` name -> "STM32F469"
+    [] | "STM32H725" `isPrefixOf` name -> "STM32H735"
     [] | "STM32WB5M" `isPrefixOf` name -> "STM32WB55" -- FIXME: questionable!
-    [] ->  error $ "failed to match svd for " <> unpack name
+    [] ->  error $ "failed to match svd: " <> unpack
+                (name <> " <> " <> intercalate "," svds)
     [ svd ] -> svd
     xs -> case filter tame xs of
         [ svd ] -> svd
