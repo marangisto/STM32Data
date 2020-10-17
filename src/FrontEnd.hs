@@ -84,15 +84,15 @@ data Signal = Signal
     , altfun    :: ![(Text, Text)]  -- (af, config)
     } deriving (Show)
 
-data Bank = BankA | BankB deriving (Show)
+data Bank = BankA | BankB deriving (Eq, Ord, Show)
 
-data AnalogFun = InP | InN | Out | ExtI | Dig deriving (Show)
+data AnalogFun = InP | InN | Out | ExtI | Dig deriving (Eq, Ord, Show)
 
 data Analog = Analog
     { pin           :: !Text
     , peripheral    :: !Text
     , function      :: !(AnalogFun, Maybe Int, Bank)
-    } deriving (Show)
+    } deriving (Eq, Ord, Show)
 
 processFamily
     :: FilePath             -- ^ STM32CubeIDE install path
@@ -286,7 +286,7 @@ toSignals xs =
           h conf pin PinSignal{..} = ((pin, name), (gpioAF, conf))
 
 toAnalogs :: [MCU] -> [Analog]
-toAnalogs mcus = sortOn (\Analog{..} -> (peripheral, nameNum pin))
+toAnalogs mcus = nub $ sortOn (\Analog{..} -> (peripheral, nameNum pin))
     [ Analog { peripheral = fixup periph, ..}
     | ((periph, pin), xs) <- groupSort
         [ ((per, pin), (sig, mcu))
