@@ -76,5 +76,19 @@ struct signal_traits<CFG, {{pin}}, {{signal}}>
 {{/condLHS}}
 };
 {{/traits}}
+{{#adcDacs}}
+{{#first}}
+
+template<periph_t PERIPH, pin_t PIN, int POLARITY>
+struct adc_dac_chan{};
+{{/first}}
+
+template<>
+struct adc_dac_chan<{{peripheral}}, {{pin}}, {{polarity}}>
+{
+    static constexpr uint8_t CHAN = {{channel}};
+    static constexpr uint8_t BANK = {{bank}};
+};
+{{/adcDacs}}
 {{/gpio}}
 

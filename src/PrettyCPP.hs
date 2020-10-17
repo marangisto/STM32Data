@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards, OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell, LambdaCase #-}
 module PrettyCPP (prettyFamiliesCPP, prettyFamilyCPP) where
 
 import Text.Mustache
@@ -76,6 +76,7 @@ gpioInfo GPIO{..} = object
     , "signals" .= (markEnds $ map nameInfo $ signalNames signals)
     , "altfuns" .= (markEnds $ map nameValInfo $ altfunNames signals)
     , "traits"  .= map pinSignalAF signals
+    , "adcDacs" .= (markEnds $ mapMaybe adcDacInfo analogs)
     ]
     where pinSignalAF :: Signal -> Value
           pinSignalAF sig@Signal{..} = object $
@@ -109,6 +110,26 @@ gpioInfo GPIO{..} = object
           n = length configs
           orExpr (x:[]) = x
           orExpr xs = "(" <> intercalate "|" xs <> ")"
+
+adcDacInfo :: Analog -> Maybe Value
+adcDacInfo Analog{..}
+    | any (`isPrefixOf` peripheral) [ "ADC", "DAC" ]
+    , Just (channel, polarity, bank) <- f function
+    = Just $ object
+        [ "peripheral"  .= peripheral
+        , "pin"         .= pin
+        , "channel"     .= channel
+        , "polarity"    .= (polarity :: Int)
+        , "bank"        .= (bank :: Int)
+        ]
+    | otherwise = Nothing
+    where f = \case
+              (InN, Just ch, b) -> Just (ch, -1, bk b)
+              (InP, Just ch, b) -> Just (ch, 1, bk b)
+              (Out, Just ch, b) -> Just (ch, 1, bk b)
+              _                 -> Nothing
+          bk BankA = 0
+          bk BankB = 1
 
 periphInfo :: Text -> Text -> [PeriphType Reserve] -> [Peripheral] -> Value
 periphInfo family groupName xs ys = object

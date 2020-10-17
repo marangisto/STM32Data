@@ -19,6 +19,7 @@ module FrontEnd
     , Signal(..)
     , Bank(..)
     , AnalogFun(..)
+    , Analog(..)
     , processFamily
     , peripheralNames
     , peripheralInsts
@@ -37,8 +38,8 @@ import Data.List.Extra (groupSort, sortOn, firstJust)
 import Data.Text as T (pack, unpack, break)
 import Data.Text as T (head, tail, length, snoc)
 import Data.Text as T (isPrefixOf, isSuffixOf, isInfixOf)
-import Data.Text as T (stripPrefix, stripSuffix, unlines)
-import Data.Text.Lazy (fromStrict)
+import Data.Text as T (stripPrefix, stripSuffix {-, unlines-})
+--import Data.Text.Lazy (fromStrict)
 import qualified Data.Map.Strict as Map
 import Text.Read (readMaybe)
 import Control.Applicative ((<|>))
@@ -90,7 +91,7 @@ data AnalogFun = InP | InN | Out | ExtI | Dig deriving (Show)
 data Analog = Analog
     { pin           :: !Text
     , peripheral    :: !Text
-    , function      :: ![(AnalogFun, Maybe Int, Bank)]
+    , function      :: !(AnalogFun, Maybe Int, Bank)
     } deriving (Show)
 
 processFamily
@@ -111,7 +112,11 @@ processFamily svdDir dbDir recache family subFamilies = do
     let peripherals = processPeripherals svd $ altFunMap ipGPIOs
         interrupts = (\NormalSVD{..} -> padInterrupts interrupts) svd
         gpio = processGPIO specs ipGPIOs
-    writeText ("c:/tmp/" <> T.unpack family <> ".txt") $ fromStrict $ T.unlines $ map (T.pack . show) $ analogs gpio
+{-
+    writeText ("c:/tmp/" <> T.unpack family <> ".txt")
+        $ fromStrict $ T.unlines
+        $ map (T.pack . show) $ analogs gpio
+-}
     return Family{svds=svdNames svd,..}
 
 familySVDs :: Text -> [FilePath] -> [(Text, FilePath)]
@@ -281,18 +286,15 @@ toSignals xs =
           h conf pin PinSignal{..} = ((pin, name), (gpioAF, conf))
 
 toAnalogs :: [MCU] -> [Analog]
-toAnalogs mcus =
-    [ Analog
-        { function = map (parseAnalogFun . fst) $ groupSort xs
-        , peripheral = fixup periph
-        , ..
-        }
+toAnalogs mcus = sortOn (\Analog{..} -> (peripheral, nameNum pin))
+    [ Analog { peripheral = fixup periph, ..}
     | ((periph, pin), xs) <- groupSort
         [ ((per, pin), (sig, mcu))
         | (mcu, ys) <- analogs
         , (pin, zs) <- ys
         , (per, sig) <- zs
         ] 
+    , function <- map (parseAnalogFun . fst) $ groupSort xs
     ]
     where analogs = [ (refName, map f pins) | MCU{..} <- mcus ]
           f :: Pin -> (Text, [(Text, Text)])
