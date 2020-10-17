@@ -6,6 +6,7 @@ import FrontEnd.Normalize
 import Utils
 import Data.Text (isPrefixOf, isSuffixOf, toUpper)
 import Data.Text (stripPrefix, stripSuffix, dropWhileEnd)
+import qualified Data.Text as T
 import Data.List.Extra (nubOrdOn, groupSortOn)
 import Data.List (sortOn, mapAccumL)
 import Data.Char (isDigit)
@@ -84,6 +85,7 @@ registerEdits =
     , rcc_pllcfgr
     , gpio_reg
     , usart_cr1
+    , rcc_apb
     ]
 
 fieldEdits :: [FieldEdit]
@@ -236,6 +238,14 @@ usart_cr1 "STM32L4" p x@Register{..}
     = x { name = "CR1", displayName = "CR1" }
     | otherwise = x
 usart_cr1 _ _ x = x
+
+rcc_apb :: RegisterEdit
+rcc_apb "STM32G0" "RCC" x@Register{..} 
+    | Just rest <- stripPrefix "APB" name
+    , isDigit (T.last rest)
+    = x { name = T.snoc "APB" (T.last rest) <> T.init rest }
+    | otherwise = x
+rcc_apb _ _ x = x
 
 compx_csr :: FieldEdit
 compx_csr f p r x@Field{..}
