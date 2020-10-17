@@ -282,8 +282,12 @@ toSignals xs =
 
 toAnalogs :: [MCU] -> [Analog]
 toAnalogs mcus =
-    [ Analog{function = map (parseAnalogFun . fst) $ groupSort xs,..}
-    | ((peripheral, pin), xs) <- groupSort
+    [ Analog
+        { function = map (parseAnalogFun . fst) $ groupSort xs
+        , peripheral = fixup periph
+        , ..
+        }
+    | ((periph, pin), xs) <- groupSort
         [ ((per, pin), (sig, mcu))
         | (mcu, ys) <- analogs
         , (pin, zs) <- ys
@@ -297,6 +301,8 @@ toAnalogs mcus =
                   pred s = any (`isPrefixOf` s)
                       [ "ADC", "DAC", "OPAMP", "COMP" ]
                   g = second T.tail . T.break (=='_')
+          fixup name | name `elem` [ "ADC", "DAC" ] = name <> "1"
+                     | otherwise = name
 
 parseAnalogFun :: Text -> (AnalogFun, Maybe Int, Bank)
 parseAnalogFun s
