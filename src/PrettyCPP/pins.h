@@ -86,7 +86,12 @@ struct adc_dac_chan{};
 template<>
 struct adc_dac_chan<{{peripheral}}, {{pin}}, {{polarity}}>
 {
+{{^cond}}
     static constexpr uint8_t CHAN = {{channel}};
+{{/cond}}
+{{#cond}}
+    static constexpr uint8_t CHAN = (svd & ({{cond}})) ? {{channel}} : {{other}};
+{{/cond}}
     static constexpr uint8_t BANK = {{bank}};
 };
 {{/adcDacs}}

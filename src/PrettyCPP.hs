@@ -115,14 +115,31 @@ adcDacInfo :: Analog -> Maybe Value
 adcDacInfo Analog{..}
     | any (`isPrefixOf` peripheral) [ "ADC", "DAC" ]
     , function `elem` [ InP, InN, Out ]
-    , ((((Just channel, bank),_)):[]) <- chanBank
-    = Just $ object
+    = Just $ object $
         [ "peripheral"  .= peripheral
         , "pin"         .= pin
         , "polarity"    .= polarity function
-        , "channel"     .= channel
-        , "bank"        .= bk bank
-        ]
+        ] ++
+        (case chanBank of
+          [((Just channel, bank), _)] ->
+            [ "channel" .= channel
+            , "bank"    .= bk bank
+            ]
+          [((Just ch1, BankA), ss1), ((Just ch2, BankA), ss2)] ->
+            [ "bank"    .= bk BankA ] ++
+            if length ss1 < length ss2
+            then
+            [ "cond"    .= intercalate "|" ss1
+            , "channel" .= ch1
+            , "other"   .= ch2
+            ]
+            else
+            [ "cond"    .= intercalate "|" ss2
+            , "channel" .= ch2
+            , "other"   .= ch1
+            ]
+          _ -> error "too complex!"
+        )
     | otherwise = Nothing
     where polarity :: AnalogFun -> Int
           polarity InN = -1
