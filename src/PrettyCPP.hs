@@ -114,21 +114,20 @@ gpioInfo GPIO{..} = object
 adcDacInfo :: Analog -> Maybe Value
 adcDacInfo Analog{..}
     | any (`isPrefixOf` peripheral) [ "ADC", "DAC" ]
-    , Just (channel, polarity, bank) <- f function
+    , function `elem` [ InP, InN, Out ]
+    , ((((Just channel, bank),_)):[]) <- chanBank
     = Just $ object
         [ "peripheral"  .= peripheral
         , "pin"         .= pin
+        , "polarity"    .= polarity function
         , "channel"     .= channel
-        , "polarity"    .= (polarity :: Int)
-        , "bank"        .= (bank :: Int)
+        , "bank"        .= bk bank
         ]
     | otherwise = Nothing
-    where f = \case
-              (InN, Just ch, b) -> Just (ch, -1, bk b)
-              (InP, Just ch, b) -> Just (ch, 1, bk b)
-              (Out, Just ch, b) -> Just (ch, 1, bk b)
-              _                 -> Nothing
-          bk BankA = 0
+    where polarity :: AnalogFun -> Int
+          polarity InN = -1
+          polarity _ = 1
+          bk BankA = 0 :: Int
           bk BankB = 1
 
 periphInfo :: Text -> Text -> [PeriphType Reserve] -> [Peripheral] -> Value
@@ -224,7 +223,6 @@ registerInfo (Right Register{..}) = object
             , "value"       .= hex resetValue
             , "description" .= pack "Reset value"
             ]
-
 registerInfo (Left Reserve{..}) = object
     [ "name"        .= ("_" <> hex addressOffset)
     , "size"        .= hex (size `div` 32)

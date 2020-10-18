@@ -66,6 +66,7 @@ periphTypeEdits =
     [ usb_regs
     , group_name
     , sys_tick
+    , h7_dac2
     ]
 
 periphInstEdits :: [PeriphInstEdit]
@@ -123,6 +124,12 @@ sys_tick _ x@PeriphType{typeRef=PeriphRef{..},..}
             | name == "LOAD_" = r { name = "RVR" }
             | name == "VAL" = r { name = "CVR" }
             | otherwise = r
+
+h7_dac2 :: PeriphTypeEdit
+h7_dac2 fam x@PeriphType{typeRef=PeriphRef{..},..}
+    | fam == "STM32H7", name == "DAC"
+    = x -- FIXME: try to insert missing second instance here!
+    | otherwise = x
 
 inst_name :: PeriphInstEdit
 inst_name fam _ x@PeriphInst{instRef=r@PeriphRef{..}}

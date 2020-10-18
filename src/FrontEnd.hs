@@ -34,7 +34,7 @@ import Data.Char (ord)
 import Data.Bits (shift)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.List (find, sort, nub)
-import Data.List.Extra (groupSort, sortOn, firstJust)
+import Data.List.Extra (groupSort, sortOn, firstJust, nubSort)
 import Data.Text as T (pack, unpack, break)
 import Data.Text as T (head, tail, length, snoc)
 import Data.Text as T (isPrefixOf, isSuffixOf, isInfixOf)
@@ -43,7 +43,7 @@ import Data.Text as T (stripPrefix, stripSuffix {-, unlines-})
 import qualified Data.Map.Strict as Map
 import Text.Read (readMaybe)
 import Control.Applicative ((<|>))
-import Control.Arrow (second)
+import Control.Arrow (first, second)
 import FrontEnd.Families hiding (Peripheral)
 import FrontEnd.ParseSVD hiding (Peripheral)
 import FrontEnd.ParseMCU
@@ -89,9 +89,10 @@ data Bank = BankA | BankB deriving (Eq, Ord, Show)
 data AnalogFun = InP | InN | Out | ExtI | Dig deriving (Eq, Ord, Show)
 
 data Analog = Analog
-    { pin           :: !Text
-    , peripheral    :: !Text
-    , function      :: !(AnalogFun, Maybe Int, Bank)
+    { peripheral    :: !Text
+    , pin           :: !Text
+    , function      :: !AnalogFun
+    , chanBank      :: ![((Maybe Int, Bank), [Text])] -- ((ch, bk), [svd])
     } deriving (Eq, Ord, Show)
 
 processFamily
@@ -286,25 +287,28 @@ toSignals xs =
           h conf pin PinSignal{..} = ((pin, name), (gpioAF, conf))
 
 toAnalogs :: [MCU] -> [Analog]
-toAnalogs mcus = nub $ sortOn (\Analog{..} -> (peripheral, nameNum pin))
-    [ Analog { peripheral = fixup periph, ..}
-    | ((periph, pin), xs) <- groupSort
-        [ ((per, pin), (sig, mcu))
-        | (mcu, ys) <- analogs
-        , (pin, zs) <- ys
-        , (per, sig) <- zs
-        ] 
-    , function <- map (parseAnalogFun . fst) $ groupSort xs
+toAnalogs mcus = sortOn (\Analog{..} -> (peripheral, nameNum pin, function))
+    [ let chanBank = map (second nubSort) cbs in Analog {..}
+    | ((peripheral, pin, function), cbs) <- xs
+    , not ("_C" `isSuffixOf` pin) -- dual pad pin
     ]
-    where analogs = [ (refName, map f pins) | MCU{..} <- mcus ]
-          f :: Pin -> (Text, [(Text, Text)])
+    where xs :: [((Text, Text, AnalogFun), [((Maybe Int, Bank), [Text])])]
+          xs = map (second groupSort) $ groupSort
+                  [ let (fun, chan, bank) = parseAnalogFun sig
+                     in ((peripheral, pin, fun), ((chan, bank), svd))
+                  | MCU{..} <- mcus
+                  , (pin, ys) <- map f pins
+                  , (peripheral, sig) <- ys
+                  , not ("STM32H7" `isPrefixOf` svd && peripheral == "DAC2")
+                  ]
+          f :: Pin -> (Text, [(Text, Text)]) -- pin peripheral sig
           f Pin{..} = (cleanPin name, map g $ filter pred xs)
-            where xs = [ name | Sig{..} <- signals ]
-                  pred s = any (`isPrefixOf` s)
+              where xs = [ name | Sig{..} <- signals ]
+                    pred s = any (`isPrefixOf` s)
                       [ "ADC", "DAC", "OPAMP", "COMP" ]
-                  g = second T.tail . T.break (=='_')
-          fixup name | name `elem` [ "ADC", "DAC" ] = name <> "1"
-                     | otherwise = name
+                    g = first h . second T.tail . T.break (=='_')
+                    h name | name `elem` [ "ADC", "DAC" ] = name <> "1"
+                           | otherwise = name
 
 parseAnalogFun :: Text -> (AnalogFun, Maybe Int, Bank)
 parseAnalogFun s
