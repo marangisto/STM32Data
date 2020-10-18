@@ -14,7 +14,7 @@ enum mcu_t
 
 enum svd_t
 {{#svds}}
-    {{#first}}{ {{/first}}{{^first}}, {{/first}}{{name}}
+    {{#first}}{ {{/first}}{{^first}}, {{/first}}{{name}} = {{value}}
 {{/svds}}
     };
 

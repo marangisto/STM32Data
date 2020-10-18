@@ -54,13 +54,13 @@ import FrontEnd.ClockControl
 import Utils
 
 data Family = Family
-    { family        :: Text
-    , mcus          :: [Mcu]
-    , svds          :: [Text]
-    , peripherals   :: [(Text, ([PeriphType Reserve], [Peripheral]))]
-    , interrupts    :: [Maybe Interrupt] -- pad for nothings
-    , specs         :: [MCU]
-    , gpio          :: GPIO
+    { family        :: !Text
+    , mcus          :: ![Mcu]
+    , svds          :: ![(Text, Int)]
+    , peripherals   :: ![(Text, ([PeriphType Reserve], [Peripheral]))]
+    , interrupts    :: ![Maybe Interrupt] -- pad for nothings
+    , specs         :: ![MCU]
+    , gpio          :: !GPIO
     } deriving (Show)
 
 data Peripheral = Peripheral
@@ -113,12 +113,13 @@ processFamily svdDir dbDir recache family subFamilies = do
     let peripherals = processPeripherals svd $ altFunMap ipGPIOs
         interrupts = (\NormalSVD{..} -> padInterrupts interrupts) svd
         gpio = processGPIO specs ipGPIOs
+        ss = [ (s, shift 1 i) | (i, s) <- zip [0..] $ svdNames svd ]
 {-
     writeText ("c:/tmp/" <> T.unpack family <> ".txt")
         $ fromStrict $ T.unlines
         $ map (T.pack . show) $ analogs gpio
 -}
-    return Family{svds=svdNames svd,..}
+    return Family{svds=ss,..}
 
 familySVDs :: Text -> [FilePath] -> [(Text, FilePath)]
 familySVDs family = sort . filter pred . map f

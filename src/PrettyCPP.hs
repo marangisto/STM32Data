@@ -46,8 +46,8 @@ prettyFamilyCPP root family@Family{family=familyName,..} = do
 familyInfo :: Family -> Value
 familyInfo fam@Family{..} = object
     [ "family"      .= family
-    , "mcus"        .= (markEnds $ map (mcuInfo svds specs) mcus)
-    , "svds"        .= (markEnds $ map nameInfo svds)
+    , "mcus"        .= (markEnds $ map (mcuInfo (map fst svds) specs) mcus)
+    , "svds"        .= (markEnds $ map nameValInfo svds)
     , "configs"     .= (markEnds $ map nameValInfo configs)
     , "periphs"     .= (markEnds $ map nameInfo $ peripheralNames fam)
     , "periphInsts" .= (map periphInstInfo $ peripheralInsts fam)
