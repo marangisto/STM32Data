@@ -44,7 +44,7 @@ template<mcu_t MCU> struct mcu_traits {};
 {{#mcus}}
 template<> struct mcu_traits<{{refName}}>
 {
-    static constexpr family_t family = {{family}};
+    static constexpr family_t family = {{familyEnum}};
     static constexpr svd_t svd = {{svd}};
     static constexpr gpio_conf_t gpio_conf = {{gpioConf}};
     static constexpr unsigned frequency = {{frequency}};

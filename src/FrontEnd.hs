@@ -119,7 +119,7 @@ processFamily svdDir dbDir recache family subFamilies = do
         $ fromStrict $ T.unlines
         $ map (T.pack . show) $ analogs gpio
 -}
-    return Family{svds=ss,..}
+    return Family {svds=ss, ..}
 
 familySVDs :: Text -> [FilePath] -> [(Text, FilePath)]
 familySVDs family = sort . filter pred . map f
@@ -300,7 +300,12 @@ toAnalogs mcus = sortOn (\Analog{..} -> (peripheral, nameNum pin, function))
                   | MCU{..} <- mcus
                   , (pin, ys) <- map f pins
                   , (peripheral, sig) <- ys
+                  -- FIXME: skipping peripherals missing from SVD!
                   , not ("STM32H7" `isPrefixOf` svd && peripheral == "DAC2")
+                  , not ("STM32L4P" `isPrefixOf` svd && peripheral == "ADC2")
+                  , not ("STM32L4Q" `isPrefixOf` svd && peripheral == "ADC2")
+                  , not ("STM32L4R" `isPrefixOf` svd && peripheral == "ADC2")
+                  , not ("STM32L4S" `isPrefixOf` svd && peripheral == "ADC2")
                   ]
           f :: Pin -> (Text, [(Text, Text)]) -- pin peripheral sig
           f Pin{..} = (cleanPin name, map g $ filter pred xs)

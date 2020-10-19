@@ -18,7 +18,7 @@ import System.Directory
 import System.FilePath
 import Control.Applicative
 import Control.Monad
-import Utils (writeText, hex)
+import Utils (writeText, hex, unPlus)
 import FrontEnd
 
 prettyFamiliesCPP :: FilePath -> [Text] -> IO ()
@@ -46,6 +46,7 @@ prettyFamilyCPP root family@Family{family=familyName,..} = do
 familyInfo :: Family -> Value
 familyInfo fam@Family{..} = object
     [ "family"      .= family
+    , "familyEnum"  .= unPlus family
     , "mcus"        .= (markEnds $ map (mcuInfo (map fst svds) specs) mcus)
     , "svds"        .= (markEnds $ map nameValInfo svds)
     , "configs"     .= (markEnds $ map nameValInfo configs)
