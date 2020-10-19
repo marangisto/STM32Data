@@ -306,6 +306,7 @@ toAnalogs mcus = sortOn (\Analog{..} -> (peripheral, nameNum pin, function))
                   , not ("STM32L4Q" `isPrefixOf` svd && peripheral == "ADC2")
                   , not ("STM32L4R" `isPrefixOf` svd && peripheral == "ADC2")
                   , not ("STM32L4S" `isPrefixOf` svd && peripheral == "ADC2")
+                  , not ("STM32L5" `isPrefixOf` svd && peripheral == "ADC2")
                   ]
           f :: Pin -> (Text, [(Text, Text)]) -- pin peripheral sig
           f Pin{..} = (cleanPin name, map g $ filter pred xs)

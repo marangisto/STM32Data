@@ -20,7 +20,7 @@ data Reserve = Reserve
 fixup :: NormalSVD () Void -> NormalSVD () Reserve
 fixup x@NormalSVD{..} = x
     { periphTypes = ps
-    , interrupts = exceptions ++ fixupInterrupts interrupts
+    , interrupts = exceptions ++ fixupInterrupts family interrupts
     }
     where ps = map (f . editPeriphType family) periphTypes
           f p@PeriphType{..} = p {registers = reserve registers }
@@ -354,8 +354,17 @@ fixupPeriphType _ p@PeriphType{name="SEC_DAC",derivedFrom=Just "DAC",..}
     = p { name = "DAC2", derivedFrom = Just "DAC1" }
 -}
 
-fixupInterrupts :: [Interrupt] -> [Interrupt]
-fixupInterrupts = map f
+fixupInterrupts :: Text -> [Interrupt] -> [Interrupt]
+fixupInterrupts "STM32L5" = (++missing) . map f
+    where f :: Interrupt -> Interrupt
+          f x@Interrupt{..}
+            | Just i <- stripPrefix "TIM2_" name = x { name = "TIM" <> i }
+            | otherwise = x
+          missing = map (\(name, value, description) -> Interrupt{..})
+            [ ("TIM6", 49, "TIM6 global interrupt")
+            , ("TIM7", 50, "TIM7 global interrupt")
+            ]
+fixupInterrupts _ = map f
     where f :: Interrupt -> Interrupt
           f x@Interrupt{..}
             | Just rest <- stripSuffix "_IRQ" name = x { name = rest }
