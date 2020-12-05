@@ -11,11 +11,21 @@ import Data.Aeson hiding (Options)
 import Data.List.Split
 import Text.Mustache
 
-grid :: Int
-grid = 100
+data Metrics = Metrics
+    { grid  :: Int
+    , xtra  :: Int
+    , n     :: Int
+    , m     :: Int
+    , h2    :: Int
+    , w2    :: Int
+    } deriving (Show)
 
-xtra :: Int
-xtra = 2
+metrics :: Int -> Int -> [a] -> Metrics
+metrics grid xtra xs = Metrics{..}
+    where n = length xs
+          m = n `div` 4     -- FIXME: what if not modular?
+          h2 = (m + 1 + 2 * xtra) * grid `div` 2
+          w2 = h2
 
 data Orient = Horizontal | Vertical
 
@@ -83,8 +93,8 @@ data Def = Def
     , optionFlag        :: Bool
     } deriving (Show)
 
-mkDef :: Text -> Def
-mkDef name = Def{..}
+mkDef :: Metrics -> Text -> Def
+mkDef _ name = Def{..}
     where reference = "U"
           textOffset = 20
           drawPinNumber = True
@@ -119,10 +129,10 @@ data Field = Field
     , bold      :: Bool
     } deriving (Show)
 
-field :: Int -> Text -> Field
-field fieldNo text = Field{..}
+field :: Metrics -> Int -> Text -> Field
+field Metrics{..} fieldNo text = Field{..}
     where positionX = 0
-          positionY = 0
+          positionY = fieldNo * grid
           dimension = 50
           orient    = Horizontal
           visible   = fieldNo `elem` [ 0, 1 ]
@@ -177,14 +187,10 @@ graphicInfo Rectangle{..} = object [ "rectangle" .= object
     , "filled"      .= (if filled then "f" else "N" :: Text)
     ] ]
 
-mkGraphics :: [Pin] -> [Graphic]
-mkGraphics xs =
+mkGraphics :: Metrics -> [Graphic]
+mkGraphics Metrics{..} =
     [ (rectangle (-w2) (-h2) w2 h2) { filled = True }
     ]
-    where n = length xs
-          m = n `div` 4     -- FIXME: what if not modular?
-          h2 = (m + 1 + 2 * xtra) * grid `div` 2
-          w2 = h2
 
 data PIN = PIN
     { orient    :: POrient
@@ -201,8 +207,8 @@ data PIN = PIN
     , shape     :: Shape
     } deriving (Show)
 
-toPIN :: Pin -> PIN
-toPIN Pin{name=name',..} = PIN{..}
+toPIN :: Metrics -> Pin -> PIN
+toPIN Metrics{..} Pin{name=name',..} = PIN{..}
     where orient = PLeft
           name = cleanPin name'
           number = either id (T.pack . show) position
@@ -232,56 +238,53 @@ pinInfo PIN{..} = object
     , "shape"   .= show shape
     ]
 
-layoutPins :: [Pin] -> [PIN]
-layoutPins xs = concat
+layoutPins :: Metrics -> [Pin] -> [PIN]
+layoutPins ms@Metrics{..} xs = concat
     [ zipWith fl [1..] ls
     , zipWith fb [1..] bs
     , zipWith fr [1..] rs
     , zipWith ft [1..] ts
     ]
     where [ ls, bs, rs, ts ] = chunksOf m xs
-          fl i x = (toPIN x)
+          fl i x = (toPIN ms x)
               { posX = -(w2 + grid)
               , posY = h2 - (i + xtra) * grid
               , orient = PRight
               }
-          fb i x = (toPIN x)
+          fb i x = (toPIN ms x)
               { posX = (i + xtra) * grid - w2
               , posY = -(h2 + grid)
               , orient = Up
               }
-          fr i x = (toPIN x)
+          fr i x = (toPIN ms x)
               { posX = w2 + grid
               , posY = (i + xtra) * grid  - h2
               , orient = PLeft
               }
-          ft i x = (toPIN x)
+          ft i x = (toPIN ms x)
               { posX = w2 - (i + xtra) * grid
               , posY = h2 + grid
               , orient = Down
               }
-          n = length xs
-          m = n `div` 4     -- FIXME: what if not modular?
-          h2 = (m + 1 + 2 * xtra) * grid `div` 2
-          w2 = h2
 
 kiCadSymbol :: Text -> MCU -> IO ()
 kiCadSymbol nm MCU{..} = do
-    let -- fn = root </> "stm32" </> "stm32.h"
-        template = $(TH.compileMustacheFile $ "src/kicad-symbol.lib")
+    let template = $(TH.compileMustacheFile $ "src/kicad-symbol.lib")
+        -- fn = root </> "stm32" </> "stm32.h"
         -- values = object [ "families" .= (markEnds $ map nameInfo xs) ]
     putStr $ T.unpack $ TL.toStrict $ renderMustache template $ object
-        [ "def"      .= defInfo (mkDef nm)
+        [ "def"      .= defInfo (mkDef m nm)
         , "fields"   .= map fieldInfo fields
-        , "graphics" .= map graphicInfo (mkGraphics pins)
-        , "pins"     .= map pinInfo (layoutPins pins)
+        , "graphics" .= map graphicInfo (mkGraphics m)
+        , "pins"     .= map pinInfo (layoutPins m pins)
         ]
     -- createDirectoryIfMissing True $ takeDirectory fn
     -- writeText fn $ renderMustache template values
-    where fields = [ field 0 "U"
-                   , field 1 nm
-                   , field 2 package
-                   , field 3 ""
+    where m = metrics 100 2 pins
+          fields = [ field m 0 "U"
+                   , field m 1 nm
+                   , field m 2 package
+                   , field m 3 ""
                    ]
 
 pinSym :: Pin -> Text
