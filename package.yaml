@@ -36,6 +36,7 @@ dependencies:
 - hxt
 - stache
 - aeson
+- split
 
 library:
   source-dirs: src

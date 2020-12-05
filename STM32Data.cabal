@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: bf88c56aa29032d06fbd5c655ce83a0b629052b9c0110bfc8eab31c96354a3ed
+-- hash: be8f324e34240771f03a9c32e00bc9902656551885b186ce8f1ad80e2ddb1978
 
 name:           STM32Data
 version:        0.1.0.0
@@ -56,6 +56,7 @@ library
     , filepath
     , hashable
     , hxt
+    , split
     , stache
     , tagsoup
     , temporary
@@ -83,6 +84,7 @@ executable STM32Data
     , filepath
     , hashable
     , hxt
+    , split
     , stache
     , tagsoup
     , temporary
@@ -111,6 +113,7 @@ test-suite STM32Data-test
     , filepath
     , hashable
     , hxt
+    , split
     , stache
     , tagsoup
     , temporary

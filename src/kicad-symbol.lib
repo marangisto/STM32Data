@@ -6,8 +6,18 @@ EESchema-LIBRARY Version 2.4
 #
 DEF {{name}} {{reference}} 0 {{textOffset}} {{drawPinNumber}} {{drawPinName}} {{unitCount}} {{unitsLocked}} {{optionFlag}}
 {{#fields}}
-F{{fieldNo}} "{{text}}" {{positionX}} {{positionY}} {{dimension}} {{orient}} {{visible}} {{align}}{{italic}}{{bold}}
+F{{fieldNo}} "{{text}}" {{positionX}} {{positionY}} {{dimension}} {{orient}} {{visible}} {{hAlign}} {{vAlign}}{{italic}}{{bold}}
 {{/fields}}
+DRAW
+{{#graphics}}
+{{#rectangle}}
+S {{startX}} {{startY}} {{endX}} {{endY}} {{unit}} {{convert}} {{thickness}} {{filled}}
+{{/rectangle}}
+{{/graphics}}
+{{#pins}}
+X {{name}} {{number}} {{posX}} {{posY}} {{len}} {{orient}} {{snum}} {{snom}} {{unit}} {{convert}} {{etype}} {{shape}}
+{{/pins}}
+ENDDRAW
 ENDDEF
 {{/def}}
 #
