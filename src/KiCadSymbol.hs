@@ -14,6 +14,9 @@ import Text.Mustache
 grid :: Int
 grid = 100
 
+xtra :: Int
+xtra = 2
+
 data Orient = Horizontal | Vertical
 
 instance Show Orient where
@@ -180,7 +183,7 @@ mkGraphics xs =
     ]
     where n = length xs
           m = n `div` 4     -- FIXME: what if not modular?
-          h2 = (m + 1) * grid `div` 2
+          h2 = (m + 1 + 2 * xtra) * grid `div` 2
           w2 = h2
 
 data PIN = PIN
@@ -239,27 +242,27 @@ layoutPins xs = concat
     where [ ls, bs, rs, ts ] = chunksOf m xs
           fl i x = (toPIN x)
               { posX = -(w2 + grid)
-              , posY = h2 - i * grid
+              , posY = h2 - (i + xtra) * grid
               , orient = PRight
               }
           fb i x = (toPIN x)
-              { posX = i * grid - w2
+              { posX = (i + xtra) * grid - w2
               , posY = -(h2 + grid)
               , orient = Up
               }
           fr i x = (toPIN x)
               { posX = w2 + grid
-              , posY = i * grid  - h2
+              , posY = (i + xtra) * grid  - h2
               , orient = PLeft
               }
           ft i x = (toPIN x)
-              { posX = w2 - i * grid
+              { posX = w2 - (i + xtra) * grid
               , posY = h2 + grid
               , orient = Down
               }
           n = length xs
           m = n `div` 4     -- FIXME: what if not modular?
-          h2 = (m + 1) * grid `div` 2
+          h2 = (m + 1 + 2 * xtra) * grid `div` 2
           w2 = h2
 
 kiCadSymbol :: Text -> MCU -> IO ()
