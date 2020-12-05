@@ -219,8 +219,12 @@ toPIN Metrics{..} Pin{name=name',..} = PIN{..}
           snom = grid `div` 2
           unit = 1
           convert = 1
-          etype = BiDi
+          etype = fromType type_
           shape = Line
+          fromType "Power" = PowerInput
+          fromType "I/O" = BiDi
+          fromType "MonoIO" = BiDi
+          fromType _ = Unspecified
 
 pinInfo :: PIN -> Value
 pinInfo PIN{..} = object
