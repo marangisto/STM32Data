@@ -292,5 +292,10 @@ pinSym Pin{..} = T.unwords
     ]
 
 cleanPin :: Text -> Text
-cleanPin = T.filter (/=' ')
+cleanPin s = T.intercalate "-" $ x : filter p xs
+    where (x:xs) = T.words $ T.map f s
+          f c | c `elem` [ '(', ')', '[', ']', '-' ] = ' '
+              | otherwise = c
+          p s | any (`T.isPrefixOf` s) [ "NRST", "OSC" ] = True
+              | otherwise = False
 
