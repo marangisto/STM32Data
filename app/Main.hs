@@ -19,6 +19,7 @@ import Data.Hashable
 import FrontEnd.Families
 import FrontEnd
 import PrettyCPP
+import KiCadSymbol
 import Utils
 
 data Options = Options
@@ -26,6 +27,7 @@ data Options = Options
     , build_rules   :: Bool
     , recache       :: Bool
     , clock_control :: Bool
+    , kicad_symbol  :: Maybe Text
     , headers       :: Maybe FilePath
     , family        :: [String]
     , sub_family    :: [String]
@@ -39,6 +41,7 @@ options = Main.Options
     , build_rules = def &= help "generate source for build rules"
     , recache = def &= help "force file cache refresh"
     , clock_control = def &= help "report missing and unused clock control"
+    , kicad_symbol = def &= help "generate KiCad symbol for MCU"
     , family = def &= help "filter on family"
     , sub_family = def &= help "filter on sub-family"
     , package = def &= help "filter on package"
@@ -58,12 +61,12 @@ tmpDir = "C:" </> "tmp"
 famDir = case os of
     "linux" -> "/usr/local/STMicroelectronics/STM32Cube"
     "darwin" -> "/Applications/STMicroelectronics/STM32CubeMX.app"
-    _       -> "C:/Program Files (x86)/STMicroelectronics/STM32Cube"
+    _       -> "C:/Program Files/STMicroelectronics/STM32Cube"
 
 svdDir = case os of
     "linux" -> "/opt/st/stm32cubeide_1.3.0"
     "darwin" -> "/Applications/STM32CubeIDE.app"
-    _       -> "C:/ST/STM32CubeIDE_1.3.0"
+    _       -> "C:/ST/STM32CubeIDE_1.4.0"
 
 main :: IO ()
 main = do
@@ -91,6 +94,11 @@ main = do
     when build_rules
         $ mapM_ (putStrLn . T.unpack)
         $ buildRules families
+
+    whenJust kicad_symbol $ \name -> do
+        forM_ families $ \(family', subs) -> do
+            mcu <- singleMCU svdDir dbDir recache family' subs name
+            kiCadSymbol name mcu
 
 svdFiles :: FilePath -> IO [FilePath]
 svdFiles = traverseDir (\_ -> True) accept []

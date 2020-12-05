@@ -20,6 +20,7 @@ module FrontEnd
     , Bank(..)
     , AnalogFun(..)
     , Analog(..)
+    , singleMCU
     , processFamily
     , peripheralNames
     , peripheralInsts
@@ -94,6 +95,22 @@ data Analog = Analog
     , function      :: !AnalogFun
     , chanBank      :: ![((Maybe Int, Bank), [Text])] -- ((ch, bk), [svd])
     } deriving (Eq, Ord, Show)
+
+singleMCU
+    :: FilePath             -- ^ STM32CubeIDE install path
+    -> FilePath             -- ^ STM32CubeMX database directory
+    -> Bool                 -- ^ recache files
+    -> Text                 -- ^ mcu name
+    -> [SubFamily]          -- ^ sub-families from catalogue
+    -> Text                 -- ^ family name
+    -> IO MCU               -- ^ single MCU descriptor
+singleMCU svdDir dbDir recache family subFamilies name' = do
+    let mcus = concatMap snd subFamilies
+        mcu = find (\Mcu{..} -> refName == name' || rpn == name') mcus
+        name = maybe (error "no such mcu") (\Mcu{..} -> name) mcu
+        file = dbDir </> unpack name <.> "xml"
+    svds <- familySVDs family <$> cacheLines recache svdFiles svdDir
+    parseMCU (map fst svds) file
 
 processFamily
     :: FilePath             -- ^ STM32CubeIDE install path

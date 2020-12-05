@@ -1,0 +1,14 @@
+EESchema-LIBRARY Version 2.4
+#encoding utf-8
+{{#def}}
+#
+# {{name}}
+#
+DEF {{name}} {{reference}} 0 {{textOffset}} {{drawPinNumber}} {{drawPinName}} {{unitCount}} {{unitsLocked}} {{optionFlag}}
+{{#fields}}
+F{{fieldNo}} "{{text}}" {{positionX}} {{positionY}} {{dimension}} {{orient}} {{visible}} {{align}}{{italic}}{{bold}}
+{{/fields}}
+ENDDEF
+{{/def}}
+#
+#End Library

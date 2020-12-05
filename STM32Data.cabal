@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ea908de16be84ae75c80cec8f184e2187b62bf9c0d24aa98666353ba897b3012
+-- hash: bf88c56aa29032d06fbd5c655ce83a0b629052b9c0110bfc8eab31c96354a3ed
 
 name:           STM32Data
 version:        0.1.0.0
@@ -36,6 +36,7 @@ library
       FrontEnd.ParseMCU
       FrontEnd.ParseSVD
       HXT
+      KiCadSymbol
       PrettyCPP
       Utils
   other-modules:
