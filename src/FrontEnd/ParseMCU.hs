@@ -40,12 +40,12 @@ data Pin = Pin
     , position          :: !(Either Text Int)
     , type_             :: !Text
     , signals           :: ![Sig]
-    } deriving (Show)
+    } deriving (Show, Eq, Ord)
 
 data Sig = Sig
     { name              :: !Text
     , ioModes           :: !(Maybe Text)
-    } deriving (Show)
+    } deriving (Show, Eq, Ord)
 
 parseMCU :: [Text] -> FilePath -> IO MCU
 parseMCU svds fn = do

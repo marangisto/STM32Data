@@ -8,6 +8,7 @@ import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import qualified Text.Mustache.Compile.TH as TH
 import Data.Aeson hiding (Options)
+import Data.List.Extra (groupSortOn)
 import Data.List.Split
 import Text.Mustache
 
@@ -280,11 +281,12 @@ kiCadSymbol nm MCU{..} = do
         [ "def"      .= defInfo (mkDef m nm)
         , "fields"   .= map fieldInfo fields
         , "graphics" .= map graphicInfo (mkGraphics m)
-        , "pins"     .= map pinInfo (layoutPins m pins)
+        , "pins"     .= map pinInfo (layoutPins m ps)
         ]
     -- createDirectoryIfMissing True $ takeDirectory fn
     -- writeText fn $ renderMustache template values
-    where m = metrics 100 2 pins
+    where ps = fixUp pins
+          m = metrics 100 2 ps
           fields = [ field m 0 "U"
                    , field m 1 nm
                    , field m 2 package
@@ -305,4 +307,7 @@ cleanPin s = T.intercalate "-" $ x : filter p xs
               | otherwise = c
           p s | any (`T.isPrefixOf` s) [ "NRST", "OSC" ] = True
               | otherwise = False
+
+fixUp :: [Pin] -> [Pin]
+fixUp = map head . groupSortOn position
 
