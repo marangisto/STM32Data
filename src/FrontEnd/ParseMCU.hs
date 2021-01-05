@@ -108,7 +108,8 @@ matchSVD svds name = case filter p svds of
     [] | "STM32F437" `isPrefixOf` name -> "STM32F427"
     [] | "STM32F439" `isPrefixOf` name -> "STM32F429"
     [] | "STM32F479" `isPrefixOf` name -> "STM32F469"
-    [] | "STM32H725" `isPrefixOf` name -> "STM32H735"
+    [] | "STM32H725" `isPrefixOf` name -> "STM32H73x"
+    [] | "STM32H735" `isPrefixOf` name -> "STM32H73x"
     [] | "STM32WB5M" `isPrefixOf` name -> "STM32WB55" -- FIXME: questionable!
     [] ->  error $ "failed to match svd: " <> unpack
                 (name <> " <> " <> intercalate "," svds)

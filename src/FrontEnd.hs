@@ -357,7 +357,7 @@ parseAnalogFun s
           strip ps s = firstJust (`stripPrefix` s) ps
 
 cleanPin :: Text -> Text
-cleanPin = fst . T.break (`elem` ['-', ' ', '/']) -- FIXME: see PA10 on G0!
+cleanPin = fst . T.break (`elem` ['-', ' ', '/', '(']) -- FIXME: see PA10 on G0!
 
 altfunNames :: [Signal] -> [(Text, Int)]
 altfunNames xs
