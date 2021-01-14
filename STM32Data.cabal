@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: be8f324e34240771f03a9c32e00bc9902656551885b186ce8f1ad80e2ddb1978
+-- hash: 27783b673c86164a25aa05a664f628bce6569ca3f3d58c9dc78ea9273ea809ed
 
 name:           STM32Data
 version:        0.1.0.0
@@ -32,6 +32,7 @@ library
       FrontEnd.Families
       FrontEnd.Fixup
       FrontEnd.Normalize
+      FrontEnd.ParseDefMapping
       FrontEnd.ParseIpGPIO
       FrontEnd.ParseMCU
       FrontEnd.ParseSVD

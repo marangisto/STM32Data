@@ -282,7 +282,8 @@ interruptInfo interrupts = object
             , "lbound" .= show (i * 32)
             , "hbound" .= show ((i+1) * 32)
             ]
-          xs = [0..maximum (mapMaybe (fmap value) interrupts) `div` 32]
+          xs = [0..maximum inos `div` 32]
+          inos = [ value | Just Interrupt{..} <- interrupts ]
 
 markEnds :: [Value] -> [Value]
 markEnds [] = []

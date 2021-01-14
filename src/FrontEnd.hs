@@ -3,6 +3,7 @@
 module FrontEnd
     ( Family(..)
     , Mcu(..)
+    , DefMapping(..)
     , Peripheral(..)
     , PeriphType(..)
     , PeriphRef(..)
@@ -49,6 +50,7 @@ import FrontEnd.Families hiding (Peripheral)
 import FrontEnd.ParseSVD hiding (Peripheral)
 import FrontEnd.ParseMCU
 import FrontEnd.ParseIpGPIO
+import FrontEnd.ParseDefMapping
 import FrontEnd.Normalize hiding (peripheralNames)
 import FrontEnd.Fixup
 import FrontEnd.ClockControl
@@ -62,6 +64,7 @@ data Family = Family
     , interrupts    :: ![Maybe Interrupt] -- pad for nothings
     , specs         :: ![MCU]
     , gpio          :: !GPIO
+    , dmaMapping    :: ![DefMapping]
     } deriving (Show)
 
 data Peripheral = Peripheral
@@ -136,6 +139,11 @@ processFamily svdDir dbDir recache family subFamilies = do
         $ fromStrict $ T.unlines
         $ map (T.pack . show) $ analogs gpio
 -}
+    dmaMapping <- parseDefMapping $ dbDir
+                </> "config/llConfig"
+                </> "DMA-" <> familyFile family <> "xx_DefMapping"
+                <.> "xml"
+
     return Family {svds=ss, ..}
 
 familySVDs :: Text -> [FilePath] -> [(Text, FilePath)]
@@ -373,7 +381,11 @@ splitAF s = let (_, i) = nameNum s in (s, i)
 
 padInterrupts :: [Interrupt] -> [Maybe Interrupt]
 padInterrupts xs = map (flip Map.lookup imap) [lo..hi]
-    where lo = minimum $ map value xs
-          hi = maximum $ map value xs
+    where lo = minimum [ value | Interrupt{..} <- xs ]
+          hi = maximum [ value | Interrupt{..} <- xs ]
           imap = Map.fromList $ map (\i@Interrupt{..} -> (value, i)) xs
+
+familyFile :: Text -> String
+familyFile "STM32L4+" = "STM32L4"   -- FIXME: verify this is always true
+familyFile x = unpack x
 
