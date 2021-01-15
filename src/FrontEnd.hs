@@ -3,7 +3,6 @@
 module FrontEnd
     ( Family(..)
     , Mcu(..)
-    , DefMapping(..)
     , Peripheral(..)
     , PeriphType(..)
     , PeriphRef(..)
@@ -21,6 +20,7 @@ module FrontEnd
     , Bank(..)
     , AnalogFun(..)
     , Analog(..)
+    , Request(..)
     , singleMCU
     , processFamily
     , peripheralNames
@@ -64,7 +64,7 @@ data Family = Family
     , interrupts    :: ![Maybe Interrupt] -- pad for nothings
     , specs         :: ![MCU]
     , gpio          :: !GPIO
-    , dmaMapping    :: ![DefMapping]
+    , requests      :: ![Request]
     } deriving (Show)
 
 data Peripheral = Peripheral
@@ -98,6 +98,12 @@ data Analog = Analog
     , function      :: !AnalogFun
     , chanBank      :: ![((Maybe Int, Bank), [Text])] -- ((ch, bk), [svd])
     } deriving (Eq, Ord, Show)
+
+data Request = Request
+    { peripheral    :: !Text
+    , resource      :: !Text
+    , requestId     :: !Int
+    } deriving (Show)
 
 singleMCU
     :: FilePath             -- ^ STM32CubeIDE install path
@@ -139,10 +145,12 @@ processFamily svdDir dbDir recache family subFamilies = do
         $ fromStrict $ T.unlines
         $ map (T.pack . show) $ analogs gpio
 -}
-    dmaMapping <- parseDefMapping $ dbDir
-                </> "config/llConfig"
-                </> "DMA-" <> familyFile family <> "xx_DefMapping"
-                <.> "xml"
+    requests <- fmap dmaRequests $ parseDefMapping $ dbDir
+            </> "config/llConfig"
+            </> "DMA-" <> familyFile family <> "xx_DefMapping"
+            <.> "xml"
+
+    mapM_ print requests
 
     return Family {svds=ss, ..}
 
@@ -388,4 +396,14 @@ padInterrupts xs = map (flip Map.lookup imap) [lo..hi]
 familyFile :: Text -> String
 familyFile "STM32L4+" = "STM32L4"   -- FIXME: verify this is always true
 familyFile x = unpack x
+
+dmaRequests :: [DefMapping] -> [Request]
+dmaRequests xs =
+    [ let resource = T.tail resource' in Request{..}
+    | (DefMapping{..}, requestId) <- zip (filter p xs) [0..]
+    , Just s <- [ stripPrefix "DMA_REQUEST_" value ]
+    , (peripheral, resource') <- [ T.break (=='_') s ]
+    , resource' /= ""
+    ]
+    where p DefMapping{..} = name == "Request"
 
