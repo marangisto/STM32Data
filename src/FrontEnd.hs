@@ -62,9 +62,9 @@ data Family = Family
     , svds          :: ![(Text, Int)]
     , peripherals   :: ![(Text, ([PeriphType Reserve], [Peripheral]))]
     , interrupts    :: ![Maybe Interrupt] -- pad for nothings
+    , dmaResource   :: ![Text]
     , specs         :: ![MCU]
     , gpio          :: !GPIO
-    , requests      :: ![Request]
     } deriving (Show)
 
 data Peripheral = Peripheral
@@ -72,6 +72,7 @@ data Peripheral = Peripheral
     , instNo    :: !(Maybe Int)
     , altFuns   :: ![Text]
     , control   :: !(Maybe ClockControl)
+    , dmaReqs   :: ![Request]
     } deriving (Show)
 
 data GPIO = GPIO
@@ -136,22 +137,24 @@ processFamily svdDir dbDir recache family subFamilies = do
     specs <- mapM (parseMCU $ map fst svds) $ mcuFiles dbDir subFamilies
     ipGPIOs <- map (fixupAF . fixupIpGPIO (svdNames svd))
            <$> mapM parseIpGPIO (ipGPIOFiles dbDir specs)
-    let peripherals = processPeripherals svd $ altFunMap ipGPIOs
+    dmaReqMap <- fmap dmaRequests $ parseDefMapping $ dbDir
+             </> "config/llConfig"
+             </> "DMA-" <> familyFile family <> "xx_DefMapping"
+             <.> "xml"
+    let peripherals = processPeripherals svd (altFunMap ipGPIOs) dmaReqMap
         interrupts = (\NormalSVD{..} -> padInterrupts interrupts) svd
         gpio = processGPIO specs ipGPIOs
         ss = [ (s, shift 1 i) | (i, s) <- zip [0..] $ svdNames svd ]
+        dmaResource = nub $ sort
+            [ resource
+            | (_, requests) <- Map.toList dmaReqMap
+            , Request{..} <- requests
+            ]
 {-
     writeText ("c:/tmp/" <> T.unpack family <> ".txt")
         $ fromStrict $ T.unlines
         $ map (T.pack . show) $ analogs gpio
 -}
-    requests <- fmap dmaRequests $ parseDefMapping $ dbDir
-            </> "config/llConfig"
-            </> "DMA-" <> familyFile family <> "xx_DefMapping"
-            <.> "xml"
-
-    mapM_ print requests
-
     return Family {svds=ss, ..}
 
 familySVDs :: Text -> [FilePath] -> [(Text, FilePath)]
@@ -223,8 +226,9 @@ fixupAF x@IpGPIO{..} = x { gpioPins = mapMaybe f gpioPins }
 processPeripherals
     :: NormalSVD CCMap Reserve
     -> Map.Map Text [Text]
+    -> Map.Map Text [Request]
     -> [(Text, ([PeriphType Reserve], [Peripheral]))]
-processPeripherals NormalSVD{..} afMap = map f $ groupSort xs
+processPeripherals NormalSVD{..} afMap drMap = map f $ groupSort xs
     where xs = [ (groupName, p) | p@PeriphType{..} <- periphTypes ]
           f (groupName, ps) = (groupName, (ps, xs))
               where xs = map g $ nub $ sort
@@ -236,6 +240,7 @@ processPeripherals NormalSVD{..} afMap = map f $ groupSort xs
           g name = let instNo = instanceNo name
                        altFuns = fromMaybe [] $ Map.lookup name afMap
                        control = Map.lookup name clockControl
+                       dmaReqs = fromMaybe [] $ Map.lookup name drMap
                     in Peripheral{..}
 
 instanceNo :: Text -> Maybe Int
@@ -397,13 +402,18 @@ familyFile :: Text -> String
 familyFile "STM32L4+" = "STM32L4"   -- FIXME: verify this is always true
 familyFile x = unpack x
 
-dmaRequests :: [DefMapping] -> [Request]
-dmaRequests xs =
-    [ let resource = T.tail resource' in Request{..}
+dmaRequests :: [DefMapping] -> Map.Map Text [Request]
+dmaRequests xs = Map.fromList $ groupSort
+    [ (peripheral, Request{..})
     | (DefMapping{..}, requestId) <- zip (filter p xs) [0..]
     , Just s <- [ stripPrefix "DMA_REQUEST_" value ]
     , (peripheral, resource') <- [ T.break (=='_') s ]
-    , resource' /= ""
+    , Just resource <- [ toResource peripheral resource' ]
     ]
     where p DefMapping{..} = name == "Request"
+
+toResource :: Text -> Text -> Maybe Text
+toResource peripheral s
+    | "_" `isPrefixOf` s = Just $ fst (nameNum peripheral) <> s
+    | otherwise = Nothing
 

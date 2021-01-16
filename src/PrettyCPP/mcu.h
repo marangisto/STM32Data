@@ -24,6 +24,15 @@ enum gpio_conf_t
 {{/configs}}
     };
 
+enum dma_resource_t
+{{#dmaResource}}
+    {{#first}}{ {{/first}}{{^first}}, {{/first}}{{name}}
+{{/dmaResource}}
+{{^dmaResource}}
+    {
+{{/dmaResource}}
+    };
+
 enum periph_t
 {{#periphs}}
     {{#first}}{ {{/first}}{{^first}}, {{/first}}{{name}}

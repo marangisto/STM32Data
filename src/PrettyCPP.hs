@@ -44,7 +44,7 @@ prettyFamilyCPP root family@Family{family=familyName,..} = do
         writeText fn $ renderMustache template values
 
 familyInfo :: Family -> Value
-familyInfo fam@Family{..} = object
+familyInfo fam@Family{..} = object $
     [ "family"      .= family
     , "familyEnum"  .= unPlus family
     , "mcus"        .= (markEnds $ map (mcuInfo (map fst svds) specs) mcus)
@@ -54,6 +54,7 @@ familyInfo fam@Family{..} = object
     , "periphInsts" .= (map periphInstInfo $ peripheralInsts fam)
     , "allGroups"   .= (map nameInfo $ map fst peripherals)
     , "interrupt"   .= interruptInfo interrupts
+    , "dmaResource" .= (markEnds $ map nameInfo dmaResource)
     , "gpio"        .= gpioInfo gpio
     ]
     where GPIO{..} = gpio
