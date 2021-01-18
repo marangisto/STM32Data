@@ -48,6 +48,15 @@ struct peripheral_t
         );
 };
 
+template<periph_t P, dma_resource_t R>
+struct dma_request_t
+{
+    static_assert
+        ( always_false_i<P>::value
+        , "DMA resource not available on this peripheral!"
+        );
+};
+
 template<mcu_t MCU> struct mcu_traits {};
 
 {{#mcus}}

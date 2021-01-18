@@ -137,7 +137,7 @@ processFamily svdDir dbDir recache family subFamilies = do
     specs <- mapM (parseMCU $ map fst svds) $ mcuFiles dbDir subFamilies
     ipGPIOs <- map (fixupAF . fixupIpGPIO (svdNames svd))
            <$> mapM parseIpGPIO (ipGPIOFiles dbDir specs)
-    dmaReqMap <- fmap dmaRequests $ parseDefMapping $ dbDir
+    dmaReqMap <- fmap (dmaRequests family) $ parseDefMapping $ dbDir
              </> "config/llConfig"
              </> "DMA-" <> familyFile family <> "xx_DefMapping"
              <.> "xml"
@@ -402,9 +402,9 @@ familyFile :: Text -> String
 familyFile "STM32L4+" = "STM32L4"   -- FIXME: verify this is always true
 familyFile x = unpack x
 
-dmaRequests :: [DefMapping] -> Map.Map Text [Request]
-dmaRequests xs = Map.fromList $ groupSort
-    [ (peripheral, Request{..})
+dmaRequests :: Text -> [DefMapping] -> Map.Map Text [Request]
+dmaRequests fam xs = Map.fromList $ groupSort
+    [ (fixupInstanceName fam peripheral, Request{..})
     | (DefMapping{..}, requestId) <- zip (filter p xs) [0..]
     , Just s <- [ stripPrefix "DMA_REQUEST_" value ]
     , (peripheral, resource') <- [ T.break (=='_') s ]

@@ -173,6 +173,7 @@ peripheralInfo family p@Peripheral{..} = object $
     , "nameLC"      .= toLower name
     , "altFuns"     .= map (\x -> object [ "altFun" .= x ]) altFuns
     , "haveTraits"  .= haveTraits p
+    , "dmaRequests" .= map dmaReqInfo dmaReqs
     ] ++
     [ "instNo"      .= pack (show no) | Just no <- [ instNo ] ] ++
     [ "clockSource" .= s | Just s <- [ clockSource =<< control ] ] ++
@@ -200,6 +201,13 @@ controlInfo family ClockControl{..} = concat
               ]
               where delay = family `elem` [ "STM32F4", "STM32F7", "STM32H7" ]
                          && "enable" `isPrefixOf` method
+
+dmaReqInfo :: Request -> Value
+dmaReqInfo Request{..} = object
+    [ "peripheral"  .= peripheral
+    , "resource"    .= resource
+    , "requestId"   .= requestId
+    ]
 
 clockSource :: ClockControl -> Maybe Text
 clockSource ClockControl{..} = f enable <|> f enableSM

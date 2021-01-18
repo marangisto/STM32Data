@@ -85,3 +85,12 @@ template<> struct {{groupLC}}_traits<{{instNo}}>
 {{/instNo}}
 {{/haveTraits}}
 {{/peripherals}}
+{{#peripherals}}
+{{#dmaRequests}}
+
+template<> struct dma_request_t<{{peripheral}}, {{resource}}>
+{
+    static constexpr unsigned ID = {{requestId}};
+};
+{{/dmaRequests}}
+{{/peripherals}}

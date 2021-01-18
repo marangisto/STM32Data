@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards, OverloadedStrings #-}
 {-# LANGUAGE DuplicateRecordFields #-}
-module FrontEnd.Fixup (Reserve(..), fixup) where
+module FrontEnd.Fixup (Reserve(..), fixup, fixupInstanceName) where
 
 import FrontEnd.Normalize
 import Utils
@@ -133,15 +133,18 @@ h7_dac2 fam x@PeriphType{typeRef=PeriphRef{..},..}
 
 inst_name :: PeriphInstEdit
 inst_name fam _ x@PeriphInst{instRef=r@PeriphRef{..}}
-    | name == "PF" = x { instRef = r { name = "PF_" } }
-    | name == "LPTIMER1" = x { instRef = r { name = "LPTIM1" } }
-    | name == "CEC" = x { instRef = r { name = "HDMI_CEC" } }
-    | name == "USB_FS_DEVICE" = x { instRef = r { name = "USB" } }
+    = x { instRef = r { name = fixupInstanceName fam name } }
+
+fixupInstanceName fam name
+    | name == "PF" = "PF_"
+    | name == "LPTIMER1" = "LPTIM1"
+    | name == "CEC" = "HDMI_CEC"
+    | name == "USB_FS_DEVICE" = "USB"
     | name `elem` [ "DAC", "LPUART", "SAI", "QUADSPI", "ADC", "DMA" ]
-        = x { instRef = r { name = name <> "1" } }
+        = name <> "1"
     | fam == "STM32L1", Just s <- stripPrefix "UART" name
-        = x { instRef = r { name = "USART" <> s } }
-    | otherwise = x
+        = "USART" <> s
+    | otherwise = name
 
 base_addr :: PeriphInstEdit
 base_addr "STM32G4" "ADC12_COMMON" x@PeriphInst{..}
