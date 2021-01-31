@@ -102,7 +102,7 @@ mkDef _ name = Def{..}
           drawPinName = True
           unitCount = 1
           unitsLocked = False
-          optionFlag = False
+          optionFlag = True
 
 defInfo :: Def -> Value
 defInfo Def{..} = object
