@@ -413,6 +413,7 @@ dmaRequests fam xs = Map.fromList $ groupSort
     where p DefMapping{..} = name == "Request"
 
 toResource :: Text -> Text -> Maybe Text
+toResource "HRTIM" "_MASTER" = Just "HRTIM_MASTER_" -- avoid colission!
 toResource peripheral s
     | "_" `isPrefixOf` s = Just $ fst (nameNum peripheral) <> s
     | otherwise = Nothing
