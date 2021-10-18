@@ -66,7 +66,7 @@ famDir = case os of
 svdDir = case os of
     "linux" -> "/opt/st/stm32cubeide_1.3.0"
     "darwin" -> "/Applications/STM32CubeIDE.app"
-    _       -> "C:/ST/STM32CubeIDE_1.4.0"
+    _       -> "C:/ST/STM32CubeIDE_1.7.0"
 
 main :: IO ()
 main = do
