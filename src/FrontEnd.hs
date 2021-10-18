@@ -137,9 +137,11 @@ processFamily svdDir dbDir recache family subFamilies = do
     specs <- mapM (parseMCU $ map fst svds) $ mcuFiles dbDir subFamilies
     ipGPIOs <- map (fixupAF . fixupIpGPIO (svdNames svd))
            <$> mapM parseIpGPIO (ipGPIOFiles dbDir specs)
+    let dmaPrefix "STM32U5" = "GPDMA-"
+        dmaPrefix _ = "DMA-"
     dmaReqMap <- fmap (dmaRequests family) $ parseDefMapping $ dbDir
              </> "config/llConfig"
-             </> "DMA-" <> familyFile family <> "xx_DefMapping"
+             </> dmaPrefix family <> familyFile family <> "xx_DefMapping"
              <.> "xml"
     let peripherals = processPeripherals svd (altFunMap ipGPIOs) dmaReqMap
         interrupts = (\NormalSVD{..} -> padInterrupts interrupts) svd
