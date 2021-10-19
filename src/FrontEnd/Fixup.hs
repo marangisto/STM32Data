@@ -66,7 +66,7 @@ periphTypeEdits =
     [ usb_regs
     , group_name
     , sys_tick
-    , h7_dac2
+    , missing_inst
     ]
 
 periphInstEdits :: [PeriphInstEdit]
@@ -125,10 +125,15 @@ sys_tick _ x@PeriphType{typeRef=PeriphRef{..},..}
             | name == "VAL" = r { name = "CVR" }
             | otherwise = r
 
-h7_dac2 :: PeriphTypeEdit
-h7_dac2 fam x@PeriphType{typeRef=PeriphRef{..},..}
+missing_inst :: PeriphTypeEdit
+missing_inst fam x@PeriphType{typeRef=PeriphRef{..},..}
     | fam == "STM32H7", name == "DAC"
     = x -- FIXME: try to insert missing second instance here!
+    | fam == "STM32G0", name == "STK"
+    = let inst = head $ periphInsts
+          ref = instRef inst
+          miss = [ inst { instRef = ref { svd = "STM32G0" <> s } } | s <- [ "B0", "B1", "C1" ] ]
+       in x { periphInsts = periphInsts ++ miss }
     | otherwise = x
 
 inst_name :: PeriphInstEdit
@@ -313,6 +318,9 @@ rcc_fields fam "RCC" _ x@Field{..}
     | fam == "STM32L1"
     , Just s <- stripPrefix "GPIOP" name
         = x { name = "GPIO" <> s }
+    | fam == "STM32G0"
+    , Just s <- stripPrefix "GPIO" name
+        = x { name = "IOP" <> s }
     | otherwise = x
 rcc_fields _ _ _ x = x
 
