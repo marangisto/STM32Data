@@ -167,6 +167,7 @@ reg_name "STM32G0" "RCC" x@Register{name="PLLCFGR"}
     = x { name = "PLLSYSCFGR" }
 reg_name "STM32G0" p x@Register{..}
     | Just rest <- stripPrefix (p <> "_") name = x { name = rest }
+    | Just rest <- stripSuffix "_FIFO_ENABLED" name = x { name = rest }
     | otherwise = x
 reg_name "STM32G4" p x@Register{..}
     | Just rest <- stripPrefix (p <> "_") name = x { name = rest }
