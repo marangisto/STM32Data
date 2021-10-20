@@ -129,7 +129,7 @@ missing_inst :: PeriphTypeEdit
 missing_inst fam x@PeriphType{typeRef=PeriphRef{..},..}
     | fam == "STM32H7", name == "DAC"
     = x -- FIXME: try to insert missing second instance here!
-    | fam == "STM32G0", name == "STK"
+    | fam == "STM32G0", name `elem` [ "STK", "NVIC" ]
     = let inst = head $ periphInsts
           ref = instRef inst
           miss = [ inst { instRef = ref { svd = "STM32G0" <> s } } | s <- [ "B0", "B1", "C1" ] ]
