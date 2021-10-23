@@ -411,8 +411,11 @@ dmaRequests fam xs = Map.fromList $ groupSort
     , Just s <- [ stripPrefix "DMA_REQUEST_" value ]
     , (peripheral, resource') <- [ T.break (=='_') s ]
     , Just resource <- [ toResource peripheral resource' ]
+    , ok peripheral
     ]
     where p DefMapping{..} = name == "Request"
+          ok x | fam == "STM32H7" = x `notElem` [ "I2C3", "I2C4", "I2C5" ]
+               | otherwise = True
 
 toResource :: Text -> Text -> Maybe Text
 toResource "HRTIM" "_MASTER" = Just "HRTIM_MASTER_" -- avoid colission!
