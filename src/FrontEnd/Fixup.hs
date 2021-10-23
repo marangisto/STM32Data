@@ -104,10 +104,10 @@ usb_regs _ x@PeriphType{typeRef=PeriphRef{..},..}
     | otherwise = x
 
 group_name :: PeriphTypeEdit
-group_name _ x@PeriphType{typeRef=PeriphRef{..},..}
+group_name fam x@PeriphType{typeRef=PeriphRef{..},..}
     | groupName == "USART", "LPUART" `isPrefixOf` name
     = x { groupName = "LPUART" }
-    | groupName == "USART", "UART" `isPrefixOf` name
+    | groupName == "USART", "UART" `isPrefixOf` name, fam /= "STM32H7"
     = x { groupName = "UART" }
     | groupName == "FSMC", name == "FMC"
     = x { groupName = "FMC" }
