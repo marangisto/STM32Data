@@ -107,6 +107,8 @@ group_name :: PeriphTypeEdit
 group_name fam x@PeriphType{typeRef=PeriphRef{..},..}
     | groupName == "USART", "LPUART" `isPrefixOf` name
     = x { groupName = "LPUART" }
+    | groupName == "USART", "LPUSART" `isPrefixOf` name, fam == "STM32L0"
+    = x { groupName = "LPUSART" }
     | groupName == "USART", "UART" `isPrefixOf` name, fam `notElem` [ "STM32H7", "STM32L4" ]
     = x { groupName = "UART" }
     | groupName == "FSMC", name == "FMC"
