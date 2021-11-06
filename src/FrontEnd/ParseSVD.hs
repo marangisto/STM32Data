@@ -65,6 +65,7 @@ parseSVD fn = do
         [x] -> return x
         _ -> error "failed to parse SVD"
 
+getSVD :: ArrowXml cat => cat (NTree XNode) SVD
 getSVD = atTag "device" >>> proc x -> do
     name <- arr pack <<< elemText "name" -< x
     version <- arr pack <<< elemText "version" -< x
@@ -73,6 +74,7 @@ getSVD = atTag "device" >>> proc x -> do
     interrupts <- listA getInterrupt -< x
     returnA -< SVD{..}
 
+getPeripheral :: ArrowXml cat => cat (NTree XNode) Peripheral
 getPeripheral = atTag "peripheral" >>> proc x -> do
     derivedFrom <- arr (fmap packUpper) <<< attrTextMay "derivedFrom" -< x
     name <- arr packUpper <<< elemText "name" -< x
@@ -83,6 +85,7 @@ getPeripheral = atTag "peripheral" >>> proc x -> do
                  ) `orElse` constA [] -< x
     returnA -< Peripheral{..}
 
+getRegister :: ArrowXml cat => cat (NTree XNode) Register
 getRegister = atTag "register" >>> proc x -> do
     name <- arr packUpper <<< elemText "name" -< x
     displayName <- arr pack <<< elemText "displayName" -< x
@@ -94,6 +97,7 @@ getRegister = atTag "register" >>> proc x -> do
     fields <- listA getField <<< list "fields" -< x
     returnA -< Register{..}
 
+getField :: ArrowXml cat => cat (NTree XNode) Field
 getField = atTag "field" >>> proc x -> do
     name <- arr packUpper <<< elemText "name" -< x
     description <- arr packWords <<< elemText "description" -< x
@@ -101,6 +105,7 @@ getField = atTag "field" >>> proc x -> do
     bitWidth <- arr read <<< elemText "bitWidth" -< x
     returnA -< Field{..}
 
+getInterrupt :: ArrowXml cat => cat (NTree XNode) Interrupt
 getInterrupt = atTag "interrupt" >>> proc x -> do
     name <- arr packUpper <<< elemText "name" -< x
     description <- arr packWords <<< elemText "description" -< x

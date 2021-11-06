@@ -21,6 +21,7 @@ parseDefMapping fn = do
     s <- readFile fn
     runX (readString [ withValidate yes ] s >>> getDefMapping)
 
+getDefMapping :: ArrowXml cat => cat (NTree XNode) DefMapping
 getDefMapping = atTag "Item" >>> proc x -> do
     name <- arr pack <<< attrText "Name" -< x
     newName <- arr pack <<< attrText "NewName" -< x

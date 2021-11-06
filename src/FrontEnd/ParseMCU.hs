@@ -55,6 +55,7 @@ parseMCU svds fn = do
         [x] -> return x
         _ -> error "failed to parse MCU"
 
+getMCU :: ArrowXml cat => [Text] -> cat (NTree XNode) MCU
 getMCU svds = atTag "Mcu" >>> proc x -> do
     refName <- arr pack <<< attrText "RefName" -< x
     dbVersion <- arr pack <<< attrText "DBVersion" -< x
@@ -69,6 +70,7 @@ getMCU svds = atTag "Mcu" >>> proc x -> do
     pins <- listA getPin -< x
     returnA -< MCU{svd=matchSVD svds refName,..}
 
+getIP :: ArrowXml cat => cat (NTree XNode) IP
 getIP = atTag "IP" >>> proc x -> do
     name <- arr pack <<< attrText "Name" -< x
     instanceName <- arr pack <<< attrText "InstanceName" -< x
@@ -77,6 +79,7 @@ getIP = atTag "IP" >>> proc x -> do
     clockEnableMode <- arr (fmap pack) <<< attrTextMay "ClockEnableMode" -< x
     returnA -< IP{..}
 
+getPin :: ArrowXml cat => cat (NTree XNode) Pin
 getPin = atTag "Pin" >>> proc x -> do
     name <- arr pack <<< attrText "Name" -< x
     position <- arr readPosition <<< attrText "Position" -< x
@@ -84,6 +87,7 @@ getPin = atTag "Pin" >>> proc x -> do
     signals <- listA getSignal -< x
     returnA -< Pin{..}
 
+getSignal :: ArrowXml cat => cat (NTree XNode) Sig
 getSignal = atTag "Signal" >>> proc x -> do
     name <- arr pack <<< attrText "Name" -< x
     ioModes <- arr (fmap pack) <<< attrTextMay "IOModes" -< x
