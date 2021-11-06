@@ -37,15 +37,17 @@ import Data.Bits (shift)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.List (find, sort, nub)
 import Data.List.Extra (groupSort, sortOn, firstJust, nubSort)
-import Data.Text as T (pack, unpack, break)
-import Data.Text as T (head, tail, length, snoc)
-import Data.Text as T (isPrefixOf, isSuffixOf, isInfixOf)
-import Data.Text as T (stripPrefix, stripSuffix {-, unlines-})
+import Data.Text as T
+    ( pack, unpack, break
+    , head, tail, length, snoc
+    , isPrefixOf, isSuffixOf, isInfixOf
+    , stripPrefix, stripSuffix {-, unlines-}
+    )
 --import Data.Text.Lazy (fromStrict)
 import qualified Data.Map.Strict as Map
 import Text.Read (readMaybe)
 import Control.Applicative ((<|>))
-import Control.Arrow (first, second)
+import Data.Bifunctor (bimap, second)
 import FrontEnd.Families hiding (Peripheral)
 import FrontEnd.ParseSVD hiding (Peripheral)
 import FrontEnd.ParseMCU
@@ -132,8 +134,7 @@ processFamily
 processFamily svdDir dbDir recache family subFamilies = do
     let mcus = concatMap snd subFamilies
     svds <- familySVDs family <$> cacheLines recache svdFiles svdDir
-    svd <- resolveCC . fixup . normalize family
-       <$> mapM parseSVD (map snd svds)
+    svd <- resolveCC . fixup . normalize family <$> mapM (parseSVD . snd) svds
     specs <- mapM (parseMCU $ map fst svds) $ mcuFiles dbDir subFamilies
     ipGPIOs <- map (fixupAF . fixupIpGPIO (svdNames svd))
            <$> mapM parseIpGPIO (ipGPIOFiles dbDir specs)
@@ -169,10 +170,10 @@ familySVDs family = sort . filter pred . map f
             where fam = family
 
 isL4plus :: Text -> Bool
-isL4plus x = any (`isPrefixOf`x) $ map ("STM32L4"<>) [ "P", "Q", "R", "S" ]
+isL4plus x = any ((`isPrefixOf`x) . ("STM32L4"<>)) [ "P", "Q", "R", "S" ]
 
 svdFiles :: FilePath -> IO [FilePath]
-svdFiles = traverseDir (\_ -> True) accept []
+svdFiles = traverseDir (const True) accept []
     where accept :: [FilePath] -> FilePath -> IO [FilePath]
           accept xs fp
             | takeExtension fp == ".svd" = return $ fp : xs
@@ -353,7 +354,7 @@ toAnalogs mcus = sortOn (\Analog{..} -> (peripheral, nameNum pin, function))
               where xs = [ name | Sig{..} <- signals ]
                     pred s = any (`isPrefixOf` s)
                       [ "ADC", "DAC", "OPAMP", "COMP" ]
-                    g = first h . second T.tail . T.break (=='_')
+                    g = bimap h T.tail . T.break (=='_')
                     h name | name `elem` [ "ADC", "DAC" ] = name <> "1"
                            | otherwise = name
 
@@ -384,7 +385,7 @@ cleanPin = fst . T.break (`elem` ['-', ' ', '/', '(']) -- FIXME: see PA10 on G0!
 
 altfunNames :: [Signal] -> [(Text, Int)]
 altfunNames xs
-    | "REMAP" `isPrefixOf` y = flip zip [0..] ys
+    | "REMAP" `isPrefixOf` y = zip ys [0..]
     | otherwise = sortOn snd $ map splitAF ys
     where ys@(y:_) = nub . sort $ concatMap (map fst . altfun) xs
 
@@ -395,7 +396,7 @@ splitAF :: Text -> (Text, Int)
 splitAF s = let (_, i) = nameNum s in (s, i)
 
 padInterrupts :: [Interrupt] -> [Maybe Interrupt]
-padInterrupts xs = map (flip Map.lookup imap) [lo..hi]
+padInterrupts xs = map (`Map.lookup` imap) [lo..hi]
     where lo = minimum [ value | Interrupt{..} <- xs ]
           hi = maximum [ value | Interrupt{..} <- xs ]
           imap = Map.fromList $ map (\i@Interrupt{..} -> (value, i)) xs
@@ -406,12 +407,12 @@ familyFile x = unpack x
 
 dmaRequests :: Text -> [DefMapping] -> Map.Map Text [Request]
 dmaRequests fam xs = Map.fromList $ groupSort
-    [ (fixupInstanceName fam peripheral, Request{..})
-    | (DefMapping{..}, requestId) <- zip (filter p xs) [0..]
+    [ (fixupInstanceName fam peripheral, Request {..})
+    | (DefMapping {..}, requestId) <- zip (filter p xs) [0..]
     , Just s <- [ stripPrefix "DMA_REQUEST_" value ]
-    , (peripheral, resource') <- [ T.break (=='_') s ]
-    , Just resource <- [ toResource peripheral resource' ]
+    , (peripheral, resource') <- [T.break (== '_') s]
     , ok peripheral
+    , Just resource <- [ toResource peripheral resource' ]
     ]
     where p DefMapping{..} = name == "Request"
           ok x | fam == "STM32H7" = x `notElem` [ "I2C3", "I2C4", "I2C5" ]

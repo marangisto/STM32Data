@@ -4,8 +4,10 @@ module FrontEnd.Fixup (Reserve(..), fixup, fixupInstanceName) where
 
 import FrontEnd.Normalize
 import Utils
-import Data.Text (isPrefixOf, isSuffixOf, toUpper)
-import Data.Text (stripPrefix, stripSuffix, dropWhileEnd)
+import Data.Text
+    ( isPrefixOf, isSuffixOf, toUpper
+    , stripPrefix, stripSuffix, dropWhileEnd
+    )
 import qualified Data.Text as T
 import Data.List.Extra (nubOrdOn, groupSortOn)
 import Data.List (sortOn, mapAccumL)
@@ -63,48 +65,48 @@ runFieldEdits xs f p r = foldl (.) id (map (($r) . ($p) . ($f)) xs)
 
 periphTypeEdits :: [PeriphTypeEdit]
 periphTypeEdits =
-    [ usb_regs
-    , group_name
-    , sys_tick
-    , missing_inst
+    [ usbRegs
+    , fixGroupName
+    , sysTick
+    , missingInst
     ]
 
 periphInstEdits :: [PeriphInstEdit]
 periphInstEdits =
-    [ inst_name
-    , base_addr
+    [ instName
+    , baseAddr
     ]
 
 registerEdits :: [RegisterEdit]
 registerEdits =
-    [ reg_name
-    , gpio_fields
-    , tim_ccmr
-    , adc_hwcfgr6
-    , nvic_iserx
-    , syscfg_prefix
-    , rcc_pllcfgr
-    , gpio_reg
-    , usart_cr1
-    , rcc_apb
+    [ regName
+    , gpioFields
+    , timCcmr
+    , adcHwcfgr6
+    , nvicIserx
+    , syscfgPrefix
+    , rccPllcfgr
+    , gpioReg
+    , usartCr1
+    , rccApb
     ]
 
 fieldEdits :: [FieldEdit]
 fieldEdits =
-    [ compx_csr
-    , rcc_fields
-    , adc_fields
-    , syscfg_fields
-    , tim_fields
+    [ compxCsr
+    , rccFields
+    , adcFields
+    , syscfgFields
+    , timFields
     ]
 
-usb_regs :: PeriphTypeEdit
-usb_regs _ x@PeriphType{typeRef=PeriphRef{..},..}
-    | name == "USB" = x { registers = filter (not . usb_buffer) registers }
+usbRegs :: PeriphTypeEdit
+usbRegs _ x@PeriphType{typeRef=PeriphRef{..},..}
+    | name == "USB" = x { registers = filter (not . usbBuffer) registers }
     | otherwise = x
 
-group_name :: PeriphTypeEdit
-group_name fam x@PeriphType{typeRef=PeriphRef{..},..}
+fixGroupName :: PeriphTypeEdit
+fixGroupName fam x@PeriphType{typeRef=PeriphRef{..},..}
     | groupName == "USART", "LPUART" `isPrefixOf` name
     = x { groupName = "LPUART" }
     | groupName == "USART", "LPUSART" `isPrefixOf` name, fam == "STM32L0"
@@ -115,8 +117,8 @@ group_name fam x@PeriphType{typeRef=PeriphRef{..},..}
     = x { groupName = "FMC" }
     | otherwise = x
 
-sys_tick :: PeriphTypeEdit
-sys_tick _ x@PeriphType{typeRef=PeriphRef{..},..}
+sysTick :: PeriphTypeEdit
+sysTick _ x@PeriphType{typeRef=PeriphRef{..},..}
     | name == "STK" = x { registers = map (fmap f) registers }
     | otherwise = x
     where f :: Register -> Register
@@ -127,8 +129,8 @@ sys_tick _ x@PeriphType{typeRef=PeriphRef{..},..}
             | name == "VAL" = r { name = "CVR" }
             | otherwise = r
 
-missing_inst :: PeriphTypeEdit
-missing_inst fam x@PeriphType{typeRef=PeriphRef{..},..}
+missingInst :: PeriphTypeEdit
+missingInst fam x@PeriphType{typeRef=PeriphRef{..},..}
     | fam == "STM32H7", name == "DAC"
     = x -- FIXME: try to insert missing second instance here!
     | fam == "STM32G0", name `elem` [ "STK", "NVIC" ]
@@ -138,10 +140,11 @@ missing_inst fam x@PeriphType{typeRef=PeriphRef{..},..}
        in x { periphInsts = periphInsts ++ miss }
     | otherwise = x
 
-inst_name :: PeriphInstEdit
-inst_name fam _ x@PeriphInst{instRef=r@PeriphRef{..}}
+instName :: PeriphInstEdit
+instName fam _ x@PeriphInst{instRef=r@PeriphRef{..}}
     = x { instRef = r { name = fixupInstanceName fam name } }
 
+fixupInstanceName :: Text -> Text -> Text
 fixupInstanceName fam name
     | name == "PF" = "PF_"
     | name == "LPTIMER1" = "LPTIM1"
@@ -153,73 +156,73 @@ fixupInstanceName fam name
         = "USART" <> s
     | otherwise = name
 
-base_addr :: PeriphInstEdit
-base_addr "STM32G4" "ADC12_COMMON" x@PeriphInst{..}
+baseAddr :: PeriphInstEdit
+baseAddr "STM32G4" "ADC12_COMMON" x@PeriphInst{..}
     | baseAddress == 0x50000200 = x { baseAddress = 0x50000300 }
     | otherwise = x
-base_addr _ _ x = x
+baseAddr _ _ x = x
 
-reg_name :: RegisterEdit
-reg_name "STM32F7" "RCC" x@Register{name="DKCFGR1"}
+regName :: RegisterEdit
+regName "STM32F7" "RCC" x@Register{name="DKCFGR1"}
     = x { name = "DCKCFGR1" }
-reg_name "STM32L1" p x@Register{name="OSPEEDER"}
+regName "STM32L1" p x@Register{name="OSPEEDER"}
     | "GPIO" `isPrefixOf` p = x { name = "OSPEEDR" }
     | otherwise = x
-reg_name "STM32G0" "RCC" x@Register{name="PLLCFGR"}
+regName "STM32G0" "RCC" x@Register{name="PLLCFGR"}
     = x { name = "PLLSYSCFGR" }
-reg_name "STM32G0" p x@Register{..}
+regName "STM32G0" p x@Register{..}
     | Just rest <- stripPrefix (p <> "_") name = x { name = rest }
     | Just rest <- stripSuffix "_FIFO_ENABLED" name = x { name = rest }
     | otherwise = x
-reg_name "STM32G4" p x@Register{..}
+regName "STM32G4" p x@Register{..}
     | Just rest <- stripPrefix (p <> "_") name = x { name = rest }
-    | Just rest <- stripPrefix ("DAC_") name = x { name = rest }
+    | Just rest <- stripPrefix "DAC_" name = x { name = rest }
     | otherwise = x
-reg_name "STM32H7" p x@Register{..}
+regName "STM32H7" p x@Register{..}
     | Just rest <- stripPrefix (p <> "_") name
-    , p `elem` [ "PWR" ]
+    , p == "PWR"
     = x { name = rest }
-reg_name _ _ x = x
+regName _ _ x = x
 
-gpio_fields :: RegisterEdit
-gpio_fields "STM32F0" "RCC" x@Register{fields=fs,..}
+gpioFields :: RegisterEdit
+gpioFields "STM32F0" "RCC" x@Register{fields=fs,..}
     | name == "AHBENR" = x { fields = sortOn bitOffset $ en : fs }
     | name == "AHBRSTR" = x { fields = sortOn bitOffset $ rst : fs }
     | otherwise = x
     where en = Field "IOPEEN" "I/O port E clock enable" 21 1
           rst = Field "IOPERST" "I/O port E reset" 21 1
-gpio_fields _ _ x = x
+gpioFields _ _ x = x
 
-tim_ccmr :: RegisterEdit
-tim_ccmr _ p x@Register{..}
+timCcmr :: RegisterEdit
+timCcmr _ p x@Register{..}
     | tim, Just s <- stripSuffix "_INPUT" name = x { name = s }
     | tim, Just s <- stripSuffix "_OUTPUT" name = x { name = s }
     | otherwise = x
     where tim = "TIM" `isPrefixOf` p
 
-adc_hwcfgr6 :: RegisterEdit
-adc_hwcfgr6 _ p x@Register{..}
+adcHwcfgr6 :: RegisterEdit
+adcHwcfgr6 _ p x@Register{..}
     | p == "ADC", name == "HWCFGR6"
     , resetValue == fromHex "0x1f1f1f11f"
     = x { resetValue = fromHex "0x1f1f1f1f" }
     | otherwise = x
 
-nvic_iserx :: RegisterEdit
-nvic_iserx _ p x@Register{..}
+nvicIserx :: RegisterEdit
+nvicIserx _ p x@Register{..}
     | p == "NVIC", name `elem` [ "ISER", "ICER", "ISPR", "ICPR" ]
     = x { name = name <> "0" }
     | otherwise = x
 
-syscfg_prefix :: RegisterEdit
-syscfg_prefix f "SYSCFG" x@Register{..}
+syscfgPrefix :: RegisterEdit
+syscfgPrefix f "SYSCFG" x@Register{..}
     | f `elem` [ "STM32F0", "STM32F3" ]
     , Just rest <- stripPrefix "SYSCFG_" name
     = x { name = rest }
     | otherwise = x
-syscfg_prefix _ _ x = x
+syscfgPrefix _ _ x = x
 
-rcc_pllcfgr :: RegisterEdit
-rcc_pllcfgr family "RCC" x@Register{..}
+rccPllcfgr :: RegisterEdit
+rccPllcfgr family "RCC" x@Register{..}
     | family `elem` [ "STM32F4", "STM32F7", "STM32F2" ]
     , name `elem` [ "PLLCFGR", "CFGR" ] = x { fields = f fields }
     | otherwise = x
@@ -243,32 +246,32 @@ rcc_pllcfgr family "RCC" x@Register{..}
               { bitOffset = minimum $ map (\Field{..} -> bitOffset) xs
               , bitWidth = length xs
               }
-rcc_pllcfgr _ _ x = x
+rccPllcfgr _ _ x = x
 
-gpio_reg :: RegisterEdit
-gpio_reg "STM32F7" p x@Register{..}
+gpioReg :: RegisterEdit
+gpioReg "STM32F7" p x@Register{..}
     | "GPIO" `isPrefixOf` p, name == "GPIOB_OSPEEDR"
     = x { name = "OSPEEDR" }
     | otherwise = x
-gpio_reg _ _ x = x
+gpioReg _ _ x = x
 
-usart_cr1 :: RegisterEdit
-usart_cr1 "STM32L4" p x@Register{..}
+usartCr1 :: RegisterEdit
+usartCr1 "STM32L4" p x@Register{..}
     | "USART" `isPrefixOf` p, name == "0X00000000"
     = x { name = "CR1", displayName = "CR1" }
     | otherwise = x
-usart_cr1 _ _ x = x
+usartCr1 _ _ x = x
 
-rcc_apb :: RegisterEdit
-rcc_apb "STM32G0" "RCC" x@Register{..} 
+rccApb :: RegisterEdit
+rccApb "STM32G0" "RCC" x@Register{..} 
     | Just rest <- stripPrefix "APB" name
     , isDigit (T.last rest)
     = x { name = T.snoc "APB" (T.last rest) <> T.init rest }
     | otherwise = x
-rcc_apb _ _ x = x
+rccApb _ _ x = x
 
-compx_csr :: FieldEdit
-compx_csr f p r x@Field{..}
+compxCsr :: FieldEdit
+compxCsr f p r x@Field{..}
     | p == "SYSCFG_COMP_OPAMP", "COMP" `isPrefixOf` r
     , "_CSR" `isSuffixOf` r, "INMSEL" `isSuffixOf` name
     , bitOffset == 22 = x { name = name <> "3" }
@@ -277,8 +280,8 @@ compx_csr f p r x@Field{..}
     , bitOffset == 22 = x { name = name <> "3" }
     | otherwise = x
 
-rcc_fields :: FieldEdit
-rcc_fields fam "RCC" _ x@Field{..}
+rccFields :: FieldEdit
+rccFields fam "RCC" _ x@Field{..}
     | name == "AD12CSMEN" = x { name = "ADC12_COMMONSMEN" }
     | name == "ADC12EN" = x { name = "ADC12_COMMONEN" }
     | name == "ADC12SMEN" = x { name = "ADC12_COMMONSMEN" }
@@ -327,40 +330,40 @@ rcc_fields fam "RCC" _ x@Field{..}
     , Just s <- stripPrefix "GPIO" name
         = x { name = "IOP" <> s }
     | otherwise = x
-rcc_fields _ _ _ x = x
+rccFields _ _ _ x = x
 
-adc_fields :: FieldEdit
-adc_fields f p r x@Field{..}
+adcFields :: FieldEdit
+adcFields f p r x@Field{..}
     | f == "STM32G4", "ADC" `isPrefixOf` p, r == "CFGR"
     , name == "EXTSEL", bitOffset == 6, bitWidth == 4
     = x { bitOffset = 5, bitWidth = 5 }
     | otherwise = x
 
-usb_buffer :: Either Void Register -> Bool
-usb_buffer (Right Register{..})
+usbBuffer :: Either Void Register -> Bool
+usbBuffer (Right Register{..})
     | "ADDR" `isPrefixOf` name = True
     | "COUNT" `isPrefixOf` name = True
     | otherwise = False
-usb_buffer _ = False
+usbBuffer _ = False
 
-syscfg_fields :: FieldEdit
-syscfg_fields "STM32H7" "SYSCFG" "PWRCR" x@Field{..}
+syscfgFields :: FieldEdit
+syscfgFields "STM32H7" "SYSCFG" "PWRCR" x@Field{..}
     | name == "ODEN", bitWidth /= 1 = x { bitWidth = 1 }
     | otherwise = x
-syscfg_fields _ _ _ x = x
+syscfgFields _ _ _ x = x
 
-tim_fields :: FieldEdit
-tim_fields _ _ "CCMR1_INPUT" x@Field{..}
+timFields :: FieldEdit
+timFields _ _ "CCMR1_INPUT" x@Field{..}
     | name `elem` [ "ICPCS", "IC1PCS" ] = x { name = "IC1PSC" }
     | name == "IC2PCS" = x { name = "IC2PSC" }
     | otherwise = x
-tim_fields _ _ "CCMR1_OUTPUT" x@Field{..}
+timFields _ _ "CCMR1_OUTPUT" x@Field{..}
     | name == "CC2S", bitWidth == 1 = x { bitWidth = 2 }
     | otherwise = x
-tim_fields _ _ "CCMR2_OUTPUT" x@Field{..}
+timFields _ _ "CCMR2_OUTPUT" x@Field{..}
     | name == "CC4S", bitWidth == 1 = x { bitWidth = 2 }
     | otherwise = x
-tim_fields _ _ _ x = x
+timFields _ _ _ x = x
 
 {-
 fixupPeriphType "STM32L4" p@PeriphType{..}
@@ -408,7 +411,6 @@ reserve = concat . snd . mapAccumL pad 0 . combineFlags
     where pad i (Right r@Register{..})
               | n > 0 = (j, [ Left p, Right r ])
               | n < 0 = error $ "collission at " <> show r
-              -- | n < 0 = (j, [ Left $ Reserve "collission" i 0, Right r ])
               | otherwise = (j, [ Right r ])
               where n = addressOffset - i
                     j = i + n + size `div` 8

@@ -12,7 +12,7 @@ import Text.XML.HXT.Core as HXT.Core
 
 atTag tag = deep (isElem >>> hasName tag)
 
-attrText tag = (hasAttr tag >>> getAttrValue tag)
+attrText tag = hasAttr tag >>> getAttrValue tag
 
 attrTextMay tag
     = (hasAttr tag >>> getAttrValue tag >>> arr Just)
@@ -33,4 +33,3 @@ list tag
     = getChildren
     >>> isElem
     >>> hasName tag
-

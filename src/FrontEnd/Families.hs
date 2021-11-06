@@ -107,10 +107,11 @@ data Filter
 prune :: [Filter] -> Families -> Families
 prune fs
     = filter (not . null . snd)
-    . map (second $ filter (not . null . snd))
-    . map (second $ map (second $ filter (mcuPred fs)))
-    . map (second $ filter (subFamilyPred fs))
+    . map (second $ f . g . h)
     . filter (uncurry $ familyPred fs)
+    where f = filter (not . null . snd)
+          g = map (second $ filter (mcuPred fs))
+          h = filter (subFamilyPred fs)
 
 familyPred :: [Filter] -> Text -> [SubFamily] -> Bool
 familyPred fs name _ = null xs || name `elem` xs
@@ -215,4 +216,3 @@ buildRules families =
                ]
           cleanCore s | Just r <- stripPrefix "arm " $ toLower s = r
                       | otherwise = error $ unpack $ "unexpected core format: " <> s
-

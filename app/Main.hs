@@ -78,14 +78,14 @@ main = do
             , map (OnPackage . T.pack) package
             ]
     [famXML] <- cacheLines recache familiesFile famDir
-    families' <- parseFamilies famXML
-    families <- return $ prune fs families'
+    allFamilies <- parseFamilies famXML
+    let families = prune fs allFamilies
     allSVDs <- cacheLines recache svdFiles svdDir
 
     let dbDir = takeDirectory famXML
 
     whenJust headers $ \outDir -> do
-        prettyFamiliesCPP outDir $ map (unPlus . fst) families'
+        prettyFamiliesCPP outDir $ map (unPlus . fst) allFamilies
         forM_ families $ \(family', subs) -> do
             x <- processFamily svdDir dbDir recache family' subs
             prettyFamilyCPP outDir x
@@ -101,16 +101,15 @@ main = do
             kiCadSymbol name mcu
 
 svdFiles :: FilePath -> IO [FilePath]
-svdFiles = traverseDir (\_ -> True) accept []
+svdFiles = traverseDir (const True) accept []
     where accept :: [FilePath] -> FilePath -> IO [FilePath]
           accept xs fp
             | takeExtension fp == ".svd" = return $ fp : xs
             | otherwise = return xs
 
 familiesFile :: FilePath -> IO [FilePath]
-familiesFile = traverseDir (\_ -> True) accept []
+familiesFile = traverseDir (const True) accept []
     where accept :: [FilePath] -> FilePath -> IO [FilePath]
           accept xs fp
             | takeFileName fp == "families.xml" = return $ fp : xs
             | otherwise = return xs
-

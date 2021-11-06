@@ -24,8 +24,8 @@ import FrontEnd
 prettyFamiliesCPP :: FilePath -> [Text] -> IO ()
 prettyFamiliesCPP root xs = do
     let fn = root </> "stm32" </> "stm32.h"
-        template = $(TH.compileMustacheFile $ "src/PrettyCPP/stm32.h")
-        values = object [ "families" .= (markEnds $ map nameInfo xs) ]
+        template = $(TH.compileMustacheFile "src/PrettyCPP/stm32.h")
+        values = object [ "families" .= markEnds (map nameInfo xs) ]
     createDirectoryIfMissing True $ takeDirectory fn
     writeText fn $ renderMustache template values
 
@@ -37,24 +37,24 @@ prettyFamilyCPP root family@Family{family=familyName,..} = do
         let fn = dir </> fname
         createDirectoryIfMissing True $ takeDirectory fn
         writeText fn $ renderMustache template values
-    let template = $(TH.compileMustacheFile $ "src/PrettyCPP/peripheral.h")
+    let template = $(TH.compileMustacheFile "src/PrettyCPP/peripheral.h")
     forM_ peripherals $ \(group, (periphTypes, peripherals))  -> do
         let fn = dir </> "device" </> unpack (toLower group) <.> "h"
             values = periphInfo familyName group periphTypes peripherals
         writeText fn $ renderMustache template values
 
 familyInfo :: Family -> Value
-familyInfo fam@Family{..} = object $
+familyInfo fam@Family{..} = object
     [ "family"      .= family
     , "familyEnum"  .= unPlus family
-    , "mcus"        .= (markEnds $ map (mcuInfo (map fst svds) specs) mcus)
-    , "svds"        .= (markEnds $ map nameValInfo svds)
-    , "configs"     .= (markEnds $ map nameValInfo configs)
-    , "periphs"     .= (markEnds $ map nameInfo $ peripheralNames fam)
-    , "periphInsts" .= (map periphInstInfo $ peripheralInsts fam)
-    , "allGroups"   .= (map nameInfo $ map fst peripherals)
+    , "mcus"        .= markEnds (map (mcuInfo (map fst svds) specs) mcus)
+    , "svds"        .= markEnds (map nameValInfo svds)
+    , "configs"     .= markEnds (map nameValInfo configs)
+    , "periphs"     .= markEnds (map nameInfo $ peripheralNames fam)
+    , "periphInsts" .= map periphInstInfo (peripheralInsts fam)
+    , "allGroups"   .= map (nameInfo . fst) peripherals
     , "interrupt"   .= interruptInfo interrupts
-    , "dmaResource" .= (markEnds $ map nameInfo dmaResource)
+    , "dmaResource" .= markEnds (map nameInfo dmaResource)
     , "gpio"        .= gpioInfo gpio
     ]
     where GPIO{..} = gpio
@@ -73,12 +73,12 @@ mcuInfo svds mcus Mcu{..} = object
 
 gpioInfo :: GPIO -> Value
 gpioInfo GPIO{..} = object
-    [ "ports"   .= (markEnds $ map nameValInfo ports)
-    , "pins"    .= (markEnds $ map nameValInfo pins)
-    , "signals" .= (markEnds $ map nameInfo $ signalNames signals)
-    , "altfuns" .= (markEnds $ map nameValInfo $ altfunNames signals)
+    [ "ports"   .= markEnds (map nameValInfo ports)
+    , "pins"    .= markEnds (map nameValInfo pins)
+    , "signals" .= markEnds (map nameInfo $ signalNames signals)
+    , "altfuns" .= markEnds (map nameValInfo $ altfunNames signals)
     , "traits"  .= map pinSignalAF signals
-    , "adcDacs" .= (markEnds $ mapMaybe adcDacInfo analogs)
+    , "adcDacs" .= markEnds (mapMaybe adcDacInfo analogs)
     ]
     where pinSignalAF :: Signal -> Value
           pinSignalAF sig@Signal{..} = object $
@@ -91,11 +91,11 @@ gpioInfo GPIO{..} = object
                           ]
                         | otherwise = []
                         where confs = map snd altfun
-                    rhs | ((af, _):[]) <- xs
+                    rhs | [(af, _)] <- xs
                         = [ "simpleRHS" .= True
                           , "altfun" .= af
                           ]
-                        | ((af1, c1s):(af2, c2s):[]) <- xs
+                        | [(af1, c1s), (af2, c2s)] <- xs
                         = ("dualRHS" .= True) : if length c1s < length c2s
                           then
                             [ "cond" .= orExpr c1s
@@ -110,7 +110,7 @@ gpioInfo GPIO{..} = object
                         | otherwise = error $ "too complex: " <> show sig
                         where xs = groupSort altfun
           n = length configs
-          orExpr (x:[]) = x
+          orExpr [x] = x
           orExpr xs = "(" <> intercalate "|" xs <> ")"
 
 adcDacInfo :: Analog -> Maybe Value
@@ -128,7 +128,7 @@ adcDacInfo Analog{..}
             , "bank"    .= bk bank
             ]
           [((Just ch1, BankA), ss1), ((Just ch2, BankA), ss2)] ->
-            [ "bank"    .= bk BankA ] ++
+            ("bank"    .= bk BankA) :
             if length ss1 < length ss2
             then
             [ "cond"    .= intercalate "|" ss1
@@ -275,8 +275,8 @@ fieldInfo regName Field{..}
 
 interruptInfo :: [Maybe Interrupt] -> Value
 interruptInfo interrupts = object
-    [ "interrupts" .= (markEnds $ map f interrupts)
-    , "registers"  .= (map g xs)
+    [ "interrupts" .= markEnds (map f interrupts)
+    , "registers"  .= map g xs
     ]
     where f (Just Interrupt{..}) = object
             [ "name"        .= name
@@ -315,4 +315,3 @@ templates Family{..} =
     , ("device/interrupt.h", $(TH.compileMustacheFile $ "src/PrettyCPP/interrupt.h"))
     , ("device/vector.h", $(TH.compileMustacheFile $ "src/PrettyCPP/vector.h"))
     ]
-

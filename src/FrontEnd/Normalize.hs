@@ -129,4 +129,3 @@ nameNum s
     | otherwise = (v, read $ T.unpack $ T.reverse t)
         where (t, u) = T.break (not . isDigit) $ T.reverse s
               v = T.reverse u
-

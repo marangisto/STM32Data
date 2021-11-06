@@ -58,6 +58,7 @@ cleanName = T.map (\c -> if c == '-' then '_' else c)
 writeText :: FilePath -> TL.Text -> IO ()
 writeText fn x = withFile fn WriteMode $ \f -> do
     putStrLn fn
+    hFlush stdout
     hSetNewlineMode f noNewlineTranslation
     T.hPutStr f $ TL.toStrict x
 

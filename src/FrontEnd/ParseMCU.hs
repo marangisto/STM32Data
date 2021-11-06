@@ -117,12 +117,10 @@ matchSVD svds name = case filter p svds of
     [] ->  error $ "failed to match svd: " <> unpack
                 (name <> " <> " <> intercalate "," svds)
     [ svd ] -> svd
-    xs -> case filter tame xs of
+    xs -> case filter (notElem 'x' . unpack) xs of
         [ svd ] -> svd
         _ -> error $ unpack name <> " matches " <> show xs
     where p = all match . zip (unpack name) . unpack . chooseM4
           match (n, s) = n == s || s == 'x' || n == 'x'
           chooseM4 svd | Just x <- stripSuffix "_CM4" svd = x
                        | otherwise = svd
-          tame = not . any (=='x') . unpack
-
