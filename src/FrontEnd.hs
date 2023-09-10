@@ -51,7 +51,10 @@ import Data.Bifunctor (bimap, second)
 import FrontEnd.Families hiding (Peripheral)
 import FrontEnd.ParseSVD hiding (Peripheral)
 import FrontEnd.ParseMCU
-import FrontEnd.ParseIpGPIO
+import FrontEnd.ParseIpGPIO (parseIpGPIO)
+import FrontEnd.ParseIpGPIO as IpGPIO (IpGPIO(..))
+import FrontEnd.ParseIpGPIO as GPIOPin (GPIOPin(..))
+import FrontEnd.ParseIpGPIO as PinSignal (PinSignal(..))
 import FrontEnd.ParseDefMapping
 import FrontEnd.Normalize hiding (peripheralNames)
 import FrontEnd.Fixup
@@ -203,8 +206,8 @@ svdNames NormalSVD{..} = nub $ sort $ concatMap f periphTypes
 
 fixupIpGPIO :: [Text] -> IpGPIO -> IpGPIO
 fixupIpGPIO svds x@IpGPIO{..}
-    | name' `elem` svds = x { name = name' <> "_" } -- to avoid collissions
-    | otherwise = x { name = name' }
+    | name' `elem` svds = x { IpGPIO.name = name' <> "_" } -- to avoid collissions
+    | otherwise = x { IpGPIO.name = name' }
     where name' = fst $ T.break (=='_') version
 
 fixupAF :: IpGPIO -> IpGPIO

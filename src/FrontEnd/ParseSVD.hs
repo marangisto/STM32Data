@@ -31,13 +31,13 @@ data Peripheral = Peripheral
     , baseAddress   :: !Int
     , registers     :: ![Register]
     , derivedFrom   :: !(Maybe Text)
-    } deriving (Show)
+    } deriving (Eq, Show)
 
 data Interrupt = Interrupt
     { name          :: !Text
     , description   :: !Text
     , value         :: !Int
-    } deriving (Show)
+    } deriving (Eq, Show)
 
 data Register = Register
     { name          :: !Text
@@ -48,14 +48,14 @@ data Register = Register
     , access        :: !(Maybe Text)
     , resetValue    :: !Int
     , fields        :: ![Field]
-    } deriving (Show)
+    } deriving (Eq, Show)
 
 data Field = Field
     { name          :: !Text
     , description   :: !Text
     , bitOffset     :: !Int
     , bitWidth      :: !Int
-    } deriving (Show)
+    } deriving (Eq, Show)
 
 parseSVD :: FilePath -> IO SVD
 parseSVD fn = do

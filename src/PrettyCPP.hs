@@ -5,7 +5,7 @@ module PrettyCPP (prettyFamiliesCPP, prettyFamilyCPP) where
 import Text.Mustache
 import qualified Text.Mustache.Compile.TH as TH
 import Data.Aeson hiding (Options)
-import Data.HashMap.Strict (fromList)
+import Data.Aeson.KeyMap (insert)
 import Data.List (find)
 import Data.List.Extra (groupSort)
 import Data.Text as T ( Text, toLower, pack, unpack
@@ -297,7 +297,7 @@ interruptInfo interrupts = object
 markEnds :: [Value] -> [Value]
 markEnds [] = []
 markEnds (x:xs) = f x : xs
-    where f (Object o) = Object $ o <> fromList [ "first" .= True ]
+    where f (Object o) = Object $ insert "first" (Bool True) o
           f _ = error "expected object!"
 
 nameInfo :: Text -> Value

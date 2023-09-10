@@ -14,7 +14,7 @@ module FrontEnd.Normalize
     , nameNum
     ) where
 
-import FrontEnd.ParseSVD
+import FrontEnd.ParseSVD as ParseSVD
 import Data.Void
 import Data.Hashable
 import Data.Ord (Down(..))
@@ -69,7 +69,7 @@ normalize family xs = NormalSVD{..}
                       ]
 
 rename :: Peripheral -> Peripheral
-rename p@Peripheral{groupName="TIMS",..} = p { groupName = "TIM" }
+rename p@Peripheral{groupName="TIMS",..} = p { ParseSVD.groupName = "TIM" }
 rename p@Peripheral{..} = p { name = f name , groupName = f groupName }
     where f "SYSCFG_VREFBUF" = "SYSCFG"
           f "SYSCFG_COMP" = "SYSCFG"
