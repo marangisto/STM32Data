@@ -8,6 +8,7 @@ module FrontEnd.Families
     , Mcu(..)
     , Filter(..)
     , parseFamilies
+    , exclude
     , prune
     , flatten
     , mcuList
@@ -103,6 +104,9 @@ data Filter
     = OnFamily Text
     | OnSubFamily Text
     | OnPackage Text
+
+exclude :: [Text] -> Families -> Families
+exclude fs = filter (flip notElem fs . fst)
 
 prune :: [Filter] -> Families -> Families
 prune fs

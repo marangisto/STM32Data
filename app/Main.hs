@@ -33,6 +33,7 @@ data Options = Options
     , sub_family    :: [String]
     , package       :: [String]
     , files         :: [FilePath]
+    , opsys         :: Maybe String
     } deriving (Show, Eq, Data, Typeable)
 
 options :: Main.Options
@@ -47,6 +48,7 @@ options = Main.Options
     , package = def &= help "filter on package"
     , headers = def &= help "generate headers (to directory)"
     , files = def &= args &= typ "FILES"
+    , opsys = def &= help "specify os for STM tool install locations."
     } &=
     verbosity &=
     help "Generate pin descriptions from STM32CubeMX xml files" &=
@@ -58,13 +60,17 @@ options = Main.Options
 tmpDir :: FilePath
 tmpDir = "C:" </> "tmp"
 
-famDir = case os of
-    "linux" -> "/usr/local/STMicroelectronics/STM32Cube"
+famDir :: Maybe String -> FilePath
+famDir opsys = case fromMaybe os opsys of
+    "linux" -> "/mnt/c/Users/marten/STM32CubeMX/"
+    --"linux" -> "/usr/local/STMicroelectronics/STM32Cube"
     "darwin" -> "/Applications/STMicroelectronics/STM32CubeMX.app"
     _       -> "C:/Program Files/STMicroelectronics/STM32Cube"
 
-svdDir = case os of
-    "linux" -> "/opt/st/stm32cubeide_1.3.0"
+svdDir :: Maybe String -> FilePath
+svdDir opsys = case fromMaybe os opsys of
+    "linux" -> "/home/marten/st/stm32cubeide_1.15.1"
+    --"linux" -> "/opt/st/stm32cubeide_1.3.0"
     "darwin" -> "/Applications/STM32CubeIDE.app"
     _       -> "C:/ST/STM32CubeIDE_1.7.0"
 
@@ -77,17 +83,17 @@ main = do
             , map (OnSubFamily . T.pack) sub_family
             , map (OnPackage . T.pack) package
             ]
-    [famXML] <- cacheLines recache familiesFile famDir
-    allFamilies <- parseFamilies famXML
+    [famXML] <- cacheLines recache familiesFile $ famDir opsys
+    allFamilies <- exclude [ "STM32H5", "STM32U5", "STM32WBA" ] <$> parseFamilies famXML
     let families = prune fs allFamilies
-    allSVDs <- cacheLines recache svdFiles svdDir
+    allSVDs <- cacheLines recache svdFiles $ svdDir opsys
 
     let dbDir = takeDirectory famXML
 
     whenJust headers $ \outDir -> do
         prettyFamiliesCPP outDir $ map (unPlus . fst) allFamilies
         forM_ families $ \(family', subs) -> do
-            x <- processFamily svdDir dbDir recache family' subs
+            x <- processFamily (svdDir opsys) dbDir recache family' subs
             prettyFamilyCPP outDir x
 
     when list_mcus $ mcuList families
@@ -97,7 +103,7 @@ main = do
 
     whenJust kicad_symbol $ \name -> do
         forM_ families $ \(family', subs) -> do
-            mcu <- singleMCU svdDir dbDir recache family' subs name
+            mcu <- singleMCU (svdDir opsys) dbDir recache family' subs name
             kiCadSymbol name mcu
 
 svdFiles :: FilePath -> IO [FilePath]
