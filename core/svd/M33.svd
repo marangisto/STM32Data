@@ -12,16 +12,6 @@
         <size>0xD</size>
         <usage>registers</usage>
       </addressBlock>
-      <interrupt>
-        <name>FPU</name>
-        <description>Floating point unit interrupt</description>
-        <value>81</value>
-      </interrupt>
-      <interrupt>
-        <name>FPU</name>
-        <description>Floating point interrupt</description>
-        <value>81</value>
-      </interrupt>
       <registers>
         <register>
           <name>FPCCR</name>
