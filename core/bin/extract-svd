@@ -1,0 +1,45 @@
+:
+# extract core peripherals svd
+
+SRC_DIR=/mnt/c/ST/STM32CubeIDE_1.7.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.productdb.debug_2.0.0.202107021202/resources/cmsis/STMicroelectronics_CMSIS_SVD
+
+for SVD in `ls $SRC_DIR/*.svd`
+do
+    BASE=`basename $SVD .svd`
+
+    case $BASE in
+        STM32F0*)
+            CORE=M0
+            ;;
+        STM32[CGLU]0*|STM32WB0*)
+            CORE=M0+
+            ;;
+        STM32F[12]*|STM32L1*)
+            CORE=M3
+            ;;
+        STM32F[34]*|STM32[GL]4*|STM32GBK*)
+            CORE=M4
+            ;;
+        STM32W[BL]*)
+            CORE=M4
+            ;;
+        STM32[FH]7*)
+            CORE=M7
+            ;;
+        STM32[HLU]5*|STM32WBA*)
+            CORE=M33
+            ;;
+    esac
+
+    echo $BASE
+    mkdir -p /tmp/Core/$CORE
+
+    for i in FPU MPU NVIC SCB STK
+    do
+        xmlstarlet sel -B -I -t -c "/device/peripherals/peripheral[name='$i']" $SVD > /tmp/x
+        test -s /tmp/x && xmlstarlet ed -u "//text()" -x "normalize-space()" /tmp/x > /tmp/Core/$CORE/$i-$BASE.svd
+    done
+done
+
+exit 0
+

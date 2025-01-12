@@ -1,0 +1,28 @@
+:
+# combine core peripherals svd
+
+for CORE in M0 M0+ M3 M4 M7 M33
+do
+    echo /tmp/$CORE.svd
+    cat <<- EOF > /tmp/x
+<device schemaVersion="1.1" xmlns:xs="http://www.w3.org/2001/XMLSchema-instance" xs:noNamespaceSchemaLocation="CMSIS-SVD.xsd" >
+  <name>$CORE</name>
+  <peripherals>
+EOF
+    for i in FPU MPU NVIC SCB STK
+    do
+        PERIPH=/tmp/Core/$CORE/$i.svd
+        if [ -s $PERIPH ]
+        then
+            grep -v "<?xml version" $PERIPH >> /tmp/x
+        fi
+#        xmlstarlet sel -B -I -t -c "/device/peripherals/peripheral[name='$i']" $SVD > /tmp/x
+#        test -s /tmp/x && xmlstarlet ed -u "//text()" -x "normalize-space()" /tmp/x > /tmp/Core/$CORE/$i-$BASE.svd
+    done
+    echo "  </peripherals>" >> /tmp/x
+    echo "</device>" >> /tmp/x
+    xmlstarlet fo --nsclean /tmp/x > /tmp/$CORE.svd
+done
+
+exit 0
+
